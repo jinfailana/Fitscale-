@@ -1,129 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class SignupPage extends StatelessWidget {
+class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final passwordController = TextEditingController();
+  State<SignupPage> createState() => _SignupPageState();
+}
 
-    void showAuthModal() {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (BuildContext context) {
-          return Padding(
-            padding: MediaQuery.of(context).viewInsets,
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(51, 50, 50, 1.0),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0), width: 1.5),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Verification code',
-                      style: TextStyle(
-                        color: Color.fromRGBO(223, 77, 15, 1.0),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'We have sent the code to your email.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(4, (index) {
-                        return SizedBox(
-                          width: 50,
-                          child: TextField(
-                            textAlign: TextAlign.center,
-                            maxLength: 1,
-                            style: const TextStyle(color: Colors.white, fontSize: 24),
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: const Color(0xFF2A2A2A),
-                              counterText: "",
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context); // Close the modal
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: const BorderSide(color: Color.fromRGBO(223, 77, 15, 1.0)),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          ),
-                          child: const Text(
-                            'CANCEL',
-                            style: TextStyle(
-                              color: Color.fromRGBO(223, 77, 15, 1.0),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context); // Close the modal
-                            Navigator.pushReplacementNamed(context, '/login');
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          ),
-                          child: const Text(
-                            'PROCEED',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+class _SignupPageState extends State<SignupPage> {
+  final formKey = GlobalKey<FormState>();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  Future<void> signUp() async {
+    if (formKey.currentState?.validate() ?? false) {
+      try {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: emailController.text,
+          password: passwordController.text,
+        );
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/select_gender');
+        }
+      } on FirebaseAuthException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.message ?? 'Signup failed')),
           );
-        },
-      );
+        }
+      }
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
       body: Center(
@@ -182,6 +93,7 @@ class SignupPage extends StatelessWidget {
 
                         // Email Field
                         TextFormField(
+                          controller: emailController,
                           decoration: const InputDecoration(
                             labelText: 'EMAIL',
                             labelStyle: TextStyle(
@@ -275,11 +187,7 @@ class SignupPage extends StatelessWidget {
 
                         // Continue Button
                         ElevatedButton(
-                          onPressed: () {
-                            if (formKey.currentState?.validate() ?? false) {
-                              showAuthModal();
-                            }
-                          },
+                          onPressed: signUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                             shape: RoundedRectangleBorder(

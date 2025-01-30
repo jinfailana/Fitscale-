@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'firstlogin.dart'; // Import your login screen
 
 class SignupPage extends StatefulWidget {
@@ -22,6 +24,35 @@ class _SignupPageState extends State<SignupPage> {
         context,
         MaterialPageRoute(builder: (context) => LoginPage()),
       );
+    }
+  }
+
+  Future<User?> signInWithGoogle() async {
+    try {
+      // Sign out from Google to allow choosing a different account
+      await GoogleSignIn().signOut();
+
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication? googleAuth =
+          await googleUser?.authentication;
+
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken,
+        idToken: googleAuth?.idToken,
+      );
+
+      // Once signed in, return the UserCredential
+      return (await FirebaseAuth.instance.signInWithCredential(credential))
+          .user;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign up with Google: $e')),
+      );
+      return null;
     }
   }
 
@@ -67,7 +98,8 @@ class _SignupPageState extends State<SignupPage> {
                             filled: true,
                             fillColor: Color(0xFF2A2A2A),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -75,7 +107,8 @@ class _SignupPageState extends State<SignupPage> {
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Username is required';
-                            } else if (!RegExp(r'^[a-zA-Z]+$').hasMatch(value)) {
+                            } else if (!RegExp(r'^[a-zA-Z]+$')
+                                .hasMatch(value)) {
                               return 'Username must contain only alphabets';
                             }
                             return null;
@@ -96,7 +129,8 @@ class _SignupPageState extends State<SignupPage> {
                             filled: true,
                             fillColor: Color(0xFF2A2A2A),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -124,7 +158,8 @@ class _SignupPageState extends State<SignupPage> {
                             filled: true,
                             fillColor: Color(0xFF2A2A2A),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -140,7 +175,8 @@ class _SignupPageState extends State<SignupPage> {
                               return 'Password must contain a lowercase letter';
                             } else if (!RegExp(r'[0-9]').hasMatch(value)) {
                               return 'Password must contain a number';
-                            } else if (!RegExp(r'[!@#\\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                            } else if (!RegExp(r'[!@#\\$%^&*(),.?":{}|<>]')
+                                .hasMatch(value)) {
                               return 'Password must contain a special character';
                             }
                             return null;
@@ -161,7 +197,8 @@ class _SignupPageState extends State<SignupPage> {
                             filled: true,
                             fillColor: Color(0xFF2A2A2A),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -181,7 +218,8 @@ class _SignupPageState extends State<SignupPage> {
                         ElevatedButton(
                           onPressed: _signup,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                            backgroundColor:
+                                const Color.fromRGBO(223, 77, 15, 1.0),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -236,14 +274,27 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () async {
+                      User? user = await signInWithGoogle();
+                      if (user != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text('Sign up with Google successful')),
+                        );
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => LoginPage()),
+                        );
+                      }
+                    },
                     icon: Image.asset(
                       'assets/google_logo.png',
                       height: 24,
                       width: 24,
                       errorBuilder: (context, error, stackTrace) {
                         debugPrint('Error loading Google logo: $error');
-                        return const Icon(Icons.g_mobiledata, color: Colors.white);
+                        return const Icon(Icons.g_mobiledata,
+                            color: Colors.white);
                       },
                     ),
                     label: const Text(
@@ -296,12 +347,13 @@ class _SignupPageState extends State<SignupPage> {
                 right: 0,
                 child: Center(
                   child: Image.asset(
-                    'assets/Fitscale_LOGO.png', 
+                    'assets/Fitscale_LOGO.png',
                     height: 160,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       debugPrint('Error loading Fitscale logo: $error');
-                      return const Icon(Icons.fitness_center, color: Colors.white, size: 80);
+                      return const Icon(Icons.fitness_center,
+                          color: Colors.white, size: 80);
                     },
                   ),
                 ),

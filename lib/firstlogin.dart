@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,6 +29,60 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
       }
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    try {
+      // Sign out from Google to allow choosing a different account
+      await GoogleSignIn().signOut();
+
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) {
+        // The user canceled the sign-in
+        return;
+      }
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication? googleAuth =
+          await googleUser.authentication;
+
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken,
+        idToken: googleAuth?.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      final UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // Check if the user is already signed up
+      final User? user = userCredential.user;
+      if (user != null) {
+        final bool isNewUser =
+            userCredential.additionalUserInfo?.isNewUser ?? false;
+        if (isNewUser) {
+          // Show alert box if the Google account is not signed up
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("This Google Account isn't Signed Up yet")),
+          );
+          await FirebaseAuth.instance.signOut();
+        } else {
+          // Show alert box if the Google account is signed up
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("You Signed In as ${user.email}")),
+          );
+          // Navigate to the next screen if the user is signed up
+          Navigator.pushReplacementNamed(context, '/select_gender');
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign in with Google: $e')),
+      );
     }
   }
 
@@ -120,7 +175,8 @@ class _LoginPageState extends State<LoginPage> {
                           return 'Password must contain a lowercase letter';
                         } else if (!RegExp(r'[0-9]').hasMatch(value)) {
                           return 'Password must contain a number';
-                        } else if (!RegExp(r'[!@#\\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                        } else if (!RegExp(r'[!@#\\$%^&*(),.?":{}|<>]')
+                            .hasMatch(value)) {
                           return 'Password must contain a special character';
                         }
                         return null;
@@ -187,8 +243,8 @@ class _LoginPageState extends State<LoginPage> {
 
                     // Google Login Button
                     OutlinedButton.icon(
-                      onPressed: () {
-                        // Add Google login logic here
+                      onPressed: () async {
+                        await signInWithGoogle();
                       },
                       icon: Image.asset(
                         'assets/google_logo.png', // Replace with your Google logo path
@@ -229,7 +285,8 @@ class _LoginPageState extends State<LoginPage> {
                           GestureDetector(
                             onTap: () {
                               // Navigate to the Signup Page
-                              Navigator.pushReplacementNamed(context, '/signup');
+                              Navigator.pushReplacementNamed(
+                                  context, '/signup');
                             },
                             child: const Text(
                               'Sign up',

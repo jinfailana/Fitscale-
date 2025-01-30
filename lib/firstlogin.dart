@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -17,7 +16,9 @@ class _LoginPageState extends State<LoginPage> {
     if (formKey.currentState?.validate() ?? false) {
       try {
         // Simulate a login process
-        await Future.delayed(Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 2));
+
+        // On successful login, navigate to the select gender page
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/select_gender');
         }
@@ -252,9 +253,9 @@ class _LoginPageState extends State<LoginPage> {
                 right: 0,
                 child: Center(
                   child: Image.asset(
-                    'assets/Fitscale_LOGO.png',
+                    'assets/Fitscale_LOGO.png', // Your logo path
                     height: 160,
-                    fit: BoxFit.contain, // Ensures the image scales well
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

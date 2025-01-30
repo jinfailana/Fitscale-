@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'set_goal.dart';
 
 class SelectGenderPage extends StatefulWidget {
   const SelectGenderPage({super.key});
@@ -18,9 +19,9 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
         backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(223, 77, 15, 1.0)),
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/login');
           },
         ),
       ),
@@ -29,104 +30,140 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Select Your Gender',
+                'GENDER',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
+                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Allows us to suggest goods that align with typical user preferences',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 16,
                 ),
               ),
               const SizedBox(height: 40),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        selectedGender = 'Male';
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedGender == 'Male' ? Colors.blue : Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shape: const CircleBorder(
-                        side: BorderSide(color: Colors.white54, width: 2),
-                      ),
-                      padding: const EdgeInsets.all(24),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.male, size: 80, color: Colors.white),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Male',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        selectedGender = 'Female';
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedGender == 'Female' ? Colors.pink : Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shape: const CircleBorder(
-                        side: BorderSide(color: Colors.white54, width: 2),
-                      ),
-                      padding: const EdgeInsets.all(24),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.female, size: 80, color: Colors.white),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Female',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _genderButton('Male', Icons.male),
+                  const SizedBox(width: 20),
+                  _genderButton('Female', Icons.female),
                 ],
               ),
               const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: selectedGender != null ? () {
-                  // Handle next button press
-                } : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              SizedBox(
+                width: 350,
+                child: ElevatedButton(
+                  onPressed: selectedGender != null ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SetGoalPage()),
+                    );
+                  } : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 5,
+                    shadowColor: Colors.black.withOpacity(0.5),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 40),
-                ),
-                child: const Text(
-                  'NEXT',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  child: const Text(
+                    'Next',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 20,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _genderButton(String gender, IconData icon) {
+    bool isSelected = selectedGender == gender;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedGender = gender;
+        });
+      },
+      child: Stack(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300), // Animation duration
+            width: 170,
+            height: 400,
+            decoration: BoxDecoration(
+              color: isSelected ? const Color.fromRGBO(223, 77, 15, 0.2) : Colors.transparent,
+              border: Border.all(
+                color: const Color.fromRGBO(223, 77, 15, 1.0),
+                width: isSelected ? 3 : 2,
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Transform.rotate(
+                    angle: gender == 'Male' ? 2.35000:0,// Rotate 45 degrees (0.785398 radians) for male
+                    child: Icon(
+                      icon,
+                      size: 140,
+                      color: isSelected
+                          ? const Color.fromRGBO(223, 77, 15, 1.0)
+                          : const Color.fromRGBO(51, 50, 50, 1.0),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    gender,
+                    style: TextStyle(
+                      color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (isSelected)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(
+                Icons.check_circle,
+                color: const Color.fromRGBO(223, 77, 15, 1.0),
+                size: 24,
+              ),
+            ),
+        ],
       ),
     );
   }

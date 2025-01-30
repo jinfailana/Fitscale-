@@ -1,0 +1,173 @@
+import 'package:flutter/material.dart';
+
+class SetHeightPage extends StatefulWidget {
+  const SetHeightPage({super.key});
+
+  @override
+  State<SetHeightPage> createState() => _SetHeightPageState();
+}
+
+class _SetHeightPageState extends State<SetHeightPage> {
+  String unit = 'ft';
+  String? selectedHeight;
+  final List<String> heightsFt = List.generate(48, (index) {
+    int feet = 4 + (index ~/ 12);
+    int inches = index % 12;
+    return '$feet ft $inches in';
+  });
+  final List<String> heightsCm = List.generate(100, (index) => '${140 + index} cm');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
+      appBar: AppBar(
+        backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
+        elevation: 0,
+        title: const Text('Height'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(223, 77, 15, 1.0)),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Height',
+                style: TextStyle(
+                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Helps us customize your fitness plan based on your body structure',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _unitButton('Cm'),
+                  const SizedBox(width: 10),
+                  _unitButton('Ft'),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 300,
+                child: ListView.builder(
+                  itemCount: unit == 'ft' ? heightsFt.length : heightsCm.length,
+                  itemBuilder: (context, index) {
+                    return _heightButton(unit == 'ft' ? heightsFt[index] : heightsCm[index]);
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: 350,
+                child: ElevatedButton(
+                  onPressed: selectedHeight != null ? () {
+                    // Handle next button press
+                  } : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 5,
+                    shadowColor: Colors.black.withOpacity(0.5),
+                  ),
+                  child: const Text(
+                    'Next',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 20,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _unitButton(String unitType) {
+    bool isSelected = unit == unitType.toLowerCase();
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          unit = unitType.toLowerCase();
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color.fromRGBO(223, 77, 15, 1.0),
+          ),
+        ),
+        child: Text(
+          unitType,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color.fromRGBO(223, 77, 15, 1.0),
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _heightButton(String height) {
+    bool isSelected = selectedHeight == height;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedHeight = height;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        width: MediaQuery.of(context).size.width * 0.6,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(
+            color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+            width: isSelected ? 3 : 0,
+          ),
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Center(
+          child: Text(
+            height,
+            style: TextStyle(
+              color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

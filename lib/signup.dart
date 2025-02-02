@@ -20,25 +20,27 @@ class _SignupPageState extends State<SignupPage> {
       // If signup is successful, navigate to login page
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
+        MaterialPageRoute(builder: (context) => const LoginPage()),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
           child: Stack(
             clipBehavior: Clip.none, // Allow content to overflow
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 120), // Spacer for the logo
+                  SizedBox(height: screenWidth * 0.3),
                   const Padding(
                     padding: EdgeInsets.only(left: 8),
                     child: Text(
@@ -50,7 +52,50 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
+
+                  // Google Sign Up Button
+                  OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: Image.asset(
+                      'assets/google_logo.png',
+                      height: 24,
+                      width: 24,
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint('Error loading Google logo: $error');
+                        return const Icon(Icons.g_mobiledata, color: Colors.white);
+                      },
+                    ),
+                    label: const Text(
+                      'Sign up with Google',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.white54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.white54)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.white54)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Form Fields
                   Form(
                     key: formKey,
                     child: Column(
@@ -221,44 +266,7 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.white54)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          'OR',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.white54)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: Image.asset(
-                      'assets/google_logo.png',
-                      height: 24,
-                      width: 24,
-                      errorBuilder: (context, error, stackTrace) {
-                        debugPrint('Error loading Google logo: $error');
-                        return const Icon(Icons.g_mobiledata, color: Colors.white);
-                      },
-                    ),
-                    label: const Text(
-                      'Sign up with Google',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white54),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: Row(
@@ -297,7 +305,7 @@ class _SignupPageState extends State<SignupPage> {
                 child: Center(
                   child: Image.asset(
                     'assets/Fitscale_LOGO.png', 
-                    height: 160,
+                    height: screenWidth * 0.4,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       debugPrint('Error loading Fitscale logo: $error');

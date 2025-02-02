@@ -71,7 +71,7 @@ class _SetGoalPageState extends State<SetGoalPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 5,
-                    shadowColor: Colors.black.withOpacity(0.5),
+                    shadowColor: Colors.black.withAlpha(128),
                   ),
                   child: const Text(
                     'Next',
@@ -110,6 +110,13 @@ class _SetGoalPageState extends State<SetGoalPage> {
             width: isSelected ? 3 : 0,
           ),
           borderRadius: BorderRadius.circular(30),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: Colors.black.withAlpha(50),
+              blurRadius: 5,
+              offset: const Offset(0, 8),
+            ),
+          ] : [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

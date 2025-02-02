@@ -76,7 +76,7 @@ class _BirthYearPageState extends State<BirthYearPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 5,
-                    shadowColor: Colors.black.withOpacity(0.5),
+                    shadowColor: Colors.black.withAlpha(128),
                   ),
                   child: const Text(
                     'Next',
@@ -104,7 +104,8 @@ class _BirthYearPageState extends State<BirthYearPage> {
           selectedYear = year;
         });
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(vertical: 8),
         width: MediaQuery.of(context).size.width * 0.6,
@@ -115,6 +116,13 @@ class _BirthYearPageState extends State<BirthYearPage> {
             width: isSelected ? 3 : 0,
           ),
           borderRadius: BorderRadius.circular(30),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: Colors.black.withAlpha(50),
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ] : [],
         ),
         child: Center(
           child: Text(

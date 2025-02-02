@@ -74,7 +74,7 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 5,
-                    shadowColor: Colors.black.withOpacity(0.5),
+                    shadowColor: Colors.black.withAlpha(50),
                   ),
                   child: const Text(
                     'Next',
@@ -117,9 +117,9 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withAlpha(50),
                   blurRadius: 5,
-                  offset: const Offset(0, 3),
+                  offset: const Offset(0, 10), // 10% of 400
                 ),
               ],
             ),

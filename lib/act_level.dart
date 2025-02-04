@@ -88,9 +88,9 @@ class _ActivityLevelPageState extends State<ActivityLevelPage> {
                 child: SizedBox(
                   width: 350,
                   child: ElevatedButton(
-                    onPressed: selectedLevel != null ? () {
-                      // Navigate to next page
-                    } : null,
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/pref_workout');
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                       shape: RoundedRectangleBorder(

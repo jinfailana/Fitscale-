@@ -106,7 +106,7 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 90),
+                const SizedBox(height: 80),
               ],
             ),
           ),

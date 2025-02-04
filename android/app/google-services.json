@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "928815452268",
+    "project_id": "fitscale-f14a2",
+    "storage_bucket": "fitscale-f14a2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928815452268:android:64babcc6d8f51f82f88849",
+        "android_client_info": {
+          "package_name": "com.example.fs_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmiNWgMVZfnREULai2XUFLCucxp6KKuSY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

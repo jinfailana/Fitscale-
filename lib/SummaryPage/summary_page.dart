@@ -11,15 +11,21 @@ class SummaryPage extends StatelessWidget {
         backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'Summary',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Image.asset(
+          'assets/Fitscale_LOGO.png', // Replace with your logo asset path
+          height: 85,
         ),
         actions: [
+          const Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: Text(
+              'Welcome, [username]',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
             onPressed: () {
@@ -29,18 +35,20 @@ class SummaryPage extends StatelessWidget {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 1),
             const Text(
-              'Welcome, [username]',
+              'Summary',
               style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 2),
             _buildSummaryCard('Set Step Goal', 'Daily goal: No goal yet', Icons.directions_walk),
             _buildSummaryCard('0kg', 'Current Weight', Icons.monitor_weight),
             _buildSummaryCard('Set Diets!', 'Mark your meals today!', Icons.restaurant),
@@ -58,6 +66,7 @@ class SummaryPage extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.grey[850],
+                border: Border.all(color: Color.fromRGBO(223, 77, 15, 1.0)),
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
@@ -71,7 +80,7 @@ class SummaryPage extends StatelessWidget {
                 'No Workouts Found',
                 style: TextStyle(
                   color: Colors.white54,
-                  fontSize: 16,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -80,7 +89,7 @@ class SummaryPage extends StatelessWidget {
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-        selectedItemColor:  Color.fromRGBO(223, 77, 15, 1.0),
+        selectedItemColor: Color.fromRGBO(223, 77, 15, 1.0),
         unselectedItemColor: Colors.white54,
         items: const [
           BottomNavigationBarItem(
@@ -111,7 +120,7 @@ class SummaryPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.transparent,
         border: Border.all(color: Color.fromRGBO(223, 77, 15, 1.0)),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(50),
@@ -129,7 +138,7 @@ class SummaryPage extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color:  Color.fromRGBO(223, 77, 15, 1.0),
+                  color: Color.fromRGBO(223, 77, 15, 1.0),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -138,7 +147,7 @@ class SummaryPage extends StatelessWidget {
               Text(
                 subtitle,
                 style: const TextStyle(
-                  color: Colors.white54,
+                  color: Colors.white,
                   fontSize: 14,
                 ),
               ),

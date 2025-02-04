@@ -12,7 +12,8 @@ import 'gym_equipment.dart'; // Import the gym equipment page
 import 'work_place.dart'; // Import the work place page
 import 'allset_page.dart'; // Import the all set page
 import 'SummaryPage/summary_page.dart'; // Import the summary page
-
+//import 'ForgotPasswordPage/forgot_password_page.dart'; // Import the forgot password page
+//import 'ForgotPasswordPage/change_pass.dart'; // Import the forgot password page
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();  // Add this line

@@ -11,13 +11,20 @@ class _LoginPageState extends State<LoginPage> {
   final formKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  int failedAttempts = 0;
 
   Future<void> login() async {
     if (formKey.currentState?.validate() ?? false) {
       try {
         await Future.delayed(const Duration(seconds: 2));
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/select_gender');
+          // Simulate login failure
+          setState(() {
+            failedAttempts++;
+          });
+          if (failedAttempts < 2) {
+            Navigator.pushReplacementNamed(context, '/select_gender');
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -212,30 +219,50 @@ class _LoginPageState extends State<LoginPage> {
 
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Already have an account? ',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            const Text(
+                              'Already have an account? ',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pushReplacementNamed(context, '/signup');
+                              },
+                              child: const Text(
+                                'Sign up',
+                                style: TextStyle(
+                                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushReplacementNamed(context, '/signup');
-                          },
-                          child: const Text(
-                            'Sign up',
-                            style: TextStyle(
-                              color: Color.fromRGBO(223, 77, 15, 1.0),
-                              fontWeight: FontWeight.bold,
+                        if (failedAttempts >= 2)
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pushNamed(context, '/forgot_password');
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),

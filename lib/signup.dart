@@ -11,6 +11,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:math';
 import 'package:resend/resend.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 
 class SignupPage extends StatefulWidget {
@@ -28,8 +29,10 @@ class _SignupPageState extends State<SignupPage> {
   bool _isLoading = false;
 
   String? verificationCode;
-  final String brevoApiKey =
-      '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';
+
+  final String brevoApiKey = dotenv.env[
+          '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'] ??
+      '';
 
   Future<void> sendVerificationEmail(String email) async {
     try {

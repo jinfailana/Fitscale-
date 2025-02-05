@@ -3,9 +3,11 @@ import 'package:firebase_core/firebase_core.dart'; // Import the Firebase core p
 import 'signup.dart'; // Import the signup page
 import 'firstlogin.dart'; // Import the login page
 import 'select_gender.dart'; // Import the select gender page
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
   runApp(const MyApp());
 }

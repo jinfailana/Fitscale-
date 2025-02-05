@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'FitScale App',
+      title: 'FitScale',
       theme: ThemeData.dark(),
       initialRoute: '/signup', // Set the initial route to signup
       routes: {

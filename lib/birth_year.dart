@@ -10,17 +10,18 @@ class BirthYearPage extends StatefulWidget {
 
 class _BirthYearPageState extends State<BirthYearPage> {
   int? selectedYear;
-  final List<int> years = List.generate(100, (index) => DateTime.now().year - index);
+  final List<int> years =
+      List.generate(100, (index) => DateTime.now().year - index);
 
-  @override   
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
-
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(223, 77, 15, 1.0)),
+          icon: const Icon(Icons.arrow_back,
+              color: Color.fromRGBO(223, 77, 15, 1.0)),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -63,12 +64,15 @@ class _BirthYearPageState extends State<BirthYearPage> {
               SizedBox(
                 width: 350,
                 child: ElevatedButton(
-                  onPressed: selectedYear != null ? () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SetHeightPage()),
-                    );
-                  } : null,
+                  onPressed: selectedYear != null
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const SetHeightPage()),
+                          );
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                     shape: RoundedRectangleBorder(
@@ -111,7 +115,9 @@ class _BirthYearPageState extends State<BirthYearPage> {
         decoration: BoxDecoration(
           color: Colors.transparent,
           border: Border.all(
-            color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+            color: isSelected
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.transparent,
             width: isSelected ? 3 : 0,
           ),
           borderRadius: BorderRadius.circular(30),
@@ -120,7 +126,9 @@ class _BirthYearPageState extends State<BirthYearPage> {
           child: Text(
             year.toString(),
             style: TextStyle(
-              color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+              color: isSelected
+                  ? const Color.fromRGBO(223, 77, 15, 1.0)
+                  : Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),

@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'firstlogin.dart'; // Import your login screen
+import 'firstlogin.dart';
+import 'package:email_validator/email_validator.dart';
+import 'modals/success_modal.dart';
+import 'modals/username_modal.dart';
+import 'modals/auth_modal.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:math';
+import 'package:resend/resend.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -14,45 +24,205 @@ class _SignupPageState extends State<SignupPage> {
   final formKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final usernameController = TextEditingController();
+  bool _isLoading = false;
 
-  void _signup() {
-    if (formKey.currentState?.validate() ?? false) {
-      // Perform signup logic here
+  String? verificationCode;
+  final String brevoApiKey =
+      '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';
 
-      // If signup is successful, navigate to login page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
+  Future<void> sendVerificationEmail(String email) async {
+    try {
+      verificationCode = (1000 + Random().nextInt(9000)).toString();
+
+      final response = await http.post(
+        Uri.parse('https://api.brevo.com/v3/smtp/email'),
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'sender': {'name': 'Fitscale', 'email': 'hannstabalanza@gmail.com'},
+          'to': [
+            {'email': email}
+          ],
+          'subject': 'Verify your Fitscale account',
+          'htmlContent': '''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #DF4D0F;">Fitscale Email Verification</h2>
+              <p>Your verification code is:</p>
+              <h1 style="color: #DF4D0F; font-size: 32px; letter-spacing: 5px;">$verificationCode</h1>
+              <p>This code will expire in 10 minutes.</p>
+            </div>
+          '''
+        }),
       );
+
+      if (response.statusCode != 201) {
+        throw 'Failed to send verification email: ${response.body}';
+      }
+    } catch (e) {
+      print('Error sending email: $e');
+      rethrow;
     }
   }
 
-  Future<User?> signInWithGoogle() async {
+  Future<void> _signup() async {
+    if (!formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
     try {
-      // Sign out from Google to allow choosing a different account
+      final email = emailController.text.trim();
+
+      // Check if email is already registered
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .get();
+
+      if (userDoc.docs.isNotEmpty) {
+        throw 'This email is already registered';
+      }
+
+      // Send verification email
+      await sendVerificationEmail(email);
+
+      // Show verification modal
+      final isVerified = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => AuthModal(
+          onVerify: (code) async {
+            return code == verificationCode;
+          },
+        ),
+      );
+
+      if (isVerified != true) {
+        throw 'Email verification failed';
+      }
+
+      // Create user account
+      final userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: passwordController.text.trim(),
+      );
+
+      // Store user data
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'username': usernameController.text.trim(),
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      // Show success modal
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => SuccessModal(
+          message: 'Account Verified Successfully!',
+          onProceed: () {
+            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/login');
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> signUpWithGoogle() async {
+    setState(() => _isLoading = true);
+
+    try {
       await GoogleSignIn().signOut();
 
-      // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return;
 
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication? googleAuth =
-          await googleUser?.authentication;
-
-      // Create a new credential
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth?.accessToken,
-        idToken: googleAuth?.idToken,
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      // Once signed in, return the UserCredential
-      return (await FirebaseAuth.instance.signInWithCredential(credential))
-          .user;
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to sign up with Google: $e')),
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!mounted) return;
+
+      if (userDoc.exists) {
+        await FirebaseAuth.instance.signOut();
+        throw 'This Google account is already registered';
+      }
+
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => SuccessModal(
+          message: 'Signed Up Successfully!',
+          onProceed: () => Navigator.pop(context),
+        ),
       );
-      return null;
+
+      final username = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => UsernameInputModal(
+          controller: TextEditingController(),
+          onSubmit: (username) => Navigator.pop(context, username),
+        ),
+      );
+
+      if (username == null || username.isEmpty) {
+        await FirebaseAuth.instance.signOut();
+        throw 'Username is required';
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'username': username,
+        'email': googleUser.email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -64,12 +234,12 @@ class _SignupPageState extends State<SignupPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Stack(
-            clipBehavior: Clip.none, // Allow content to overflow
+            clipBehavior: Clip.none,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 120), // Spacer for the logo
+                  const SizedBox(height: 120),
                   const Padding(
                     padding: EdgeInsets.only(left: 8),
                     child: Text(
@@ -86,8 +256,8 @@ class _SignupPageState extends State<SignupPage> {
                     key: formKey,
                     child: Column(
                       children: [
-                        // Username Field
                         TextFormField(
+                          controller: usernameController,
                           decoration: const InputDecoration(
                             labelText: 'USERNAME',
                             labelStyle: TextStyle(
@@ -115,8 +285,6 @@ class _SignupPageState extends State<SignupPage> {
                           },
                         ),
                         const SizedBox(height: 16),
-
-                        // Email Field
                         TextFormField(
                           controller: emailController,
                           decoration: const InputDecoration(
@@ -137,14 +305,15 @@ class _SignupPageState extends State<SignupPage> {
                           style: const TextStyle(color: Colors.white),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Email is required';
+                              return 'Please enter your email';
+                            }
+                            if (!value.endsWith('@gmail.com')) {
+                              return 'Email must end with @gmail.com';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 16),
-
-                        // Password Field
                         TextFormField(
                           controller: passwordController,
                           obscureText: true,
@@ -175,7 +344,7 @@ class _SignupPageState extends State<SignupPage> {
                               return 'Password must contain a lowercase letter';
                             } else if (!RegExp(r'[0-9]').hasMatch(value)) {
                               return 'Password must contain a number';
-                            } else if (!RegExp(r'[!@#\\$%^&*(),.?":{}|<>]')
+                            } else if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]')
                                 .hasMatch(value)) {
                               return 'Password must contain a special character';
                             }
@@ -183,8 +352,6 @@ class _SignupPageState extends State<SignupPage> {
                           },
                         ),
                         const SizedBox(height: 16),
-
-                        // Confirm Password Field
                         TextFormField(
                           obscureText: true,
                           decoration: const InputDecoration(
@@ -213,8 +380,6 @@ class _SignupPageState extends State<SignupPage> {
                           },
                         ),
                         const SizedBox(height: 20),
-
-                        // Continue Button
                         ElevatedButton(
                           onPressed: _signup,
                           style: ElevatedButton.styleFrom(
@@ -274,19 +439,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
-                    onPressed: () async {
-                      User? user = await signInWithGoogle();
-                      if (user != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text('Sign up with Google successful')),
-                        );
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => LoginPage()),
-                        );
-                      }
-                    },
+                    onPressed: signUpWithGoogle,
                     icon: Image.asset(
                       'assets/google_logo.png',
                       height: 24,

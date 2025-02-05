@@ -49,7 +49,9 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedGender == 'Male' ? Colors.blue : Colors.transparent,
+                      backgroundColor: selectedGender == 'Male'
+                          ? Colors.blue
+                          : Colors.transparent,
                       foregroundColor: Colors.white,
                       shape: const CircleBorder(
                         side: BorderSide(color: Colors.white54, width: 2),
@@ -78,7 +80,9 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedGender == 'Female' ? Colors.pink : Colors.transparent,
+                      backgroundColor: selectedGender == 'Female'
+                          ? Colors.pink
+                          : Colors.transparent,
                       foregroundColor: Colors.white,
                       shape: const CircleBorder(
                         side: BorderSide(color: Colors.white54, width: 2),
@@ -104,15 +108,18 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
               ),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: selectedGender != null ? () {
-                  // Handle next button press
-                } : null,
+                onPressed: selectedGender != null
+                    ? () {
+                        // Handle next button press
+                      }
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 40),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 40),
                 ),
                 child: const Text(
                   'NEXT',

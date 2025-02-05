@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,74 +16,99 @@ class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  Future<void> login() async {
-    if (formKey.currentState?.validate() ?? false) {
-      try {
-        // Simulate a login process
-        await Future.delayed(Duration(seconds: 2));
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/select_gender');
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
-        }
+  @override
+  void initState() {
+    super.initState();
+    // Set the locale for Firebase Authentication
+    FirebaseAuth.instance.setLanguageCode('en');
+  }
+
+  Future<void> signInWithEmail() async {
+    if (!formKey.currentState!.validate()) return;
+
+    try {
+      // Attempt to sign in
+      final userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+      // Verify user exists in Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!mounted) return;
+
+      if (!userDoc.exists) {
+        await FirebaseAuth.instance.signOut();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Account not found. Please sign up first.')),
+        );
+        return;
       }
+
+      Navigator.pushReplacementNamed(context, '/select_gender');
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      String message = 'Login failed';
+      if (e.code == 'user-not-found') {
+        message = 'No account found with this email';
+      } else if (e.code == 'wrong-password') {
+        message = 'Invalid password';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 
   Future<void> signInWithGoogle() async {
     try {
-      // Sign out from Google to allow choosing a different account
       await GoogleSignIn().signOut();
-
-      // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-      if (googleUser == null) {
-        // The user canceled the sign-in
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in with Google
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // Verify user exists in Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!mounted) return;
+
+      if (!userDoc.exists) {
+        await FirebaseAuth.instance.signOut();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Google account not registered. Please sign up first.')),
+        );
         return;
       }
 
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication? googleAuth =
-          await googleUser.authentication;
-
-      // Create a new credential
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth?.accessToken,
-        idToken: googleAuth?.idToken,
-      );
-
-      // Sign in to Firebase with the Google credential
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
-      // Check if the user is already signed up
-      final User? user = userCredential.user;
-      if (user != null) {
-        final bool isNewUser =
-            userCredential.additionalUserInfo?.isNewUser ?? false;
-        if (isNewUser) {
-          // Show alert box if the Google account is not signed up
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("This Google Account isn't Signed Up yet")),
-          );
-          await FirebaseAuth.instance.signOut();
-        } else {
-          // Show alert box if the Google account is signed up
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("You Signed In as ${user.email}")),
-          );
-          // Navigate to the next screen if the user is signed up
-          Navigator.pushReplacementNamed(context, '/select_gender');
-        }
-      }
+      Navigator.pushReplacementNamed(context, '/select_gender');
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to sign in with Google: $e')),
+        SnackBar(content: Text('Login failed: $e')),
       );
     }
   }
@@ -186,12 +213,11 @@ class _LoginPageState extends State<LoginPage> {
 
                     // Login Button
                     ElevatedButton(
-                      onPressed: login,
+                      onPressed: signInWithEmail,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: Row(
@@ -260,8 +286,7 @@ class _LoginPageState extends State<LoginPage> {
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.white54),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                     ),

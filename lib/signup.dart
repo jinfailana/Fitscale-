@@ -26,11 +26,9 @@ class _SignupPageState extends State<SignupPage> {
   final passwordController = TextEditingController();
   final usernameController = TextEditingController();
   bool _isLoading = false;
-
+  final resend = Resend(apiKey: 're_8Vi1vL8g_7F9EDJMyD4j8w4XRehmPmwMX');
   String? verificationCode;
-
-  final String brevoApiKey =
-      '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';
+  final String brevoApiKey = 'YOUR_BREVO_API_KEY';
 
   Future<void> sendVerificationEmail(String email) async {
     try {
@@ -153,11 +151,28 @@ class _SignupPageState extends State<SignupPage> {
     setState(() => _isLoading = true);
 
     try {
-      await GoogleSignIn().signOut();
+      // Initialize GoogleSignIn
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: [
+          'email',
+          'profile',
+        ],
+      );
 
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
+      // Sign out first to ensure account selection
+      await googleSignIn.signOut();
 
+      // Trigger Google Sign In
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      print('Google Sign In successful: ${googleUser.email}'); // Debug print
+
+      // Get auth details
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -165,30 +180,21 @@ class _SignupPageState extends State<SignupPage> {
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
+      // Check if user already exists
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
-          .doc(userCredential.user!.uid)
+          .where('email', isEqualTo: googleUser.email)
           .get();
 
-      if (!mounted) return;
-
-      if (userDoc.exists) {
-        await FirebaseAuth.instance.signOut();
+      if (userDoc.docs.isNotEmpty) {
         throw 'This Google account is already registered';
       }
 
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => SuccessModal(
-          message: 'Signed Up Successfully!',
-          onProceed: () => Navigator.pop(context),
-        ),
-      );
+      // Sign in to Firebase
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
+      // Show username input modal
       final username = await showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
@@ -204,6 +210,7 @@ class _SignupPageState extends State<SignupPage> {
         throw 'Username is required';
       }
 
+      // Save user data to Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -214,8 +221,21 @@ class _SignupPageState extends State<SignupPage> {
       });
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/login');
+
+      // Show success modal
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => SuccessModal(
+          message: 'Signed Up Successfully!',
+          onProceed: () {
+            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/login');
+          },
+        ),
+      );
     } catch (e) {
+      print('Google Sign In Error: $e'); // Debug print
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),

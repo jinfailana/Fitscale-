@@ -28,8 +28,7 @@ class _SignupPageState extends State<SignupPage> {
   bool _isLoading = false;
 
   String? verificationCode;
-  final String brevoApiKey =
-      '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';
+  final String brevoApiKey = '';
 
   Future<void> sendVerificationEmail(String email) async {
     try {

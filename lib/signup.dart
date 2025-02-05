@@ -26,9 +26,10 @@ class _SignupPageState extends State<SignupPage> {
   final passwordController = TextEditingController();
   final usernameController = TextEditingController();
   bool _isLoading = false;
-  final resend = Resend(apiKey: 're_8Vi1vL8g_7F9EDJMyD4j8w4XRehmPmwMX');
+
   String? verificationCode;
-  final String brevoApiKey = 'YOUR_BREVO_API_KEY';
+  final String brevoApiKey =
+      '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';
 
   Future<void> sendVerificationEmail(String email) async {
     try {

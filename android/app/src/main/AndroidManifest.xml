@@ -2,7 +2,7 @@
     <application
         android:label="FitScale"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/fitscalelogo">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -4,9 +4,9 @@ class AuthModal extends StatefulWidget {
   final Future<bool> Function(String) onVerify;
 
   const AuthModal({
-    Key? key,
+    super.key,
     required this.onVerify,
-  }) : super(key: key);
+  });
 
   @override
   State<AuthModal> createState() => _AuthModalState();

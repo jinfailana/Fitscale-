@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'set_weight.dart';
 
 class SetHeightPage extends StatefulWidget {
   const SetHeightPage({super.key});
@@ -10,12 +11,16 @@ class SetHeightPage extends StatefulWidget {
 class _SetHeightPageState extends State<SetHeightPage> {
   String unit = 'ft';
   String? selectedHeight;
-  final List<String> heightsFt = List.generate(48, (index) {
-    int feet = 4 + (index ~/ 12);
-    int inches = index % 12;
+  final List<String> heightsFt = List.generate(59, (index) {
+    // 59 positions from 3'3" to 8'2"
+    int totalInches = 39 + index; // Start at 39" (3'3") and go up to 98" (8'2")
+    int feet = totalInches ~/ 12;
+    int inches = totalInches % 12;
     return '$feet ft $inches in';
   });
-  final List<String> heightsCm = List.generate(100, (index) => '${140 + index} cm');
+  // For metric, equivalent range would be approximately 100cm to 249cm
+  final List<String> heightsCm =
+      List.generate(150, (index) => '${100 + index} cm');
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +31,8 @@ class _SetHeightPageState extends State<SetHeightPage> {
         elevation: 0,
         title: const Text('Height'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(223, 77, 15, 1.0)),
+          icon: const Icon(Icons.arrow_back,
+              color: Color.fromRGBO(223, 77, 15, 1.0)),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -70,7 +76,8 @@ class _SetHeightPageState extends State<SetHeightPage> {
                 child: ListView.builder(
                   itemCount: unit == 'ft' ? heightsFt.length : heightsCm.length,
                   itemBuilder: (context, index) {
-                    return _heightButton(unit == 'ft' ? heightsFt[index] : heightsCm[index]);
+                    return _heightButton(
+                        unit == 'ft' ? heightsFt[index] : heightsCm[index]);
                   },
                 ),
               ),
@@ -78,9 +85,15 @@ class _SetHeightPageState extends State<SetHeightPage> {
               SizedBox(
                 width: 350,
                 child: ElevatedButton(
-                  onPressed: selectedHeight != null ? () {
-                    // Handle next button press
-                  } : null,
+                  onPressed: selectedHeight != null
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const SetWeightPage()),
+                          );
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                     shape: RoundedRectangleBorder(
@@ -88,7 +101,7 @@ class _SetHeightPageState extends State<SetHeightPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 5,
-                    shadowColor: Colors.black.withOpacity(0.5),
+                    shadowColor: Colors.black.withAlpha(50),
                   ),
                   child: const Text(
                     'Next',
@@ -107,7 +120,7 @@ class _SetHeightPageState extends State<SetHeightPage> {
       ),
     );
   }
-  
+
   Widget _unitButton(String unitType) {
     bool isSelected = unit == unitType.toLowerCase();
     return GestureDetector(
@@ -119,7 +132,9 @@ class _SetHeightPageState extends State<SetHeightPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+          color: isSelected
+              ? const Color.fromRGBO(223, 77, 15, 1.0)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: const Color.fromRGBO(223, 77, 15, 1.0),
@@ -128,7 +143,9 @@ class _SetHeightPageState extends State<SetHeightPage> {
         child: Text(
           unitType,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color.fromRGBO(223, 77, 15, 1.0),
+            color: isSelected
+                ? Colors.white
+                : const Color.fromRGBO(223, 77, 15, 1.0),
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -145,23 +162,37 @@ class _SetHeightPageState extends State<SetHeightPage> {
           selectedHeight = height;
         });
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(vertical: 8),
         width: MediaQuery.of(context).size.width * 0.6,
         decoration: BoxDecoration(
           color: Colors.transparent,
           border: Border.all(
-            color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+            color: isSelected
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.transparent,
             width: isSelected ? 3 : 0,
           ),
           borderRadius: BorderRadius.circular(30),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(50),
+                    blurRadius: 5,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
         ),
         child: Center(
           child: Text(
             height,
             style: TextStyle(
-              color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+              color: isSelected
+                  ? const Color.fromRGBO(223, 77, 15, 1.0)
+                  : Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),

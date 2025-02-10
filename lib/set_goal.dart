@@ -17,9 +17,9 @@ class _SetGoalPageState extends State<SetGoalPage> {
       backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
-
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(223, 77, 15, 1.0)),
+          icon: const Icon(Icons.arrow_back,
+              color: Color.fromRGBO(223, 77, 15, 1.0)),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -58,12 +58,15 @@ class _SetGoalPageState extends State<SetGoalPage> {
               SizedBox(
                 width: 350,
                 child: ElevatedButton(
-                  onPressed: selectedGoal != null ? () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const BirthYearPage()),
-                    );
-                  } : null,
+                  onPressed: selectedGoal != null
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const BirthYearPage()),
+                          );
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                     shape: RoundedRectangleBorder(
@@ -71,7 +74,7 @@ class _SetGoalPageState extends State<SetGoalPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 5,
-                    shadowColor: Colors.black.withOpacity(0.5),
+                    shadowColor: Colors.black.withAlpha(128),
                   ),
                   child: const Text(
                     'Next',
@@ -106,10 +109,21 @@ class _SetGoalPageState extends State<SetGoalPage> {
         decoration: BoxDecoration(
           color: Colors.transparent,
           border: Border.all(
-            color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+            color: isSelected
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.transparent,
             width: isSelected ? 3 : 0,
           ),
           borderRadius: BorderRadius.circular(30),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(50),
+                    blurRadius: 5,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +131,9 @@ class _SetGoalPageState extends State<SetGoalPage> {
             Text(
               goal.split(' ')[0],
               style: TextStyle(
-                color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+                color: isSelected
+                    ? const Color.fromRGBO(223, 77, 15, 1.0)
+                    : Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -125,7 +141,9 @@ class _SetGoalPageState extends State<SetGoalPage> {
             Text(
               goal.split(' ')[1],
               style: TextStyle(
-                color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+                color: isSelected
+                    ? const Color.fromRGBO(223, 77, 15, 1.0)
+                    : Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),

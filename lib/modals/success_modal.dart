@@ -5,10 +5,10 @@ class SuccessModal extends StatelessWidget {
   final VoidCallback onProceed;
 
   const SuccessModal({
-    Key? key,
+    super.key,
     required this.message,
     required this.onProceed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,4 +1,4 @@
-name: Fitscale
+name: fitscale
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -37,6 +37,7 @@ dependencies:
   google_sign_in: ^6.2.1
   email_validator: ^2.1.17
   resend: ^1.0.0
+  logging: ^1.3.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
 

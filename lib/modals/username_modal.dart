@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 class UsernameInputModal extends StatelessWidget {
   final TextEditingController usernameController = TextEditingController();
 
+  UsernameInputModal({super.key});
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(

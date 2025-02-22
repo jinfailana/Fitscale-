@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'ForgotPasswordPage/forgot_password_page.dart'; // Import the ForgotPasswordPage
+import 'ForgotPasswordPage/forgot_password_page.dart'; 
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   @override
+  //initState() pang set ng things bago ang lahat
   void initState() {
     super.initState();
     FirebaseAuth.instance.setLanguageCode('en');
@@ -26,11 +27,13 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> signInWithEmail() async {
     if (!formKey.currentState!.validate()) return;
-
+    //_isLoading = true para mag display ng loading indicator
     setState(() => _isLoading = true);
 
+ //try catch para sa error handling
     try {
       final userCredential =
+      //instance ng firebase auth na ginagamit para sa pag sign in
           await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
@@ -44,6 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       if (!userDoc.exists) {
+        //signOut() para sa pag log out syempre 
         await FirebaseAuth.instance.signOut();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

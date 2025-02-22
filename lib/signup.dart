@@ -25,7 +25,7 @@ class _SignupPageState extends State<SignupPage> {
 
   String? verificationCode;
   final String brevoApiKey =
-      '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';
+      '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';
 
   Future<void> sendVerificationEmail(String email) async {
     try {
@@ -39,16 +39,15 @@ class _SignupPageState extends State<SignupPage> {
           'content-type': 'application/json',
         },
         body: jsonEncode({
-          'sender': {'name': 'Fitscale', 'email': 'hannstabalanza@gmail.com'},
+          'sender': {'name': 'Fitscale', 'email': 'jameeescaaabreros@gmail.com'},
           'to': [
             {'email': email}
           ],
           'subject': 'Verify your Fitscale account',
           'htmlContent': '''
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #DF4D0F;">Fitscale Email Verification</h2>
-              <p>Your verification code is:</p>
-              <h1 style="color: #DF4D0F; font-size: 32px; letter-spacing: 5px;">$verificationCode</h1>
+              <h2 style="color: #DF4D0F;">Fitscale Email Verification</h2>+
+              <p>Your verification code is:</p>*             <h1 style="color: #DF4D0F; font-size: 32px; letter-spacing: 5px;">$verificationCode</h1>
               <p>This code will expire in 10 minutes.</p>
             </div>
           '''
@@ -203,7 +202,7 @@ class _SignupPageState extends State<SignupPage> {
             await FirebaseAuth.instance.signOut();
 
             // Redirect to login page
-            Navigator.pushReplacementNamed(context, '/login');
+            Navigator.pushReplacementNamed(context, '/select_gender');
           }
         }
       }

@@ -2,6 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'manage_acc.dart';
+import 'package:flutter/foundation.dart'; 
+import 'package:logging/logging.dart';
+
+final Logger logger = Logger('ManageAccPage');
+
+void main() {
+  // Configure logging
+  Logger.root.level = Level.ALL; 
+  Logger.root.onRecord.listen((record) {
+    final logMessage =
+        '${record.level.name}: ${record.time}: ${record.loggerName} - ${record.message}';
+    
+    if (kDebugMode) {
+      debugPrint(logMessage); 
+    } else {
+     
+    }
+  });
+
+
+}
+
 
 class SummaryPage extends StatefulWidget {
   const SummaryPage({super.key});
@@ -38,7 +60,7 @@ class _SummaryPageState extends State<SummaryPage> {
         }
       }
     } catch (e) {
-      print('Error fetching user data: $e');
+        logger.severe('Error fetching user data: $e');
     }
   }
 

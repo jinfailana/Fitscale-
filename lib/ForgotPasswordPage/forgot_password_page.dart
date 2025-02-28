@@ -18,26 +18,23 @@ class ForgotPasswordPage extends StatelessWidget {
     }
 
     try {
-      // Check if the email is registered
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isEqualTo: email)
           .get();
 
       if (userDoc.docs.isEmpty) {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Email not registered')),
         );
         return;
       }
 
-      // Log the retrieved document for debugging
-      print('User document: ${userDoc.docs.first.data()}');
-
-      // Check if the user signed up with Google
       final userData = userDoc.docs.first.data();
       if (userData.containsKey('signInMethod') &&
           userData['signInMethod'] == 'google') {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -48,15 +45,15 @@ class ForgotPasswordPage extends StatelessWidget {
         return;
       }
 
-      // Send password reset email
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password reset email sent')),
       );
 
-      // Navigate back to the login page
       Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );

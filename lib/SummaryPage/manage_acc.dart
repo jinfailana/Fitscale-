@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:logging/logging.dart';
 
+
+final Logger logger = Logger('ManageAccPage');
 class ManageAccPage extends StatefulWidget {
+  
   const ManageAccPage({super.key});
 
   @override
@@ -36,7 +40,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
         }
       }
     } catch (e) {
-      print('Error fetching user data: $e');
+      logger.severe('Error fetching user data: $e');
     }
   }
 
@@ -81,9 +85,11 @@ class _ManageAccPageState extends State<ManageAccPage> {
               onPressed: () async {
                 try {
                   await FirebaseAuth.instance.signOut();
+                   
                   Navigator.pushReplacementNamed(context, '/login');
                 } catch (e) {
-                  print('Error signing out: $e');
+                  logger.severe('Error signing out: $e');
+                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error signing out: $e')),
                   );
@@ -193,7 +199,9 @@ class _ManageAccPageState extends State<ManageAccPage> {
                       setState(() {
                         username = newUsername;
                       });
+                      
                       Navigator.pop(context);
+                      
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Username changed successfully.'),
@@ -201,7 +209,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                       );
                     }
                   } catch (e) {
-                    print('Error changing username: $e');
+                    logger.severe('Error changing username: $e');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Failed to change username: $e'),
@@ -303,6 +311,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
 
                     await user.reauthenticateWithCredential(cred);
 
+                    if (!mounted) return;
                     // Update the password
                     await user.updatePassword(newPassword);
                     Navigator.pop(context);
@@ -312,7 +321,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                       ),
                     );
                   } catch (e) {
-                    print('Error changing password: $e');
+                    logger.severe('Error changing password: $e');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Failed to change password: $e'),

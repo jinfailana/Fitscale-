@@ -8,6 +8,9 @@ import 'modals/auth_modal.dart';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:logging/logging.dart';
+
+final Logger logger = Logger('ManageAccPage');
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -58,7 +61,7 @@ class _SignupPageState extends State<SignupPage> {
         throw 'Failed to send verification email: ${response.body}';
       }
     } catch (e) {
-      print('Error sending email: $e');
+      logger.severe('Error sending email: $e');
       rethrow;
     }
   }
@@ -85,7 +88,9 @@ class _SignupPageState extends State<SignupPage> {
       await sendVerificationEmail(email);
 
       // Show verification modal
+       if (!mounted) return;
       final isVerified = await showModalBottomSheet<bool>(
+        
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
@@ -171,8 +176,11 @@ class _SignupPageState extends State<SignupPage> {
         // Check if the user document already exists
         final docSnapshot = await userDoc.get();
 
-        if (!docSnapshot.exists) {
+        if (!docSnapshot.exists)
+        
+         {
           // Use the existing username modal
+           if (!mounted) return;
           final username = await showModalBottomSheet<String>(
             context: context,
             isScrollControlled: true,
@@ -189,25 +197,29 @@ class _SignupPageState extends State<SignupPage> {
                 'createdAt': FieldValue.serverTimestamp(),
               });
             } catch (e) {
-              print('Error storing user data: $e');
+              logger.severe('Error storing user data: $e');
+               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Failed to store user data: $e')),
               );
             }
 
             // Show success modal
+             if (!mounted) return;
             await _showSuccessModal(context);
 
             // Sign out the user
             await FirebaseAuth.instance.signOut();
 
             // Redirect to login page
+             if (!mounted) return;
             Navigator.pushReplacementNamed(context, '/select_gender');
           }
         }
       }
     } catch (e) {
-      print('Error signing up with Google: $e');
+      logger.severe('Error signing up with Google: $e');
+       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Sign up failed: $e')),
       );

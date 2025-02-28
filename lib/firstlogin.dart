@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ForgotPasswordPage/forgot_password_page.dart'; 
+import 'package:logging/logging.dart';
 
+final Logger logger = Logger('ManageAccPage');
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -49,6 +51,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!userDoc.exists) {
         //signOut() para sa pag log out syempre 
         await FirebaseAuth.instance.signOut();
+       if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Account not found. Please sign up first.')),
@@ -109,6 +112,7 @@ class _LoginPageState extends State<LoginPage> {
         if (!docSnapshot.exists) {
           // If the user is not registered, sign them out and show a message
           await FirebaseAuth.instance.signOut();
+           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
                 content:
@@ -118,10 +122,12 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         // If the user is registered, proceed to the next screen
+         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/select_gender');
       }
     } catch (e) {
-      print('Error signing in with Google: $e');
+      logger.severe('Error signing in with Google: $e');
+       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Login failed: $e')),
       );

@@ -314,7 +314,9 @@ class _ManageAccPageState extends State<ManageAccPage> {
                     if (!mounted) return;
                     // Update the password
                     await user.updatePassword(newPassword);
+                    
                     Navigator.pop(context);
+                    
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Password changed successfully.'),

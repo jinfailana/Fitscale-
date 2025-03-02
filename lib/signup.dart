@@ -27,8 +27,16 @@ class _SignupPageState extends State<SignupPage> {
   bool _isLoading = false;
 
   String? verificationCode;
-  final String brevoApiKey =
-      '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';
+  final String brevoApiKey = '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';
+  final String backendUrl = 'http://192.168.100.38:3000/api/users'; // Backend URL
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    usernameController.dispose();
+    super.dispose();
+  }
 
   Future<void> sendVerificationEmail(String email) async {
     try {
@@ -49,8 +57,9 @@ class _SignupPageState extends State<SignupPage> {
           'subject': 'Verify your Fitscale account',
           'htmlContent': '''
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #DF4D0F;">Fitscale Email Verification</h2>+
-              <p>Your verification code is:</p>*             <h1 style="color: #DF4D0F; font-size: 32px; letter-spacing: 5px;">$verificationCode</h1>
+              <h2 style="color: #DF4D0F;">Fitscale Email Verification</h2>
+              <p>Your verification code is:</p>
+              <h1 style="color: #DF4D0F; font-size: 32px; letter-spacing: 5px;">$verificationCode</h1>
               <p>This code will expire in 10 minutes.</p>
             </div>
           '''
@@ -88,9 +97,8 @@ class _SignupPageState extends State<SignupPage> {
       await sendVerificationEmail(email);
 
       // Show verification modal
-       if (!mounted) return;
+      if (!mounted) return;
       final isVerified = await showModalBottomSheet<bool>(
-        
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
@@ -112,7 +120,7 @@ class _SignupPageState extends State<SignupPage> {
         password: passwordController.text.trim(),
       );
 
-      // Store user data
+      // Store user data in Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -121,6 +129,20 @@ class _SignupPageState extends State<SignupPage> {
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Store user data in Node.js backend
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': usernameController.text.trim(),
+          'email': email,
+        }),
+      );
+
+      if (response.statusCode != 201) {
+        throw 'Failed to store user data in backend: ${response.body}';
+      }
 
       if (!mounted) return;
 
@@ -176,11 +198,9 @@ class _SignupPageState extends State<SignupPage> {
         // Check if the user document already exists
         final docSnapshot = await userDoc.get();
 
-        if (!docSnapshot.exists)
-        
-         {
+        if (!docSnapshot.exists) {
           // Use the existing username modal
-           if (!mounted) return;
+          if (!mounted) return;
           final username = await showModalBottomSheet<String>(
             context: context,
             isScrollControlled: true,
@@ -196,30 +216,45 @@ class _SignupPageState extends State<SignupPage> {
                 'signInMethod': 'google',
                 'createdAt': FieldValue.serverTimestamp(),
               });
+
+              // Store user information in Node.js backend
+              final response = await http.post(
+                Uri.parse(backendUrl),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'email': user.email,
+                  'username': username,
+                  'signInMethod': 'google',
+                }),
+              );
+
+              if (response.statusCode != 201) {
+                throw 'Failed to store user data in backend: ${response.body}';
+              }
             } catch (e) {
               logger.severe('Error storing user data: $e');
-               if (!mounted) return;
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Failed to store user data: $e')),
               );
             }
 
             // Show success modal
-             if (!mounted) return;
+            if (!mounted) return;
             await _showSuccessModal(context);
 
             // Sign out the user
             await FirebaseAuth.instance.signOut();
 
             // Redirect to login page
-             if (!mounted) return;
+            if (!mounted) return;
             Navigator.pushReplacementNamed(context, '/select_gender');
           }
         }
       }
     } catch (e) {
       logger.severe('Error signing up with Google: $e');
-       if (!mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Sign up failed: $e')),
       );

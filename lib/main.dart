@@ -3,20 +3,17 @@ import 'package:firebase_core/firebase_core.dart'; // Import the Firebase core p
 import 'signup.dart'; // Import the signup page
 import 'firstlogin.dart'; // Import the login page
 import 'select_gender.dart'; // Import the select gender page
-// Add this import
-// Import the select gender page
 import 'set_goal.dart'; // Import your SetGoalPage
 import 'birth_year.dart'; // Import the birth year page
 import 'set_height.dart'; // Import the set height page
-import 'set_weight.dart';
-import 'set_weight_mannually.dart';
-import 'splash_screen.dart';
-
+import 'set_weight.dart'; // Import the set weight page
+import 'set_weight_mannually.dart'; // Import the set weight manually page
+import 'splash_screen.dart'; // Import the splash screen
 import 'pref_workout.dart'; // Import the pref workout page
 import 'gym_equipment.dart'; // Import the gym equipment page
 import 'work_place.dart'; // Import the work place page
 import 'allset_page.dart'; // Import the all set page
-import 'SummaryPage/summary_page.dart';
+import 'SummaryPage/summary_page.dart'; // Import the summary page
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,14 +41,10 @@ class MyApp extends StatelessWidget {
         '/set_height': (context) => const SetHeightPage(),
         '/set_weight': (context) => const SetWeightPage(),
         '/set_weight_mannually': (context) => const SetWeightManuallyPage(),
-        //'/act_level': (context) => const ActLevelPage(),
         '/pref_workout': (context) => PrefWorkoutPage(), // Add this route
         '/work_place': (context) => const WorkPlacePage(),
-        '/gym_equipment': (context) =>
-            const GymEquipmentPage(), // Add this route
-
-        '/all_set': (context) =>
-            const AllSetPage(), // Ensure this route is added
+        '/gym_equipment': (context) => const GymEquipmentPage(), // Add this route
+        '/all_set': (context) => const AllSetPage(), // Ensure this route is added
         '/summary': (context) => const SummaryPage(), // SelectGenderPage route
       },
     );

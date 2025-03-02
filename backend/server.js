@@ -2,7 +2,9 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const userRoutes = require('./Routes/userRoutes');
+const userRoutes = require('./routes/userRoutes');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -11,10 +13,13 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const port = process.env.PORT || 3000;
 
 // Middleware for JSON parsing and enabling CORS
 app.use(express.json());
 app.use(cors());
+app.use(bodyParser.json());
+
 
 // Define routes
 app.use('/api/users', userRoutes);

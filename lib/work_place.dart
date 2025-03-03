@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'gym_equipment.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
 
 class WorkPlacePage extends StatefulWidget {
   const WorkPlacePage({super.key});
@@ -8,6 +11,9 @@ class WorkPlacePage extends StatefulWidget {
 }
 
 class WorkPlacePageState extends State<WorkPlacePage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+  bool _isLoading = false;
   String selectedPlace = 'Home';
 
   final List<Map<String, dynamic>> workoutPlaces = [
@@ -77,8 +83,39 @@ class WorkPlacePageState extends State<WorkPlacePage> {
               child: SizedBox(
                 width: 350,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/gym_equipment');
+                  onPressed: () async {
+                    setState(() {
+                      _isLoading = true;
+                    });
+
+                    try {
+                      final userId = _authService.getCurrentUserId();
+                      if (userId == null) {
+                        throw Exception('User not logged in');
+                      }
+
+                      // Save workout place
+                      await _userService.updateWorkoutPlace(
+                        userId,
+                        selectedPlace,
+                      );
+
+                      // Navigate to gym equipment page
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GymEquipmentPage(),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')),
+                      );
+                    } finally {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
@@ -89,15 +126,24 @@ class WorkPlacePageState extends State<WorkPlacePage> {
                     elevation: 5,
                     shadowColor: Colors.black.withAlpha(50),
                   ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Next',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -171,9 +217,9 @@ class WorkPlacePageState extends State<WorkPlacePage> {
               ],
             ),
             if (isSelected)
-              Icon(
+              const Icon(
                 Icons.check_circle,
-                color: const Color.fromRGBO(223, 77, 15, 1.0),
+                color: Color.fromRGBO(223, 77, 15, 1.0),
               ),
           ],
         ),

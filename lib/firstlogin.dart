@@ -4,6 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ForgotPasswordPage/forgot_password_page.dart'; // Import the ForgotPasswordPage
+import 'services/auth_service.dart';
+import 'select_gender.dart';
+import 'SummaryPage/summary_page.dart';
+import 'screens/loading_screen.dart';
+import 'firstlogin.dart';  // Add this import
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -25,52 +31,37 @@ class _LoginPageState extends State<LoginPage> {
     FirebaseAuth.instance.setLanguageCode('en');
   }
 
-  Future<void> signInWithEmail() async {
-    if (!formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
+  Future<void> _handleLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      final userCredential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+      await _authService.signIn(
+        emailController.text,
+        passwordController.text,
       );
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .get();
+      // Check if user has completed setup
+      bool setupCompleted = await _authService.hasCompletedSetup(FirebaseAuth.instance.currentUser!.uid);
 
-      if (!mounted) return;
-
-      if (!userDoc.exists) {
-        await FirebaseAuth.instance.signOut();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Account not found. Please sign up first.')),
+      if (setupCompleted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => SummaryPage()),
         );
-        return;
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => SelectGenderPage()),
+        );
       }
-
-      Navigator.pushReplacementNamed(context, '/select_gender');
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-
-      String message = 'Login failed';
-      if (e.code == 'user-not-found') {
-        message = 'No account found with this email';
-      } else if (e.code == 'wrong-password') {
-        message = 'Invalid password';
-      }
-
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(content: Text('Login failed: ${e.toString()}')),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -78,44 +69,44 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      await GoogleSignIn()
-          .signOut(); // Ensure sign-out to allow account selection
+      await GoogleSignIn().signOut(); // Ensure sign-out to allow account selection
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
       final user = userCredential.user;
 
       if (user != null) {
-        final userDoc =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-        // Check if the user document already exists
+        final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
         final docSnapshot = await userDoc.get();
 
         if (!docSnapshot.exists) {
-          // If the user is not registered, sign them out and show a message
           await FirebaseAuth.instance.signOut();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content:
-                    Text('Email not signed up yet. Please sign up first.')),
+            const SnackBar(content: Text('Email not signed up yet. Please sign up first.')),
           );
           return;
         }
 
-        // If the user is registered, proceed to the next screen
-        Navigator.pushReplacementNamed(context, '/select_gender');
+        // Check if user has completed setup
+        bool setupCompleted = await _authService.hasCompletedSetup(user.uid);
+
+        if (setupCompleted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => SummaryPage()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => SelectGenderPage()),
+          );
+        }
       }
     } catch (e) {
       print('Error signing in with Google: $e');
@@ -287,7 +278,7 @@ class _LoginPageState extends State<LoginPage> {
 
                           // Login Button
                           ElevatedButton(
-                            onPressed: signInWithEmail,
+                            onPressed: _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor:
                                   const Color.fromRGBO(223, 77, 15, 1.0),
@@ -415,6 +406,54 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
       ),
+    );
+  }
+}
+
+class FirstLoginCheck extends StatelessWidget {
+  const FirstLoginCheck({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final AuthService _authService = AuthService();
+
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        print('Auth state changed: ${snapshot.data?.uid}');
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingScreen();
+        }
+
+        final User? user = snapshot.data;
+        if (user == null) {
+          print('No user logged in');
+          return const LoginPage();
+        }
+
+        print('User logged in: ${user.uid}');
+
+        return FutureBuilder<bool>(
+          future: _authService.hasCompletedSetup(user.uid),
+          builder: (context, setupSnapshot) {
+            if (setupSnapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingScreen();
+            }
+
+            final bool isComplete = setupSnapshot.data ?? false;
+            print('Setup completion status: $isComplete');
+
+            if (isComplete) {
+              print('Setup complete - going to summary page');
+              return const SummaryPage();
+            } else {
+              print('Setup incomplete - starting setup process');
+              return const SelectGenderPage();
+            }
+          },
+        );
+      },
     );
   }
 }

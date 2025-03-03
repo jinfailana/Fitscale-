@@ -20,6 +20,7 @@ import 'SummaryPage/summary_page.dart';
 //import 'SummaryPage/step_tracker_page.dart';
 import 'SummaryPage/steps_page.dart';
 import 'SummaryPage/measure_weight.dart';
+import 'auth_check.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();

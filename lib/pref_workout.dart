@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'work_place.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
 
 class PrefWorkoutPage extends StatefulWidget {
   const PrefWorkoutPage({super.key});
@@ -8,6 +11,9 @@ class PrefWorkoutPage extends StatefulWidget {
 }
 
 class PrefWorkoutPageState extends State<PrefWorkoutPage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+  bool _isLoading = false;
   String selectedLevel = 'Beginner';
 
   final List<Map<String, dynamic>> workoutLevels = [
@@ -73,8 +79,39 @@ class PrefWorkoutPageState extends State<PrefWorkoutPage> {
               child: SizedBox(
                 width: 350,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/work_place');
+                  onPressed: () async {
+                    setState(() {
+                      _isLoading = true;
+                    });
+
+                    try {
+                      final userId = _authService.getCurrentUserId();
+                      if (userId == null) {
+                        throw Exception('User not logged in');
+                      }
+
+                      // Save preferred workout level
+                      await _userService.updatePrefWorkout(
+                        userId,
+                        [selectedLevel],
+                      );
+
+                      // Navigate to work place page
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WorkPlacePage(),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')),
+                      );
+                    } finally {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
@@ -85,15 +122,24 @@ class PrefWorkoutPageState extends State<PrefWorkoutPage> {
                     elevation: 5,
                     shadowColor: Colors.black.withAlpha(50),
                   ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Next',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -158,9 +204,9 @@ class PrefWorkoutPageState extends State<PrefWorkoutPage> {
               ],
             ),
             if (isSelected)
-              Icon(
+              const Icon(
                 Icons.check_circle,
-                color: const Color.fromRGBO(223, 77, 15, 1.0),
+                color: Color.fromRGBO(223, 77, 15, 1.0),
               ),
           ],
         ),

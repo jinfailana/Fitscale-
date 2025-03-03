@@ -1,6 +1,6 @@
 {
-    "name": "fitscale_app",
-    "short_name": "fitscale_app",
+    "name": "fs_app",
+    "short_name": "fs_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

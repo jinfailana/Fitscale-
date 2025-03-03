@@ -1,0 +1,18 @@
+[33m9447cc2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfirebase[m[33m)[m HEAD@{0}: checkout: moving from Front/BackEnd to firebase
+[33mebe3e67[m[33m ([m[1;31morigin/firebase[m[33m, [m[1;31morigin/Front/BackEnd[m[33m, [m[1;31mfirebase/firebase[m[33m, [m[1;32mFront/BackEnd[m[33m)[m HEAD@{1}: checkout: moving from firebase to Front/BackEnd
+[33m9447cc2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfirebase[m[33m)[m HEAD@{2}: commit: All
+[33mebe3e67[m[33m ([m[1;31morigin/firebase[m[33m, [m[1;31morigin/Front/BackEnd[m[33m, [m[1;31mfirebase/firebase[m[33m, [m[1;32mFront/BackEnd[m[33m)[m HEAD@{3}: commit: changing of SHA key
+[33m33fe2ba[m HEAD@{4}: commit: api key remove
+[33m65ecc71[m HEAD@{5}: commit: api key
+[33m37a7ce1[m HEAD@{6}: commit: sign up using google
+[33me00ea6f[m HEAD@{7}: commit: new api
+[33m516ef4d[m HEAD@{8}: commit: API KEY gitignore
+[33m63de076[m HEAD@{9}: checkout: moving from firebase to firebase
+[33m63de076[m HEAD@{10}: checkout: moving from firebase to firebase
+[33m63de076[m HEAD@{11}: commit: modals and signup
+[33md71312f[m HEAD@{12}: checkout: moving from LoginNewnoauth to firebase
+[33md97351f[m[33m ([m[1;31morigin/LoginNewnoauth[m[33m, [m[1;31mfirebase/LoginNewnoauth[m[33m, [m[1;32mLoginNewnoauth[m[33m)[m HEAD@{13}: checkout: moving from firebase to LoginNewnoauth
+[33md71312f[m HEAD@{14}: checkout: moving from LoginNewnoauth to firebase
+[33md97351f[m[33m ([m[1;31morigin/LoginNewnoauth[m[33m, [m[1;31mfirebase/LoginNewnoauth[m[33m, [m[1;32mLoginNewnoauth[m[33m)[m HEAD@{15}: commit: Firebase
+[33meda835d[m HEAD@{16}: checkout: moving from main to LoginNewnoauth
+[33m07bf98b[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;31mfirebase/main[m[33m, [m[1;32mmain[m[33m)[m HEAD@{17}: clone: from https://github.com/jinfailana/Fitscale-.git

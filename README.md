@@ -1,4 +1,4 @@
-# fitscale_app
+# fs_app
 
 A new Flutter project.
 

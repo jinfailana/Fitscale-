@@ -1,4 +1,4 @@
-package com.example.fitscale_app
+package com.example.fs_app
 
 import io.flutter.embedding.android.FlutterActivity
 

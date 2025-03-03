@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "148551993482",
-    "project_id": "fitscalelogin-0023",
-    "storage_bucket": "fitscalelogin-0023.firebasestorage.app"
+    "project_number": "497569633087",
+    "project_id": "authfitscale",
+    "storage_bucket": "authfitscale.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:148551993482:android:9e8f380d3f9b094accc573",
+        "mobilesdk_app_id": "1:497569633087:android:e5b59bdeb78c854849798a",
         "android_client_info": {
-          "package_name": "com.example.fitscale_app"
+          "package_name": "com.example.fs_app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCkFo-0X6YzMhIHp2EtiyapUKYaOsuiSPs"
+          "current_key": "AIzaSyBPnsaTHc8-gqfhDh2nt09Q26Mv6r8TA_k"
         }
       ],
       "services": {

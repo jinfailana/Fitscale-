@@ -39,6 +39,7 @@ class _SummaryPageState extends State<SummaryPage> {
   int _selectedIndex = 0;
   String username = '';
   String email = '';
+  double userWeight = 0.0;
 
   @override
   void initState() {
@@ -59,6 +60,9 @@ class _SummaryPageState extends State<SummaryPage> {
           setState(() {
             username = userDoc['username'] ?? 'User';
             email = userDoc['email'] ?? 'No Email';
+            userWeight = userDoc['weight'] != null 
+                ? (userDoc['weight'] as num).toDouble() 
+                : 0.0;
           });
         }
       }
@@ -273,7 +277,9 @@ class _SummaryPageState extends State<SummaryPage> {
             _buildAnimatedSummaryCard('Set Step Goal',
                 'Daily goal: No goal yet', Icons.directions_walk),
             _buildAnimatedSummaryCard(
-                '0kg', 'Current Weight', Icons.monitor_weight),
+                userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
+                'Current Weight', 
+                Icons.monitor_weight),
             _buildAnimatedSummaryCard(
                 'Set Diets!', 'Mark your meals today!', Icons.restaurant),
             const SizedBox(height: 20),
@@ -348,11 +354,15 @@ class _SummaryPageState extends State<SummaryPage> {
             context,
             CustomPageRoute(child: const StepsPage()),
           );
-        } else if (title == '0kg') {
+        } else if (title.contains('kg')) {
+          // Navigate to MeasureWeightPage when weight card is tapped
           Navigator.push(
             context,
             CustomPageRoute(child: const MeasureWeightPage()),
-          );
+          ).then((_) {
+            // Refresh data when returning from MeasureWeightPage
+            _fetchUserData();
+          });
         }
         // Add more conditions for other cards if needed
       },

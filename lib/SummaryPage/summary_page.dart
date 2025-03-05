@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'manage_acc.dart';
 import 'steps_page.dart';
 import 'measure_weight.dart';
+import '../HistoryPage/history.dart';
 
 class CustomPageRoute extends PageRouteBuilder {
   final Widget child;
@@ -70,7 +71,12 @@ class _SummaryPageState extends State<SummaryPage> {
     setState(() {
       _selectedIndex = index;
     });
-    if (index == 3) {
+    if (index == 2) {
+      Navigator.push(
+        context,
+        CustomPageRoute(child: const HistoryPage()),
+      );
+    } else if (index == 3) {
       _showProfileModal(context);
     }
   }

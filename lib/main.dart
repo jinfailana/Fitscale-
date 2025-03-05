@@ -21,6 +21,8 @@ import 'SummaryPage/summary_page.dart';
 import 'SummaryPage/steps_page.dart';
 import 'SummaryPage/measure_weight.dart';
 import 'auth_check.dart';
+import 'intro_screen.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -56,6 +58,7 @@ class MyApp extends StatelessWidget {
         '/summary': (context) => const SummaryPage(), // SelectGenderPage route
         '/steps': (context) => const StepsPage(),
         '/measure_weight': (context) => const MeasureWeightPage(),
+        '/intro': (context) => const IntroScreen(),
       },
     );
   }

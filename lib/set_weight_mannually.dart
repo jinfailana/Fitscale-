@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'act_level.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
 
 class SetWeightManuallyPage extends StatefulWidget {
   const SetWeightManuallyPage({super.key});
@@ -9,12 +11,25 @@ class SetWeightManuallyPage extends StatefulWidget {
 }
 
 class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+  bool _isLoading = false;
+  
   String unit = 'kg';
   double? selectedWeight;
   final List<double> weightsKg =
       List.generate(221, (index) => (30 + index).toDouble());
   final List<double> weightsLbs =
       List.generate(485, (index) => (66 + index).toDouble());
+
+  // Convert weight to kilograms
+  double _convertToKg(double weight) {
+    if (unit == 'kg') {
+      return weight;
+    } else {
+      return weight * 0.453592; // Convert lbs to kg
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,13 +101,40 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
                   width: 350,
                   child: ElevatedButton(
                     onPressed: selectedWeight != null
-                        ? () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ActivityLevelPage()),
-                            );
+                        ? () async {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            try {
+                              final userId = _authService.getCurrentUserId();
+                              if (userId == null) {
+                                throw Exception('User not logged in');
+                              }
+
+                              // Convert to kg and save
+                              final weightInKg = _convertToKg(selectedWeight!);
+                              await _userService.updateMetrics(
+                                userId,
+                                weight: weightInKg,
+                              );
+
+                              // Navigate to activity level page
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ActivityLevelPage(),
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: ${e.toString()}')),
+                              );
+                            } finally {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -104,15 +146,24 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
                       elevation: 5,
                       shadowColor: Colors.black.withAlpha(50),
                     ),
-                    child: const Text(
-                      'Confirm',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 20,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 80),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
 import 'birth_year.dart';
 
 class SetGoalPage extends StatefulWidget {
@@ -9,7 +11,10 @@ class SetGoalPage extends StatefulWidget {
 }
 
 class _SetGoalPageState extends State<SetGoalPage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   String? selectedGoal;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -59,12 +64,34 @@ class _SetGoalPageState extends State<SetGoalPage> {
                 width: 350,
                 child: ElevatedButton(
                   onPressed: selectedGoal != null
-                      ? () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const BirthYearPage()),
-                          );
+                      ? () async {
+                          setState(() {
+                            _isLoading = true;
+                          });
+
+                          try {
+                            final userId = _authService.getCurrentUserId();
+                            if (userId == null) throw Exception('User not logged in');
+
+                            // Save goal
+                            await _userService.updateGoal(userId, selectedGoal!);
+
+                            // Navigate to next page
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BirthYearPage(),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: ${e.toString()}')),
+                            );
+                          } finally {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -76,15 +103,17 @@ class _SetGoalPageState extends State<SetGoalPage> {
                     elevation: 5,
                     shadowColor: Colors.black.withAlpha(128),
                   ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Next',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

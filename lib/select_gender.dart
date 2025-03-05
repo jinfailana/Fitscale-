@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
 import 'set_goal.dart';
 
 class SelectGenderPage extends StatefulWidget {
@@ -9,7 +11,10 @@ class SelectGenderPage extends StatefulWidget {
 }
 
 class _SelectGenderPageState extends State<SelectGenderPage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   String? selectedGender;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -82,12 +87,34 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
                     width: screenWidth * 0.85,
                     child: ElevatedButton(
                       onPressed: selectedGender != null
-                          ? () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => const SetGoalPage()),
-                              );
+                          ? () async {
+                              setState(() {
+                                _isLoading = true;
+                              });
+
+                              try {
+                                final userId = _authService.getCurrentUserId();
+                                if (userId == null) throw Exception('User not logged in');
+
+                                // Save gender
+                                await _userService.updateGender(userId, selectedGender!);
+
+                                // Navigate to next page
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SetGoalPage(),
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: ${e.toString()}')),
+                                );
+                              } finally {
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              }
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
@@ -101,15 +128,17 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
                         elevation: 5,
                         shadowColor: Colors.black.withAlpha(50),
                       ),
-                      child: const Text(
-                        'Next',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 20,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: _isLoading
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Next',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 20,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ),

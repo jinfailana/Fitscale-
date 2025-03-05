@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'set_weight.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
 
 class SetHeightPage extends StatefulWidget {
   const SetHeightPage({super.key});
@@ -9,6 +11,10 @@ class SetHeightPage extends StatefulWidget {
 }
 
 class _SetHeightPageState extends State<SetHeightPage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+  bool _isLoading = false;
+  
   String unit = 'ft';
   String? selectedHeight;
   final List<String> heightsFt = List.generate(59, (index) {
@@ -21,6 +27,19 @@ class _SetHeightPageState extends State<SetHeightPage> {
   // For metric, equivalent range would be approximately 100cm to 249cm
   final List<String> heightsCm =
       List.generate(150, (index) => '${100 + index} cm');
+
+  // Convert height string to centimeters
+  double _convertToCm(String height) {
+    if (unit == 'cm') {
+      return double.parse(height.split(' ')[0]);
+    } else {
+      // Convert ft/in to cm
+      final parts = height.split(' ');
+      final feet = int.parse(parts[0]);
+      final inches = int.parse(parts[2]);
+      return (feet * 30.48) + (inches * 2.54); // Convert to cm
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,12 +105,38 @@ class _SetHeightPageState extends State<SetHeightPage> {
                 width: 350,
                 child: ElevatedButton(
                   onPressed: selectedHeight != null
-                      ? () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const SetWeightPage()),
-                          );
+                      ? () async {
+                          setState(() {
+                            _isLoading = true;
+                          });
+
+                          try {
+                            final userId = _authService.getCurrentUserId();
+                            if (userId == null) throw Exception('User not logged in');
+
+                            // Convert height to cm and save
+                            final heightInCm = _convertToCm(selectedHeight!);
+                            await _userService.updateMetrics(
+                              userId,
+                              height: heightInCm,
+                            );
+
+                            // Navigate to weight page
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SetWeightPage(),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: ${e.toString()}')),
+                            );
+                          } finally {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -103,15 +148,24 @@ class _SetHeightPageState extends State<SetHeightPage> {
                     elevation: 5,
                     shadowColor: Colors.black.withAlpha(50),
                   ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Next',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

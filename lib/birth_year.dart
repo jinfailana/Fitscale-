@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'set_height.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
+
 
 class BirthYearPage extends StatefulWidget {
   const BirthYearPage({super.key});
@@ -9,7 +12,10 @@ class BirthYearPage extends StatefulWidget {
 }
 
 class _BirthYearPageState extends State<BirthYearPage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   int? selectedYear;
+  bool _isLoading = false;
   final List<int> years =
       List.generate(100, (index) => DateTime.now().year - index);
 
@@ -65,12 +71,37 @@ class _BirthYearPageState extends State<BirthYearPage> {
                 width: 350,
                 child: ElevatedButton(
                   onPressed: selectedYear != null
-                      ? () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const SetHeightPage()),
-                          );
+                      ? () async {
+                          setState(() {
+                            _isLoading = true;
+                          });
+
+                          try {
+                            final userId = _authService.getCurrentUserId();
+                            if (userId == null) throw Exception('User not logged in');
+
+                            // Save birth year
+                            await _userService.updateMetrics(
+                              userId,
+                              birthYear: selectedYear,
+                            );
+
+                            // Navigate to next page
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>SetHeightPage(),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: ${e.toString()}')),
+                            );
+                          } finally {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -82,15 +113,17 @@ class _BirthYearPageState extends State<BirthYearPage> {
                     elevation: 5,
                     shadowColor: Colors.black.withAlpha(128),
                   ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Next',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

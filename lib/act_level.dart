@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'pref_workout.dart';
+import 'services/auth_service.dart';
+import 'services/user_service.dart';
 
 class ActivityLevelPage extends StatefulWidget {
   const ActivityLevelPage({super.key});
@@ -8,6 +11,9 @@ class ActivityLevelPage extends StatefulWidget {
 }
 
 class _ActivityLevelPageState extends State<ActivityLevelPage> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+  bool _isLoading = false;
   int? selectedLevel;
 
   final List<Map<String, dynamic>> activityLevels = [
@@ -88,9 +94,42 @@ class _ActivityLevelPageState extends State<ActivityLevelPage> {
                 child: SizedBox(
                   width: 350,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/pref_workout');
-                    },
+                    onPressed: selectedLevel != null
+                        ? () async {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            try {
+                              final userId = _authService.getCurrentUserId();
+                              if (userId == null) {
+                                throw Exception('User not logged in');
+                              }
+
+                              // Save activity level
+                              await _userService.updateActivityLevel(
+                                userId,
+                                activityLevels[selectedLevel!]['title'],
+                              );
+
+                              // Navigate to preferred workout page
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const PrefWorkoutPage(),
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: ${e.toString()}')),
+                              );
+                            } finally {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
+                          }
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                       shape: RoundedRectangleBorder(
@@ -100,15 +139,24 @@ class _ActivityLevelPageState extends State<ActivityLevelPage> {
                       elevation: 5,
                       shadowColor: Colors.black.withAlpha(50),
                     ),
-                    child: const Text(
-                      'Next',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Next',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 20,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ),

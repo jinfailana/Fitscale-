@@ -27,7 +27,7 @@ class _SignupPageState extends State<SignupPage> {
   bool _isLoading = false;
 
   String? verificationCode;
-  final String brevoApiKey = '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';
+  final String brevoApiKey = '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';
   final String backendUrl = 'http://192.168.100.38:3000/api/users'; // Backend URL
 
   @override

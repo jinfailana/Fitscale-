@@ -8,6 +8,8 @@ const bodyParser = require('body-parser');
 
 // Load environment variables from .env file
 dotenv.config();
+// Ensure your .env file contains the correct API keys
+// Example: BREVO_API_KEY=your-new-api-key
 
 // Connect to MongoDB Atlas
 connectDB();
@@ -29,5 +31,6 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+

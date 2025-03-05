@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'dart:math' as math;
 
 
 class StepsPage extends StatefulWidget {
   const StepsPage({super.key});
+  
 
   @override
   State<StepsPage> createState() => _StepsPageState();
@@ -18,11 +21,15 @@ class _StepsPageState extends State<StepsPage> {
   int _calories = 0;
   double _distance = 0;
   int _selectedIndex = 0;
+  Map<String, dynamic>? _userData;
+  double? _bmi;
+  String _bmiCategory = '';
 
   @override
   void initState() {
     super.initState();
     loadGoal();
+    fetchUserDataAndCalculateBMI();
   }
 
   void loadGoal() async {
@@ -32,6 +39,126 @@ class _StepsPageState extends State<StepsPage> {
       _steps = prefs.getInt('current_steps') ?? 0;
       _updateStats();
     });
+  }
+
+  Future<void> fetchUserDataAndCalculateBMI() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+            
+        if (doc.exists) {
+          final userData = doc.data()!;
+          setState(() {
+            _userData = userData;
+            // Calculate BMI
+            double heightInMeters = (userData['height'] ?? 170) / 100;
+            double weight = userData['weight']?.toDouble() ?? 70;
+            _bmi = weight / (heightInMeters * heightInMeters);
+            _bmiCategory = _getBMICategory(_bmi!);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    }
+  }
+
+  String _getBMICategory(double bmi) {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 24.9) return 'Normal';
+    if (bmi < 29.9) return 'Overweight';
+    return 'Obese';
+  }
+
+  List<Map<String, dynamic>> _calculateStepGoalsByBMI() {
+    // Default values if BMI is not available
+    if (_bmi == null) {
+      return [
+        {'title': 'Become active', 'steps': 3000},
+        {'title': 'Keep fit', 'steps': 7000},
+        {'title': 'Boost metabolism', 'steps': 10000},
+        {'title': 'Lose weight', 'steps': 12000},
+      ];
+    }
+
+    // Base step goals according to BMI category
+    int becomeActiveBase;
+    int keepFitBase;
+    int boostMetabolismBase;
+    int loseWeightBase;
+
+    if (_bmi! < 18.5) { // Underweight
+      // Focus on building strength and healthy weight gain
+      becomeActiveBase = 3000;
+      keepFitBase = 6000;
+      boostMetabolismBase = 8000;
+      loseWeightBase = 9000; // Lower for underweight (focus on nutrition)
+    } 
+    else if (_bmi! < 25) { // Normal weight
+      // Maintain healthy weight and fitness
+      becomeActiveBase = 4000;
+      keepFitBase = 7500;
+      boostMetabolismBase = 10000;
+      loseWeightBase = 12000;
+    } 
+    else if (_bmi! < 30) { // Overweight
+      // Focus on gradual weight loss and increased activity
+      becomeActiveBase = 5000;
+      keepFitBase = 8000;
+      boostMetabolismBase = 11000;
+      loseWeightBase = 13000;
+    } 
+    else if (_bmi! < 35) { // Obese Class I
+      // Start with achievable goals, gradually increase
+      becomeActiveBase = 4000;
+      keepFitBase = 7000;
+      boostMetabolismBase = 9000;
+      loseWeightBase = 11000;
+    }
+    else { // Obese Class II and above
+      // Start with lower goals to prevent injury
+      becomeActiveBase = 3000;
+      keepFitBase = 6000;
+      boostMetabolismBase = 8000;
+      loseWeightBase = 10000;
+    }
+
+    // Age adjustment
+    int age = DateTime.now().year - ((_userData?['birthYear'] ?? 2000) as int);
+    double ageMultiplier = 1.0;
+    
+    if (age > 70) {
+      ageMultiplier = 0.7; // Significant reduction for elderly
+    } else if (age > 60) {
+      ageMultiplier = 0.8; // Moderate reduction for seniors
+    } else if (age > 50) {
+      ageMultiplier = 0.9; // Slight reduction for older adults
+    } else if (age < 18) {
+      ageMultiplier = 1.2; // Increase for adolescents (more active)
+    }
+
+    // Apply age adjustment
+    becomeActiveBase = (becomeActiveBase * ageMultiplier).round();
+    keepFitBase = (keepFitBase * ageMultiplier).round();
+    boostMetabolismBase = (boostMetabolismBase * ageMultiplier).round();
+    loseWeightBase = (loseWeightBase * ageMultiplier).round();
+
+    // Round to nearest 500 for cleaner numbers
+    becomeActiveBase = (becomeActiveBase / 500).round() * 500;
+    keepFitBase = (keepFitBase / 500).round() * 500;
+    boostMetabolismBase = (boostMetabolismBase / 500).round() * 500;
+    loseWeightBase = (loseWeightBase / 500).round() * 500;
+
+    return [
+      {'title': 'Become active', 'steps': becomeActiveBase},
+      {'title': 'Keep fit', 'steps': keepFitBase},
+      {'title': 'Boost metabolism', 'steps': boostMetabolismBase},
+      {'title': 'Lose weight', 'steps': loseWeightBase},
+    ];
   }
 
   void _updateStats() {
@@ -420,54 +547,95 @@ class _StepsPageState extends State<StepsPage> {
   }
 
   Widget _buildRecommendedGoals(int? selectedGoal, Function(int) onSelect) {
-    final goals = [
-      {'steps': '2500', 'description': 'Become active'},
-      {'steps': '5000', 'description': 'Keep fit'},
-      {'steps': '8000', 'description': 'Boost metabolism'},
-      {'steps': '15000', 'description': 'Lose weight'},
-    ];
+    if (_userData == null || _bmi == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color.fromRGBO(223, 77, 15, 1.0),
+        ),
+      );
+    }
 
-    return ListView.builder(
-      itemCount: goals.length,
-      itemBuilder: (context, index) {
-        final currentGoal = int.parse(goals[index]['steps']!);
-        final isSelected = selectedGoal == currentGoal;
-        
-        return GestureDetector(
-          onTap: () => onSelect(currentGoal),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: isSelected 
-                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                  : const Color.fromRGBO(45, 45, 45, 1.0),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  goals[index]['description']!,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '${goals[index]['steps']} steps/day',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+    final goals = _calculateStepGoalsByBMI();
+    
+    return Column(
+      children: [
+        // BMI Information Card
+        Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(45, 45, 45, 1.0),
+            borderRadius: BorderRadius.circular(10),
           ),
-        );
-      },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your BMI: ${_bmi!.toStringAsFixed(1)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Category: $_bmiCategory',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Goals List
+        Expanded(
+          child: ListView.builder(
+            itemCount: goals.length,
+            itemBuilder: (context, index) {
+              final currentGoal = goals[index]['steps'] as int;
+              final isSelected = selectedGoal == currentGoal;
+              
+              return GestureDetector(
+                onTap: () => onSelect(currentGoal),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? const Color.fromRGBO(223, 77, 15, 1.0)
+                        : const Color.fromRGBO(45, 45, 45, 1.0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        goals[index]['title'] as String,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${goals[index]['steps']} steps/day',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white70 : Colors.grey[400],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -586,28 +754,6 @@ class SemiCircleProgressPainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-
-    // Draw "0" labels
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: '0',
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    
-    // Left "0"
-    textPainter.paint(
-      canvas,
-      Offset(center.dx - radius - 20, center.dy - 6),
-    );
-    
-    // Right "0"
-    textPainter.paint(
-      canvas,
-      Offset(center.dx + radius + 8, center.dy - 6),
-    );
 
     // Draw tick marks
     for (var i = 0; i <= 20; i++) {

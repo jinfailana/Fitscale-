@@ -95,14 +95,7 @@ String calculateIntensity(UserModel user) {
       break;
   }
 
-  // Factor 3: Age-based adjustment
-  if (user.age != null) {
-    if (user.age! < 30)
-      intensityScore += 1;
-    else if (user.age! > 50) intensityScore -= 1;
-  }
-
-  // Calculate final intensity
+  // Calculate final intensity based on total score
   if (intensityScore <= 3) return "beginner";
   if (intensityScore <= 5) return "intermediate";
   return "advanced";

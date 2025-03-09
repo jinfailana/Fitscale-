@@ -157,7 +157,9 @@ class GymEquipmentPageState extends State<GymEquipmentPage> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.grey[850] : Colors.transparent,
           border: Border.all(
-            color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+            color: isSelected
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.transparent,
             width: isSelected ? 3 : 0,
           ),
           borderRadius: BorderRadius.circular(30),
@@ -178,7 +180,9 @@ class GymEquipmentPageState extends State<GymEquipmentPage> {
               child: Text(
                 equipmentOptions[index]['title'],
                 style: TextStyle(
-                  color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+                  color: isSelected
+                      ? const Color.fromRGBO(223, 77, 15, 1.0)
+                      : Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -187,11 +191,62 @@ class GymEquipmentPageState extends State<GymEquipmentPage> {
             const SizedBox(width: 16),
             Icon(
               equipmentOptions[index]['icon'],
-              color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.white,
+              color: isSelected
+                  ? const Color.fromRGBO(223, 77, 15, 1.0)
+                  : Colors.white,
             ),
           ],
         ),
       ),
     );
   }
-} 
+}
+
+class GymEquipment {
+  final bool hasEquipment;
+  final List<String> availableEquipment;
+
+  GymEquipment({
+    required this.hasEquipment,
+    this.availableEquipment = const [],
+  });
+
+  factory GymEquipment.bodyweightOnly() {
+    return GymEquipment(
+      hasEquipment: false,
+      availableEquipment: ['Body Weight'],
+    );
+  }
+
+  factory GymEquipment.withGymEquipment() {
+    return GymEquipment(
+      hasEquipment: true,
+      availableEquipment: [
+        'Dumbbells',
+        'Barbells',
+        'Resistance Bands',
+        'Kettlebells',
+        'Bench',
+        'Pull-up Bar',
+        'Treadmill',
+        'Exercise Bike',
+        'Rowing Machine',
+        'Cable Machine',
+      ],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'hasEquipment': hasEquipment,
+      'availableEquipment': availableEquipment,
+    };
+  }
+
+  factory GymEquipment.fromMap(Map<String, dynamic> map) {
+    return GymEquipment(
+      hasEquipment: map['hasEquipment'] ?? false,
+      availableEquipment: List<String>.from(map['availableEquipment'] ?? []),
+    );
+  }
+}

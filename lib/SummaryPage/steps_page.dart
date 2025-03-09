@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'dart:math' as math;
-
+import '../HistoryPage/history.dart';
+import 'summary_page.dart';
 
 class StepsPage extends StatefulWidget {
   const StepsPage({super.key});
@@ -17,12 +20,16 @@ class _StepsPageState extends State<StepsPage> {
   double _percentage = 0;
   int _calories = 0;
   double _distance = 0;
-  int _selectedIndex = 0;
+  int _selectedIndex = 1; // Set to 1 for Workouts tab
+  Map<String, dynamic>? _userData;
+  double? _bmi;
+  String _bmiCategory = '';
 
   @override
   void initState() {
     super.initState();
     loadGoal();
+    fetchUserDataAndCalculateBMI();
   }
 
   void loadGoal() async {
@@ -34,6 +41,127 @@ class _StepsPageState extends State<StepsPage> {
     });
   }
 
+  Future<void> fetchUserDataAndCalculateBMI() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (doc.exists) {
+          final userData = doc.data()!;
+          setState(() {
+            _userData = userData;
+            // Calculate BMI
+            double heightInMeters = (userData['height'] ?? 170) / 100;
+            double weight = userData['weight']?.toDouble() ?? 70;
+            _bmi = weight / (heightInMeters * heightInMeters);
+            _bmiCategory = _getBMICategory(_bmi!);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    }
+  }
+
+  String _getBMICategory(double bmi) {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 24.9) return 'Normal';
+    if (bmi < 29.9) return 'Overweight';
+    return 'Obese';
+  }
+
+  List<Map<String, dynamic>> _calculateStepGoalsByBMI() {
+    // Default values if BMI is not available
+    if (_bmi == null) {
+      return [
+        {'title': 'Become active', 'steps': 3000},
+        {'title': 'Keep fit', 'steps': 7000},
+        {'title': 'Boost metabolism', 'steps': 10000},
+        {'title': 'Lose weight', 'steps': 12000},
+      ];
+    }
+
+    // Base step goals according to BMI category
+    int becomeActiveBase;
+    int keepFitBase;
+    int boostMetabolismBase;
+    int loseWeightBase;
+
+    if (_bmi! < 18.5) {
+      // Underweight
+      // Focus on building strength and healthy weight gain
+      becomeActiveBase = 3000;
+      keepFitBase = 6000;
+      boostMetabolismBase = 8000;
+      loseWeightBase = 9000; // Lower for underweight (focus on nutrition)
+    } else if (_bmi! < 25) {
+      // Normal weight
+      // Maintain healthy weight and fitness
+      becomeActiveBase = 4000;
+      keepFitBase = 7500;
+      boostMetabolismBase = 10000;
+      loseWeightBase = 12000;
+    } else if (_bmi! < 30) {
+      // Overweight
+      // Focus on gradual weight loss and increased activity
+      becomeActiveBase = 5000;
+      keepFitBase = 8000;
+      boostMetabolismBase = 11000;
+      loseWeightBase = 13000;
+    } else if (_bmi! < 35) {
+      // Obese Class I
+      // Start with achievable goals, gradually increase
+      becomeActiveBase = 4000;
+      keepFitBase = 7000;
+      boostMetabolismBase = 9000;
+      loseWeightBase = 11000;
+    } else {
+      // Obese Class II and above
+      // Start with lower goals to prevent injury
+      becomeActiveBase = 3000;
+      keepFitBase = 6000;
+      boostMetabolismBase = 8000;
+      loseWeightBase = 10000;
+    }
+
+    // Age adjustment
+    int age = DateTime.now().year - ((_userData?['birthYear'] ?? 2000) as int);
+    double ageMultiplier = 1.0;
+
+    if (age > 70) {
+      ageMultiplier = 0.7; // Significant reduction for elderly
+    } else if (age > 60) {
+      ageMultiplier = 0.8; // Moderate reduction for seniors
+    } else if (age > 50) {
+      ageMultiplier = 0.9; // Slight reduction for older adults
+    } else if (age < 18) {
+      ageMultiplier = 1.2; // Increase for adolescents (more active)
+    }
+
+    // Apply age adjustment
+    becomeActiveBase = (becomeActiveBase * ageMultiplier).round();
+    keepFitBase = (keepFitBase * ageMultiplier).round();
+    boostMetabolismBase = (boostMetabolismBase * ageMultiplier).round();
+    loseWeightBase = (loseWeightBase * ageMultiplier).round();
+
+    // Round to nearest 500 for cleaner numbers
+    becomeActiveBase = (becomeActiveBase / 500).round() * 500;
+    keepFitBase = (keepFitBase / 500).round() * 500;
+    boostMetabolismBase = (boostMetabolismBase / 500).round() * 500;
+    loseWeightBase = (loseWeightBase / 500).round() * 500;
+
+    return [
+      {'title': 'Become active', 'steps': becomeActiveBase},
+      {'title': 'Keep fit', 'steps': keepFitBase},
+      {'title': 'Boost metabolism', 'steps': boostMetabolismBase},
+      {'title': 'Lose weight', 'steps': loseWeightBase},
+    ];
+  }
+
   void _updateStats() {
     setState(() {
       _percentage = (_steps / _goal) * 100;
@@ -42,7 +170,8 @@ class _StepsPageState extends State<StepsPage> {
     });
   }
 
-  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
+  BottomNavigationBarItem _buildNavItem(
+      IconData icon, String label, int index) {
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -70,9 +199,29 @@ class _StepsPageState extends State<StepsPage> {
   }
 
   void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+    
     setState(() {
       _selectedIndex = index;
     });
+    
+    // Handle navigation
+    if (index == 0) {
+      // Navigate to Summary page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SummaryPage()),
+      );
+    } else if (index == 2) {
+      // Navigate to History page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HistoryPage()),
+      );
+    } else if (index == 3) {
+      // Navigate to Profile/Me page
+      // Add your profile page navigation here
+    }
   }
 
   @override
@@ -185,7 +334,8 @@ class _StepsPageState extends State<StepsPage> {
                       child: ElevatedButton(
                         onPressed: () => _showSetGoalDialog(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                          backgroundColor:
+                              const Color.fromRGBO(223, 77, 15, 1.0),
                           minimumSize: const Size(100, 45),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -220,32 +370,11 @@ class _StepsPageState extends State<StepsPage> {
                   icon: Icons.location_on,
                   value: _distance.toStringAsFixed(1),
                   label: 'total distance',
-               
                   progress: _distance / 10,
                 ),
               ],
             ),
           ],
-        ),
-      ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          unselectedItemColor: Colors.white54,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            _buildNavItem(Icons.home, 'Home', 0),
-            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
-            _buildNavItem(Icons.history, 'History', 2),
-            _buildNavItem(Icons.person, 'Me', 3),
-          ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
         ),
       ),
     );
@@ -306,7 +435,7 @@ class _StepsPageState extends State<StepsPage> {
 
   Future<void> _showSetGoalDialog() async {
     bool isRecommended = true;
-    int? selectedGoal;  // Track the selected goal
+    int? selectedGoal; // Track the selected goal
 
     return showModalBottomSheet(
       context: context,
@@ -339,7 +468,7 @@ class _StepsPageState extends State<StepsPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 40),  // For balance
+                  const SizedBox(width: 40), // For balance
                 ],
               ),
               const SizedBox(height: 20),
@@ -351,7 +480,7 @@ class _StepsPageState extends State<StepsPage> {
                     child: Text(
                       'Recommended',
                       style: TextStyle(
-                        color: isRecommended 
+                        color: isRecommended
                             ? const Color.fromRGBO(223, 77, 15, 1.0)
                             : Colors.white,
                         fontSize: 16,
@@ -364,7 +493,7 @@ class _StepsPageState extends State<StepsPage> {
                     child: Text(
                       'Custom',
                       style: TextStyle(
-                        color: !isRecommended 
+                        color: !isRecommended
                             ? const Color.fromRGBO(223, 77, 15, 1.0)
                             : Colors.white,
                         fontSize: 16,
@@ -376,7 +505,7 @@ class _StepsPageState extends State<StepsPage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: isRecommended 
+                child: isRecommended
                     ? _buildRecommendedGoals(selectedGoal, (goal) {
                         setState(() => selectedGoal = goal);
                       })
@@ -385,15 +514,17 @@ class _StepsPageState extends State<StepsPage> {
                       }),
               ),
               ElevatedButton(
-                onPressed: selectedGoal == null ? null : () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt('step_goal', selectedGoal!);
-                  setState(() {
-                    _goal = selectedGoal!;
-                    _updateStats();
-                  });
-                  Navigator.pop(context);
-                },
+                onPressed: selectedGoal == null
+                    ? null
+                    : () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setInt('step_goal', selectedGoal!);
+                        setState(() {
+                          _goal = selectedGoal!;
+                          _updateStats();
+                        });
+                        Navigator.pop(context);
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                   minimumSize: const Size(double.infinity, 50),
@@ -401,7 +532,8 @@ class _StepsPageState extends State<StepsPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   // Button will be semi-transparent when disabled
-                  disabledBackgroundColor: const Color.fromRGBO(223, 77, 15, 0.5),
+                  disabledBackgroundColor:
+                      const Color.fromRGBO(223, 77, 15, 0.5),
                 ),
                 child: const Text(
                   'Done',
@@ -420,54 +552,95 @@ class _StepsPageState extends State<StepsPage> {
   }
 
   Widget _buildRecommendedGoals(int? selectedGoal, Function(int) onSelect) {
-    final goals = [
-      {'steps': '2500', 'description': 'Become active'},
-      {'steps': '5000', 'description': 'Keep fit'},
-      {'steps': '8000', 'description': 'Boost metabolism'},
-      {'steps': '15000', 'description': 'Lose weight'},
-    ];
+    if (_userData == null || _bmi == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color.fromRGBO(223, 77, 15, 1.0),
+        ),
+      );
+    }
 
-    return ListView.builder(
-      itemCount: goals.length,
-      itemBuilder: (context, index) {
-        final currentGoal = int.parse(goals[index]['steps']!);
-        final isSelected = selectedGoal == currentGoal;
-        
-        return GestureDetector(
-          onTap: () => onSelect(currentGoal),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: isSelected 
-                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                  : const Color.fromRGBO(45, 45, 45, 1.0),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  goals[index]['description']!,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '${goals[index]['steps']} steps/day',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+    final goals = _calculateStepGoalsByBMI();
+
+    return Column(
+      children: [
+        // BMI Information Card
+        Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(45, 45, 45, 1.0),
+            borderRadius: BorderRadius.circular(10),
           ),
-        );
-      },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your BMI: ${_bmi!.toStringAsFixed(1)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Category: $_bmiCategory',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Goals List
+        Expanded(
+          child: ListView.builder(
+            itemCount: goals.length,
+            itemBuilder: (context, index) {
+              final currentGoal = goals[index]['steps'] as int;
+              final isSelected = selectedGoal == currentGoal;
+
+              return GestureDetector(
+                onTap: () => onSelect(currentGoal),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color.fromRGBO(223, 77, 15, 1.0)
+                        : const Color.fromRGBO(45, 45, 45, 1.0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        goals[index]['title'] as String,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${goals[index]['steps']} steps/day',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white70 : Colors.grey[400],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -478,14 +651,14 @@ class _StepsPageState extends State<StepsPage> {
       itemCount: customGoals.length,
       itemBuilder: (context, index) {
         final isSelected = selectedGoal == customGoals[index];
-        
+
         return GestureDetector(
           onTap: () => onSelect(customGoals[index]),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 5),
             padding: const EdgeInsets.symmetric(vertical: 15),
             decoration: BoxDecoration(
-              color: isSelected 
+              color: isSelected
                   ? const Color.fromRGBO(223, 77, 15, 1.0)
                   : const Color.fromRGBO(45, 45, 45, 1.0),
               borderRadius: BorderRadius.circular(10),
@@ -528,7 +701,7 @@ class SemiCircleProgressPainter extends CustomPainter {
 
     // Draw black background arc
     final blackBackgroundPaint = Paint()
-      ..color = const Color.fromRGBO(28, 28, 30, 1.0) 
+      ..color = const Color.fromRGBO(28, 28, 30, 1.0)
       ..style = PaintingStyle.stroke
       ..strokeWidth = meterStrokeWidth;
 
@@ -587,34 +760,12 @@ class SemiCircleProgressPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    // Draw "0" labels
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: '0',
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    
-    // Left "0"
-    textPainter.paint(
-      canvas,
-      Offset(center.dx - radius - 20, center.dy - 6),
-    );
-    
-    // Right "0"
-    textPainter.paint(
-      canvas,
-      Offset(center.dx + radius + 8, center.dy - 6),
-    );
-
     // Draw tick marks
     for (var i = 0; i <= 20; i++) {
       final isLongTick = i % 2 == 0;
       final angle = math.pi + (math.pi / 20) * i;
       final tickLength = isLongTick ? 12.0 : 8.0;
-      
+
       final startPoint = Offset(
         center.dx + (radius - tickLength) * math.cos(angle),
         center.dy + (radius - tickLength) * math.sin(angle),
@@ -623,7 +774,7 @@ class SemiCircleProgressPainter extends CustomPainter {
         center.dx + (radius + tickLength) * math.cos(angle),
         center.dy + (radius + tickLength) * math.sin(angle),
       );
-      
+
       canvas.drawLine(
         startPoint,
         endPoint,

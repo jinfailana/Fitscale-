@@ -11,6 +11,8 @@ import 'set_height.dart'; // Import the set height page
 import 'set_weight.dart';
 import 'set_weight_mannually.dart';
 import 'splash_screen.dart';
+//import user preferences form
+import 'screens/recommendations_page.dart';
 
 import 'pref_workout.dart'; // Import the pref workout page
 import 'gym_equipment.dart'; // Import the gym equipment page
@@ -21,6 +23,9 @@ import 'SummaryPage/summary_page.dart';
 import 'SummaryPage/steps_page.dart';
 import 'SummaryPage/measure_weight.dart';
 import 'auth_check.dart';
+import 'intro_screen.dart';
+import 'models/user_model.dart'; // Import your UserModel
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -50,12 +55,33 @@ class MyApp extends StatelessWidget {
         //'/act_level': (context) => const ActLevelPage(),
         '/pref_workout': (context) => PrefWorkoutPage(), // Add this route
         '/work_place': (context) => const WorkPlacePage(),
-        '/gym_equipment': (context) => const GymEquipmentPage(), // Add this route
+        '/gym_equipment': (context) =>
+            const GymEquipmentPage(), // Add this route
 
-        '/all_set': (context) => const AllSetPage(), // Ensure this route is added
+        '/all_set': (context) =>
+            const AllSetPage(), // Ensure this route is added
         '/summary': (context) => const SummaryPage(), // SelectGenderPage route
         '/steps': (context) => const StepsPage(),
         '/measure_weight': (context) => const MeasureWeightPage(),
+        '/workouts': (context) => RecommendationsPage(
+              user: UserModel(
+                id: 'user_id', // Replace with actual user data
+                email: 'user@example.com', // Replace with actual user data
+                gender: 'Male', // Replace with actual user data
+                goal: 'Build Muscle', // Replace with actual user data
+                age: 25, // Replace with actual user data
+                weight: 70.0, // Replace with actual user data
+                height: 175.0, // Replace with actual user data
+                activityLevel:
+                    'Moderately Active', // Replace with actual user data
+                workoutPlace: 'Gym', // Replace with actual user data
+                setupCompleted: true,
+                currentSetupStep: 'completed',
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            ),
+        '/intro': (context) => const IntroScreen(),
       },
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -9,6 +10,7 @@ import 'select_gender.dart';
 import 'SummaryPage/summary_page.dart';
 import 'screens/loading_screen.dart';
 import 'firstlogin.dart';  // Add this import
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,10 +33,40 @@ class _LoginPageState extends State<LoginPage> {
     FirebaseAuth.instance.setLanguageCode('en');
   }
 
+  Future<bool> checkInternetConnection() async {
+    var connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      return false;
+    }
+    
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _handleLogin() async {
     setState(() {
       _isLoading = true;
     });
+
+    bool hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No internet connection. Please check your network and try again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     try {
       await _authService.signIn(
@@ -68,11 +100,30 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> signInWithGoogle() async {
     setState(() => _isLoading = true);
 
+    bool hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No internet connection. Please check your network and try again.'),
+          backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     try {
       await GoogleSignIn().signOut(); // Ensure sign-out to allow account selection
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-      if (googleUser == null) return;
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(

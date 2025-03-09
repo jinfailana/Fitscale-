@@ -8,6 +8,8 @@ import 'modals/auth_modal.dart';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -28,6 +30,20 @@ class _SignupPageState extends State<SignupPage> {
   String? verificationCode;
   final String brevoApiKey =
       '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';
+
+  Future<bool> checkInternetConnection() async {
+    var connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      return false;
+    }
+    
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    }
+  }
 
   Future<void> sendVerificationEmail(String email) async {
     try {
@@ -70,6 +86,23 @@ class _SignupPageState extends State<SignupPage> {
     if (!formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+
+    // Check internet connection first
+    bool hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No internet connection. Please check your network and try again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     try {
       final email = emailController.text.trim();
@@ -148,6 +181,23 @@ class _SignupPageState extends State<SignupPage> {
 
   Future<void> signUpWithGoogle() async {
     setState(() => _isLoading = true);
+
+    // Check internet connection first
+    bool hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No internet connection. Please check your network and try again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     try {
       await GoogleSignIn().signOut();

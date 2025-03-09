@@ -7,11 +7,15 @@ class UserModel {
   final double? weight;
   final double? height;
   final String? activityLevel;
-  final String? workPlace;
+  final String? workoutPlace;
+  final List<String>? preferredWorkouts;
+  final List<String>? gymEquipment;
   final bool setupCompleted;
   final String currentSetupStep;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? expertiseLevel;
+  final bool? hasEquipment;
 
   UserModel({
     required this.id,
@@ -22,11 +26,15 @@ class UserModel {
     this.weight,
     this.height,
     this.activityLevel,
-    this.workPlace,
+    this.workoutPlace,
+    this.preferredWorkouts,
+    this.gymEquipment,
     this.setupCompleted = false,
     this.currentSetupStep = 'registered',
     required this.createdAt,
     required this.updatedAt,
+    this.expertiseLevel,
+    this.hasEquipment,
   });
 
   UserModel copyWith({
@@ -36,9 +44,13 @@ class UserModel {
     double? height,
     double? weight,
     String? activityLevel,
-    String? workPlace,
+    String? workoutPlace,
+    List<String>? preferredWorkouts,
+    List<String>? gymEquipment,
     bool? setupCompleted,
     String? currentSetupStep,
+    String? expertiseLevel,
+    bool? hasEquipment,
   }) {
     return UserModel(
       id: this.id,
@@ -49,11 +61,15 @@ class UserModel {
       height: height ?? this.height,
       weight: weight ?? this.weight,
       activityLevel: activityLevel ?? this.activityLevel,
-      workPlace: workPlace ?? this.workPlace,
+      workoutPlace: workoutPlace ?? this.workoutPlace,
+      preferredWorkouts: preferredWorkouts ?? this.preferredWorkouts,
+      gymEquipment: gymEquipment ?? this.gymEquipment,
       setupCompleted: setupCompleted ?? this.setupCompleted,
       currentSetupStep: currentSetupStep ?? this.currentSetupStep,
       createdAt: this.createdAt,
       updatedAt: DateTime.now(),
+      expertiseLevel: expertiseLevel ?? this.expertiseLevel,
+      hasEquipment: hasEquipment ?? this.hasEquipment,
     );
   }
 
@@ -67,11 +83,15 @@ class UserModel {
       'height': height,
       'weight': weight,
       'activityLevel': activityLevel,
-      'workPlace': workPlace,
+      'workoutPlace': workoutPlace,
+      'preferredWorkouts': preferredWorkouts,
+      'gymEquipment': gymEquipment,
       'setupCompleted': setupCompleted,
       'currentSetupStep': currentSetupStep,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'expertiseLevel': expertiseLevel,
+      'hasEquipment': hasEquipment,
     };
   }
 
@@ -85,22 +105,30 @@ class UserModel {
       height: map['height'],
       weight: map['weight'],
       activityLevel: map['activityLevel'],
-      workPlace: map['workPlace'],
+      workoutPlace: map['workoutPlace'],
+      preferredWorkouts: map['preferredWorkouts'] != null
+          ? List<String>.from(map['preferredWorkouts'])
+          : null,
+      gymEquipment: map['gymEquipment'] != null
+          ? List<String>.from(map['gymEquipment'])
+          : null,
       setupCompleted: map['setupCompleted'] ?? false,
       currentSetupStep: map['currentSetupStep'] ?? 'registered',
       createdAt: DateTime.parse(map['createdAt']),
       updatedAt: DateTime.parse(map['updatedAt']),
+      expertiseLevel: map['expertiseLevel'],
+      hasEquipment: map['hasEquipment'],
     );
   }
 
   bool get isSetupComplete {
     return gender != null &&
-           goal != null &&
-           age != null &&
-           height != null &&
-           weight != null &&
-           activityLevel != null &&
-           workPlace != null;
+        goal != null &&
+        age != null &&
+        height != null &&
+        weight != null &&
+        activityLevel != null &&
+        workoutPlace != null;
   }
 
   String getNextSetupStep() {
@@ -108,7 +136,7 @@ class UserModel {
     if (goal == null) return 'goal';
     if (age == null || height == null || weight == null) return 'metrics';
     if (activityLevel == null) return 'activity';
-    if (workPlace == null) return 'workplace';
+    if (workoutPlace == null) return 'workplace';
     return 'completed';
   }
 
@@ -147,4 +175,4 @@ class UserModel {
 
     return bmr * activityFactor;
   }
-} 
+}

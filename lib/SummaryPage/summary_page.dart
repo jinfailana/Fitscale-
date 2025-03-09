@@ -436,58 +436,62 @@ class _SummaryPageState extends State<SummaryPage> {
                         ),
                       ),
                     )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: myWorkouts.length,
-                      itemBuilder: (context, index) {
-                        final workout = myWorkouts[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: const Color.fromRGBO(223, 77, 15, 0.2),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Icon(
-                                  workout.icon,
-                                  color: const Color.fromRGBO(223, 77, 15, 1.0),
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      workout.name,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                  : SizedBox(
+                      height: 200, // Fixed height for scrollable container
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: myWorkouts.map((workout) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromRGBO(
+                                          223, 77, 15, 0.2),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                    Text(
-                                      workout.description,
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Icon(
+                                      workout.icon,
+                                      color: const Color.fromRGBO(
+                                          223, 77, 15, 1.0),
+                                      size: 24,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          workout.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          workout.description,
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      },
+                            );
+                          }).toList(),
+                        ),
+                      ),
                     ),
             ),
           ],

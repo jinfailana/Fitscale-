@@ -68,6 +68,24 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        // Check if workout already exists
+        final existingWorkouts = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('workouts')
+            .where('name', isEqualTo: workout.name)
+            .get();
+
+        if (existingWorkouts.docs.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This Workout is Already in My Workouts'),
+              backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+            ),
+          );
+          return;
+        }
+
         // Add to Firestore
         await FirebaseFirestore.instance
             .collection('users')
@@ -94,9 +112,22 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
             myWorkouts.add(workout);
           }
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Workout Added Successfully'),
+            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+          ),
+        );
       }
     } catch (e) {
       print('Error adding workout: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to add workout'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

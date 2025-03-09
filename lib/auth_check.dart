@@ -5,7 +5,6 @@ import 'select_gender.dart';
 import 'SummaryPage/summary_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/loading_screen.dart';
-import 'firstlogin.dart';
 
 class AuthCheck extends StatelessWidget {
   final AuthService _authService = AuthService();
@@ -44,4 +43,4 @@ class AuthCheck extends StatelessWidget {
       },
     );
   }
-} 
+}

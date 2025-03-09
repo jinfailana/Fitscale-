@@ -5,6 +5,8 @@ import 'manage_acc.dart';
 import 'steps_page.dart';
 import 'measure_weight.dart';
 import '../HistoryPage/history.dart';
+import '../screens/recommendations_page.dart';
+import '../models/user_model.dart';
 
 class CustomPageRoute extends PageRouteBuilder {
   final Widget child;
@@ -17,7 +19,8 @@ class CustomPageRoute extends PageRouteBuilder {
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
             const curve = Curves.easeInOut;
-            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var tween =
+                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
             var offsetAnimation = animation.drive(tween);
 
             return SlideTransition(
@@ -60,8 +63,8 @@ class _SummaryPageState extends State<SummaryPage> {
           setState(() {
             username = userDoc['username'] ?? 'User';
             email = userDoc['email'] ?? 'No Email';
-            userWeight = userDoc['weight'] != null 
-                ? (userDoc['weight'] as num).toDouble() 
+            userWeight = userDoc['weight'] != null
+                ? (userDoc['weight'] as num).toDouble()
                 : 0.0;
           });
         }
@@ -82,6 +85,93 @@ class _SummaryPageState extends State<SummaryPage> {
       );
     } else if (index == 3) {
       _showProfileModal(context);
+    } else if (index == 1) {
+      _loadAndNavigateToRecommendations();
+    }
+  }
+
+  Future<void> _loadAndNavigateToRecommendations() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('No user logged in');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Please log in to view recommendations')),
+        );
+        return;
+      }
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        print('User document does not exist');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User profile not found')),
+        );
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      print('Fetched user data: $userData'); // Debug print
+
+      // Validate required date fields
+      if (userData['createdAt'] == null || userData['updatedAt'] == null) {
+        print('Missing date fields in user data');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid user profile data')),
+        );
+        return;
+      }
+
+      final userModel = UserModel(
+        id: user.uid,
+        email: userData['email'] ?? '',
+        gender: userData['gender'],
+        goal: userData['goal'],
+        age: userData['age'],
+        weight: userData['weight'] != null
+            ? (userData['weight'] as num).toDouble()
+            : null,
+        height: userData['height'] != null
+            ? (userData['height'] as num).toDouble()
+            : null,
+        activityLevel: userData['activityLevel'],
+        workoutPlace: userData['workoutPlace'],
+        preferredWorkouts: userData['preferredWorkouts'] != null
+            ? List<String>.from(userData['preferredWorkouts'])
+            : null,
+        gymEquipment: userData['gymEquipment'] != null
+            ? List<String>.from(userData['gymEquipment'])
+            : null,
+        setupCompleted: userData['setupCompleted'] ?? false,
+        currentSetupStep: userData['currentSetupStep'] ?? 'registered',
+        createdAt: userData['createdAt'] is String
+            ? DateTime.parse(userData['createdAt'])
+            : (userData['createdAt'] as Timestamp).toDate(),
+        updatedAt: userData['updatedAt'] is String
+            ? DateTime.parse(userData['updatedAt'])
+            : (userData['updatedAt'] as Timestamp).toDate(),
+      );
+
+      print('Created UserModel: ${userModel.toMap()}'); // Debug print
+
+      Navigator.push(
+        context,
+        CustomPageRoute(
+          child: RecommendationsPage(user: userModel),
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('Error loading recommendations: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to load recommendations: ${e.toString()}')),
+      );
     }
   }
 
@@ -235,12 +325,10 @@ class _SummaryPageState extends State<SummaryPage> {
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-        
         automaticallyImplyLeading: false,
         title: Image.asset(
           'assets/Fitscale_LOGO.png',
           height: 80,
-          
         ),
         actions: [
           Padding(
@@ -278,7 +366,7 @@ class _SummaryPageState extends State<SummaryPage> {
                 'Daily goal: No goal yet', Icons.directions_walk),
             _buildAnimatedSummaryCard(
                 userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
-                'Current Weight', 
+                'Current Weight',
                 Icons.monitor_weight),
             _buildAnimatedSummaryCard(
                 'Set Diets!', 'Mark your meals today!', Icons.restaurant),

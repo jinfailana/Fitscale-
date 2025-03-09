@@ -7,10 +7,8 @@ import 'dart:math' as math;
 import '../HistoryPage/history.dart';
 import 'summary_page.dart';
 
-
 class StepsPage extends StatefulWidget {
   const StepsPage({super.key});
-  
 
   @override
   State<StepsPage> createState() => _StepsPageState();
@@ -51,7 +49,7 @@ class _StepsPageState extends State<StepsPage> {
             .collection('users')
             .doc(user.uid)
             .get();
-            
+
         if (doc.exists) {
           final userData = doc.data()!;
           setState(() {
@@ -93,35 +91,36 @@ class _StepsPageState extends State<StepsPage> {
     int boostMetabolismBase;
     int loseWeightBase;
 
-    if (_bmi! < 18.5) { // Underweight
+    if (_bmi! < 18.5) {
+      // Underweight
       // Focus on building strength and healthy weight gain
       becomeActiveBase = 3000;
       keepFitBase = 6000;
       boostMetabolismBase = 8000;
       loseWeightBase = 9000; // Lower for underweight (focus on nutrition)
-    } 
-    else if (_bmi! < 25) { // Normal weight
+    } else if (_bmi! < 25) {
+      // Normal weight
       // Maintain healthy weight and fitness
       becomeActiveBase = 4000;
       keepFitBase = 7500;
       boostMetabolismBase = 10000;
       loseWeightBase = 12000;
-    } 
-    else if (_bmi! < 30) { // Overweight
+    } else if (_bmi! < 30) {
+      // Overweight
       // Focus on gradual weight loss and increased activity
       becomeActiveBase = 5000;
       keepFitBase = 8000;
       boostMetabolismBase = 11000;
       loseWeightBase = 13000;
-    } 
-    else if (_bmi! < 35) { // Obese Class I
+    } else if (_bmi! < 35) {
+      // Obese Class I
       // Start with achievable goals, gradually increase
       becomeActiveBase = 4000;
       keepFitBase = 7000;
       boostMetabolismBase = 9000;
       loseWeightBase = 11000;
-    }
-    else { // Obese Class II and above
+    } else {
+      // Obese Class II and above
       // Start with lower goals to prevent injury
       becomeActiveBase = 3000;
       keepFitBase = 6000;
@@ -132,7 +131,7 @@ class _StepsPageState extends State<StepsPage> {
     // Age adjustment
     int age = DateTime.now().year - ((_userData?['birthYear'] ?? 2000) as int);
     double ageMultiplier = 1.0;
-    
+
     if (age > 70) {
       ageMultiplier = 0.7; // Significant reduction for elderly
     } else if (age > 60) {
@@ -171,7 +170,8 @@ class _StepsPageState extends State<StepsPage> {
     });
   }
 
-  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
+  BottomNavigationBarItem _buildNavItem(
+      IconData icon, String label, int index) {
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -334,7 +334,8 @@ class _StepsPageState extends State<StepsPage> {
                       child: ElevatedButton(
                         onPressed: () => _showSetGoalDialog(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                          backgroundColor:
+                              const Color.fromRGBO(223, 77, 15, 1.0),
                           minimumSize: const Size(100, 45),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -369,7 +370,6 @@ class _StepsPageState extends State<StepsPage> {
                   icon: Icons.location_on,
                   value: _distance.toStringAsFixed(1),
                   label: 'total distance',
-               
                   progress: _distance / 10,
                 ),
               ],
@@ -435,7 +435,7 @@ class _StepsPageState extends State<StepsPage> {
 
   Future<void> _showSetGoalDialog() async {
     bool isRecommended = true;
-    int? selectedGoal;  // Track the selected goal
+    int? selectedGoal; // Track the selected goal
 
     return showModalBottomSheet(
       context: context,
@@ -468,7 +468,7 @@ class _StepsPageState extends State<StepsPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 40),  // For balance
+                  const SizedBox(width: 40), // For balance
                 ],
               ),
               const SizedBox(height: 20),
@@ -480,7 +480,7 @@ class _StepsPageState extends State<StepsPage> {
                     child: Text(
                       'Recommended',
                       style: TextStyle(
-                        color: isRecommended 
+                        color: isRecommended
                             ? const Color.fromRGBO(223, 77, 15, 1.0)
                             : Colors.white,
                         fontSize: 16,
@@ -493,7 +493,7 @@ class _StepsPageState extends State<StepsPage> {
                     child: Text(
                       'Custom',
                       style: TextStyle(
-                        color: !isRecommended 
+                        color: !isRecommended
                             ? const Color.fromRGBO(223, 77, 15, 1.0)
                             : Colors.white,
                         fontSize: 16,
@@ -505,7 +505,7 @@ class _StepsPageState extends State<StepsPage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: isRecommended 
+                child: isRecommended
                     ? _buildRecommendedGoals(selectedGoal, (goal) {
                         setState(() => selectedGoal = goal);
                       })
@@ -514,15 +514,17 @@ class _StepsPageState extends State<StepsPage> {
                       }),
               ),
               ElevatedButton(
-                onPressed: selectedGoal == null ? null : () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt('step_goal', selectedGoal!);
-                  setState(() {
-                    _goal = selectedGoal!;
-                    _updateStats();
-                  });
-                  Navigator.pop(context);
-                },
+                onPressed: selectedGoal == null
+                    ? null
+                    : () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setInt('step_goal', selectedGoal!);
+                        setState(() {
+                          _goal = selectedGoal!;
+                          _updateStats();
+                        });
+                        Navigator.pop(context);
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                   minimumSize: const Size(double.infinity, 50),
@@ -530,7 +532,8 @@ class _StepsPageState extends State<StepsPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   // Button will be semi-transparent when disabled
-                  disabledBackgroundColor: const Color.fromRGBO(223, 77, 15, 0.5),
+                  disabledBackgroundColor:
+                      const Color.fromRGBO(223, 77, 15, 0.5),
                 ),
                 child: const Text(
                   'Done',
@@ -558,7 +561,7 @@ class _StepsPageState extends State<StepsPage> {
     }
 
     final goals = _calculateStepGoalsByBMI();
-    
+
     return Column(
       children: [
         // BMI Information Card
@@ -591,7 +594,7 @@ class _StepsPageState extends State<StepsPage> {
             ],
           ),
         ),
-        
+
         // Goals List
         Expanded(
           child: ListView.builder(
@@ -599,14 +602,14 @@ class _StepsPageState extends State<StepsPage> {
             itemBuilder: (context, index) {
               final currentGoal = goals[index]['steps'] as int;
               final isSelected = selectedGoal == currentGoal;
-              
+
               return GestureDetector(
                 onTap: () => onSelect(currentGoal),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: isSelected 
+                    color: isSelected
                         ? const Color.fromRGBO(223, 77, 15, 1.0)
                         : const Color.fromRGBO(45, 45, 45, 1.0),
                     borderRadius: BorderRadius.circular(10),
@@ -648,14 +651,14 @@ class _StepsPageState extends State<StepsPage> {
       itemCount: customGoals.length,
       itemBuilder: (context, index) {
         final isSelected = selectedGoal == customGoals[index];
-        
+
         return GestureDetector(
           onTap: () => onSelect(customGoals[index]),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 5),
             padding: const EdgeInsets.symmetric(vertical: 15),
             decoration: BoxDecoration(
-              color: isSelected 
+              color: isSelected
                   ? const Color.fromRGBO(223, 77, 15, 1.0)
                   : const Color.fromRGBO(45, 45, 45, 1.0),
               borderRadius: BorderRadius.circular(10),
@@ -698,7 +701,7 @@ class SemiCircleProgressPainter extends CustomPainter {
 
     // Draw black background arc
     final blackBackgroundPaint = Paint()
-      ..color = const Color.fromRGBO(28, 28, 30, 1.0) 
+      ..color = const Color.fromRGBO(28, 28, 30, 1.0)
       ..style = PaintingStyle.stroke
       ..strokeWidth = meterStrokeWidth;
 
@@ -762,7 +765,7 @@ class SemiCircleProgressPainter extends CustomPainter {
       final isLongTick = i % 2 == 0;
       final angle = math.pi + (math.pi / 20) * i;
       final tickLength = isLongTick ? 12.0 : 8.0;
-      
+
       final startPoint = Offset(
         center.dx + (radius - tickLength) * math.cos(angle),
         center.dy + (radius - tickLength) * math.sin(angle),
@@ -771,7 +774,7 @@ class SemiCircleProgressPainter extends CustomPainter {
         center.dx + (radius + tickLength) * math.cos(angle),
         center.dy + (radius + tickLength) * math.sin(angle),
       );
-      
+
       canvas.drawLine(
         startPoint,
         endPoint,

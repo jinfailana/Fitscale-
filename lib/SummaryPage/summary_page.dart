@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/workout_plan.dart';
 import 'manage_acc.dart';
 import 'steps_page.dart';
 import 'measure_weight.dart';
@@ -43,6 +44,7 @@ class _SummaryPageState extends State<SummaryPage> {
   String username = '';
   String email = '';
   double userWeight = 0.0;
+  List<WorkoutPlan> myWorkouts = [];
 
   @override
   void initState() {
@@ -60,12 +62,40 @@ class _SummaryPageState extends State<SummaryPage> {
             .get();
 
         if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
-            username = userDoc['username'] ?? 'User';
-            email = userDoc['email'] ?? 'No Email';
-            userWeight = userDoc['weight'] != null
-                ? (userDoc['weight'] as num).toDouble()
-                : 0.0;
+            username = userData['username'] ?? '';
+            email = userData['email'] ?? '';
+            userWeight = (userData['weight'] ?? 0.0).toDouble();
+          });
+
+          // Fetch user's workouts
+          final workoutsCollection = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('workouts')
+              .get();
+
+          setState(() {
+            myWorkouts = workoutsCollection.docs.map((doc) {
+              final data = doc.data();
+              return WorkoutPlan(
+                name: data['name'] ?? '',
+                description: data['description'] ?? '',
+                icon: IconData(data['iconCode'] ?? 0xe1d8,
+                    fontFamily: 'MaterialIcons'),
+                exercises: (data['exercises'] as List<dynamic>? ?? [])
+                    .map((e) => Exercise(
+                          name: e['name'] ?? '',
+                          sets: e['sets'] ?? '',
+                          reps: e['reps'] ?? '',
+                          rest: e['rest'] ?? '',
+                          icon: IconData(e['iconCode'] ?? 0xe1d8,
+                              fontFamily: 'MaterialIcons'),
+                        ))
+                    .toList(),
+              );
+            }).toList();
           });
         }
       }
@@ -395,16 +425,70 @@ class _SummaryPageState extends State<SummaryPage> {
                   ),
                 ],
               ),
-              child: const Center(
-                child: Text(
-                  'No Workouts Found',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              child: myWorkouts.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No Workouts Found',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: myWorkouts.length,
+                      itemBuilder: (context, index) {
+                        final workout = myWorkouts[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color.fromRGBO(223, 77, 15, 0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(
+                                  workout.icon,
+                                  color: const Color.fromRGBO(223, 77, 15, 1.0),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      workout.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      workout.description,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

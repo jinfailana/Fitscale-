@@ -16,6 +16,7 @@ class UserModel {
   final DateTime updatedAt;
   final String? expertiseLevel;
   final bool? hasEquipment;
+  final String? prefWorkout;
 
   UserModel({
     required this.id,
@@ -35,6 +36,7 @@ class UserModel {
     required this.updatedAt,
     this.expertiseLevel,
     this.hasEquipment,
+    this.prefWorkout,
   });
 
   UserModel copyWith({
@@ -51,6 +53,7 @@ class UserModel {
     String? currentSetupStep,
     String? expertiseLevel,
     bool? hasEquipment,
+    String? prefWorkout,
   }) {
     return UserModel(
       id: this.id,
@@ -70,6 +73,7 @@ class UserModel {
       updatedAt: DateTime.now(),
       expertiseLevel: expertiseLevel ?? this.expertiseLevel,
       hasEquipment: hasEquipment ?? this.hasEquipment,
+      prefWorkout: prefWorkout ?? this.prefWorkout,
     );
   }
 
@@ -92,6 +96,7 @@ class UserModel {
       'updatedAt': updatedAt.toIso8601String(),
       'expertiseLevel': expertiseLevel,
       'hasEquipment': hasEquipment,
+      'prefWorkout': prefWorkout,
     };
   }
 
@@ -118,6 +123,7 @@ class UserModel {
       updatedAt: DateTime.parse(map['updatedAt']),
       expertiseLevel: map['expertiseLevel'],
       hasEquipment: map['hasEquipment'],
+      prefWorkout: map['prefWorkout'],
     );
   }
 

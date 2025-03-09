@@ -2,6 +2,10 @@
 import 'package:flutter/material.dart';
 import '../models/workout_plan.dart';
 import '../models/user_model.dart';
+import '../utils/recommendation_logic.dart' as workout_logic;
+import 'workout_details_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RecommendationsPage extends StatefulWidget {
   final UserModel user;
@@ -15,6 +19,247 @@ class RecommendationsPage extends StatefulWidget {
 class _RecommendationsPageState extends State<RecommendationsPage> {
   int selectedTabIndex = 0;
   int _selectedIndex = 1;
+  List<WorkoutPlan> myWorkouts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMyWorkouts();
+  }
+
+  Future<void> _fetchMyWorkouts() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final workoutsCollection = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('workouts')
+            .get();
+
+        setState(() {
+          myWorkouts = workoutsCollection.docs.map((doc) {
+            final data = doc.data();
+            return WorkoutPlan(
+              name: data['name'] ?? '',
+              description: data['description'] ?? '',
+              icon: IconData(data['iconCode'] ?? 0xe1d8,
+                  fontFamily: 'MaterialIcons'),
+              exercises: (data['exercises'] as List<dynamic>? ?? [])
+                  .map((e) => Exercise(
+                        name: e['name'] ?? '',
+                        sets: e['sets'] ?? '',
+                        reps: e['reps'] ?? '',
+                        rest: e['rest'] ?? '',
+                        icon: IconData(e['iconCode'] ?? 0xe1d8,
+                            fontFamily: 'MaterialIcons'),
+                      ))
+                  .toList(),
+            );
+          }).toList();
+        });
+      }
+    } catch (e) {
+      print('Error fetching workouts: $e');
+    }
+  }
+
+  Future<void> addToMyWorkouts(WorkoutPlan workout) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Add to Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('workouts')
+            .add({
+          'name': workout.name,
+          'description': workout.description,
+          'iconCode': workout.icon.codePoint,
+          'exercises': workout.exercises
+              .map((e) => {
+                    'name': e.name,
+                    'sets': e.sets,
+                    'reps': e.reps,
+                    'rest': e.rest,
+                    'iconCode': e.icon.codePoint,
+                  })
+              .toList(),
+        });
+
+        // Update local state
+        setState(() {
+          if (!myWorkouts.contains(workout)) {
+            myWorkouts.add(workout);
+          }
+        });
+      }
+    } catch (e) {
+      print('Error adding workout: $e');
+    }
+  }
+
+  Future<void> removeFromMyWorkouts(WorkoutPlan workout) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Find and remove from Firestore
+        final workoutsCollection = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('workouts')
+            .where('name', isEqualTo: workout.name)
+            .get();
+
+        for (var doc in workoutsCollection.docs) {
+          await doc.reference.delete();
+        }
+
+        // Update local state
+        setState(() {
+          myWorkouts.removeWhere((w) => w.name == workout.name);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Workout removed successfully'),
+            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error removing workout: $e');
+    }
+  }
+
+  List<WorkoutPlan> _getAllPossibleWorkouts() {
+    // Get all possible workouts regardless of user preferences
+    List<WorkoutPlan> allWorkouts = [];
+
+    // Add weight loss workouts
+    allWorkouts.addAll(workout_logic.getWeightLossWorkouts(
+      intensity: "intermediate",
+      hasGymAccess: true,
+      equipment: [
+        "Dumbbells",
+        "Barbells",
+        "Kettlebells",
+        "Cable Machine",
+        "Bench",
+        "Pull-up Bar",
+      ],
+      calorieTarget: 2000,
+      duration: "45 min",
+    ));
+
+    allWorkouts.addAll(workout_logic.getWeightLossWorkouts(
+      intensity: "intermediate",
+      hasGymAccess: false,
+      equipment: [],
+      calorieTarget: 2000,
+      duration: "45 min",
+    ));
+
+    // Add muscle gain workouts
+    allWorkouts.addAll(workout_logic.getMuscleGainWorkouts(
+      intensity: "intermediate",
+      hasGymAccess: true,
+      equipment: [
+        "Dumbbells",
+        "Barbells",
+        "Cable Machine",
+        "Bench",
+        "Pull-up Bar",
+      ],
+      duration: "45 min",
+    ));
+
+    allWorkouts.addAll(workout_logic.getMuscleGainWorkouts(
+      intensity: "intermediate",
+      hasGymAccess: false,
+      equipment: [],
+      duration: "45 min",
+    ));
+
+    // Add general fitness workouts
+    allWorkouts.addAll(workout_logic.getGeneralFitnessWorkouts(
+      intensity: "intermediate",
+      hasGymAccess: true,
+      equipment: [
+        "Dumbbells",
+        "Kettlebells",
+        "Medicine Ball",
+        "TRX",
+      ],
+      duration: "45 min",
+    ));
+
+    allWorkouts.addAll(workout_logic.getGeneralFitnessWorkouts(
+      intensity: "intermediate",
+      hasGymAccess: false,
+      equipment: [],
+      duration: "45 min",
+    ));
+
+    // Add cardio workouts
+    allWorkouts.add(workout_logic.getCardioWorkout(
+      intensity: "intermediate",
+      hasGymAccess: true,
+      duration: "45 min",
+    ));
+
+    allWorkouts.add(workout_logic.getCardioWorkout(
+      intensity: "intermediate",
+      hasGymAccess: false,
+      duration: "45 min",
+    ));
+
+    // Add strength workouts
+    allWorkouts.add(workout_logic.getStrengthWorkout(
+      intensity: "intermediate",
+      hasGymAccess: true,
+      equipment: [
+        "Dumbbells",
+        "Barbells",
+        "Cable Machine",
+      ],
+      duration: "45 min",
+    ));
+
+    allWorkouts.add(workout_logic.getStrengthWorkout(
+      intensity: "intermediate",
+      hasGymAccess: false,
+      equipment: [],
+      duration: "45 min",
+    ));
+
+    return allWorkouts;
+  }
+
+  List<WorkoutPlan> _getCurrentWorkouts() {
+    switch (selectedTabIndex) {
+      case 0:
+        return workout_logic.generateRecommendations(widget.user);
+      case 1:
+        return myWorkouts;
+      case 2:
+        // Get all possible workouts
+        List<WorkoutPlan> allWorkouts = _getAllPossibleWorkouts();
+        // Get current recommendations
+        List<WorkoutPlan> recommendations =
+            workout_logic.generateRecommendations(widget.user);
+
+        // Filter out workouts that are already in recommendations
+        return allWorkouts.where((workout) {
+          return !recommendations.any((recommended) =>
+              recommended.name == workout.name &&
+              recommended.description == workout.description);
+        }).toList();
+      default:
+        return [];
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -39,7 +284,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    List<WorkoutPlan> recommendations = generateRecommendations(widget.user);
+    List<WorkoutPlan> currentWorkouts = _getCurrentWorkouts();
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
@@ -101,71 +346,128 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: ListView.builder(
-                  itemCount: recommendations.length,
-                  itemBuilder: (context, index) {
-                    final plan = recommendations[index];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color.fromRGBO(44, 44, 46, 1.0),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color.fromRGBO(223, 77, 15, 1.0),
-                          width: 1,
+                child: selectedTabIndex == 1 && myWorkouts.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No Added Workouts Yet',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              // Placeholder for image
-                              Container(
-                                width: 50,
-                                height: 50,
-                                color: Colors.grey,
+                      )
+                    : ListView.builder(
+                        itemCount: currentWorkouts.length,
+                        itemBuilder: (context, index) {
+                          final plan = currentWorkouts[index];
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(44, 44, 46, 1.0),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color.fromRGBO(223, 77, 15, 1.0),
+                                width: 1,
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  plan.name,
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromRGBO(
+                                            223, 77, 15, 0.2),
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                      child: Icon(
+                                        plan.icon,
+                                        color: const Color.fromRGBO(
+                                            223, 77, 15, 1.0),
+                                        size: 30,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            plan.name,
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          Text(
+                                            plan.description,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            plan.description,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.white70,
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (selectedTabIndex ==
+                                        1) // Only show remove button in My Workouts
+                                      TextButton(
+                                        onPressed: () =>
+                                            removeFromMyWorkouts(plan),
+                                        child: const Text(
+                                          'Remove',
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    const SizedBox(width: 16),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                WorkoutDetailsPage(
+                                              workout: plan,
+                                              onAddToWorkoutList:
+                                                  addToMyWorkouts,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text(
+                                        'More',
+                                        style: TextStyle(
+                                          color:
+                                              Color.fromRGBO(223, 77, 15, 1.0),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {
-                                // Handle "More" button press
-                              },
-                              child: const Text(
-                                'More',
-                                style: TextStyle(color: Colors.orange),
-                              ),
-                            ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),
@@ -241,180 +543,5 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
       ),
       label: label,
     );
-  }
-
-  List<WorkoutPlan> generateRecommendations(UserModel user) {
-    List<WorkoutPlan> recommendations = [];
-
-    // Goal-based recommendations (from set_goal.dart)
-    switch (user.goal?.toLowerCase() ?? '') {
-      case "lose weight":
-        recommendations.add(WorkoutPlan(
-          name: "Fat Burning Program",
-          description:
-              "High-intensity cardio and metabolic workouts for maximum calorie burn.",
-        ));
-        recommendations.add(WorkoutPlan(
-          name: "Weight Loss Circuit",
-          description:
-              "Combined cardio and strength training to promote fat loss.",
-        ));
-        break;
-      case "build muscle":
-        recommendations.add(WorkoutPlan(
-          name: "Muscle Building Program",
-          description:
-              "Progressive overload training with focus on hypertrophy.",
-        ));
-        recommendations.add(WorkoutPlan(
-          name: "Strength Foundation",
-          description:
-              "Compound exercises for muscle growth and strength gains.",
-        ));
-        break;
-      case "stay fit":
-        recommendations.add(WorkoutPlan(
-          name: "Balanced Fitness",
-          description:
-              "Well-rounded workouts combining cardio, strength, and flexibility.",
-        ));
-        recommendations.add(WorkoutPlan(
-          name: "Maintenance Program",
-          description: "Balanced routines to maintain current fitness level.",
-        ));
-        break;
-    }
-
-    // Preferred workout level recommendations (from pref_workout.dart)
-    if (user.preferredWorkouts?.isNotEmpty == true) {
-      String workoutLevel = user.preferredWorkouts!.first.toLowerCase();
-      switch (workoutLevel) {
-        case "beginner":
-          recommendations.add(WorkoutPlan(
-            name: "Beginner Fundamentals",
-            description:
-                "Best for newbies or just starting - Foundation exercises with proper form.",
-          ));
-          break;
-        case "intermediate":
-          recommendations.add(WorkoutPlan(
-            name: "Intermediate Progress",
-            description:
-                "For those with some experience - Progressive workouts with advanced variations.",
-          ));
-          break;
-        case "advanced":
-          recommendations.add(WorkoutPlan(
-            name: "Advanced Training",
-            description:
-                "For experienced individuals - Complex routines for peak performance.",
-          ));
-          break;
-        case "expert":
-          recommendations.add(WorkoutPlan(
-            name: "Expert Level",
-            description:
-                "For top-level athletes - Professional-grade training programs.",
-          ));
-          break;
-      }
-    }
-
-    // Activity level recommendations (from act_level.dart)
-    switch (user.activityLevel?.toLowerCase() ?? '') {
-      case "sedentary":
-        recommendations.add(WorkoutPlan(
-          name: "Beginner's Movement",
-          description:
-              "Little to no exercise - Light exercises to build basic fitness foundation.",
-        ));
-        break;
-      case "lightly active":
-        recommendations.add(WorkoutPlan(
-          name: "Active Lifestyle",
-          description:
-              "Light exercise 1-3 days/week - Moderate intensity workouts.",
-        ));
-        break;
-      case "moderately active":
-        recommendations.add(WorkoutPlan(
-          name: "Progressive Fitness",
-          description:
-              "Moderate exercise 3-5 days/week - Structured progression plan.",
-        ));
-        break;
-      case "very active":
-        recommendations.add(WorkoutPlan(
-          name: "High Performance",
-          description:
-              "Hard exercise 6-7 days/week - Intense training program.",
-        ));
-        break;
-      case "extremely active":
-        recommendations.add(WorkoutPlan(
-          name: "Elite Training",
-          description:
-              "Very hard exercise & physical job - Peak performance program.",
-        ));
-        break;
-    }
-
-    // Workout place recommendations (from work_place.dart)
-    switch (user.workoutPlace?.toLowerCase() ?? '') {
-      case "home":
-        recommendations.add(WorkoutPlan(
-          name: "Home Warrior",
-          description: "Effective workouts optimized for home environment.",
-        ));
-        break;
-      case "gym":
-        recommendations.add(WorkoutPlan(
-          name: "Gym Performance",
-          description: "Structured workouts utilizing full gym equipment.",
-        ));
-        break;
-      case "outdoor":
-        recommendations.add(WorkoutPlan(
-          name: "Outdoor Athletics",
-          description: "Dynamic workouts leveraging outdoor environments.",
-        ));
-        break;
-      case "mixed":
-        recommendations.add(WorkoutPlan(
-          name: "Hybrid Training",
-          description:
-              "Versatile workouts combining home, gym, and outdoor exercises.",
-        ));
-        break;
-    }
-
-    // Equipment availability (from gym_equipment.dart)
-    if (user.gymEquipment?.isNotEmpty == true) {
-      String equipment = user.gymEquipment!.first.toLowerCase();
-      if (equipment.contains("bodyweight")) {
-        recommendations.add(WorkoutPlan(
-          name: "Bodyweight Mastery",
-          description:
-              "Complete program using only bodyweight exercises - no equipment needed.",
-        ));
-      } else if (equipment.contains("gym")) {
-        recommendations.add(WorkoutPlan(
-          name: "Full Equipment Program",
-          description:
-              "Comprehensive workouts utilizing available gym equipment.",
-        ));
-      }
-    }
-
-    // Gender-specific recommendations (from select_gender.dart)
-    if (user.gender?.toLowerCase() == "female") {
-      recommendations.add(WorkoutPlan(
-        name: "Women's Fitness",
-        description:
-            "Customized workouts that can be adapted to any equipment level.",
-      ));
-    }
-
-    return recommendations;
   }
 }

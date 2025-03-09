@@ -38,11 +38,13 @@ class _HistoryPageState extends State<HistoryPage> {
         CustomPageRoute(child: const SummaryPage()),
       );
     } else if (index == 3) {
-      // Show profile modal
-      // You might want to extract this to a shared utility class
+      // Show profile modal - this should match the SummaryPage implementation
       _showProfileModal(context);
     }
-    // Add other navigation cases as needed
+    
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   void _showProfileModal(BuildContext context) {
@@ -226,25 +228,21 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          unselectedItemColor: Colors.white54,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            _buildNavItem(Icons.home, 'Home', 0),
-            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
-            _buildNavItem(Icons.history, 'History', 2),
-            _buildNavItem(Icons.person, 'Me', 3),
-          ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-        ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
+        unselectedItemColor: Colors.white54,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: [
+          _buildNavItem(Icons.home, 'Home', 0),
+          _buildNavItem(Icons.fitness_center, 'Workout', 1),
+          _buildNavItem(Icons.history, 'History', 2),
+          _buildNavItem(Icons.person, 'Me', 3),
+        ],
       ),
     );
   }

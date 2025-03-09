@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+import '../HistoryPage/history.dart';
+import 'summary_page.dart';
 
 
 class StepsPage extends StatefulWidget {
@@ -20,7 +22,7 @@ class _StepsPageState extends State<StepsPage> {
   double _percentage = 0;
   int _calories = 0;
   double _distance = 0;
-  int _selectedIndex = 0;
+  int _selectedIndex = 1; // Set to 1 for Workouts tab
   Map<String, dynamic>? _userData;
   double? _bmi;
   String _bmiCategory = '';
@@ -197,9 +199,29 @@ class _StepsPageState extends State<StepsPage> {
   }
 
   void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+    
     setState(() {
       _selectedIndex = index;
     });
+    
+    // Handle navigation
+    if (index == 0) {
+      // Navigate to Summary page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SummaryPage()),
+      );
+    } else if (index == 2) {
+      // Navigate to History page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HistoryPage()),
+      );
+    } else if (index == 3) {
+      // Navigate to Profile/Me page
+      // Add your profile page navigation here
+    }
   }
 
   @override
@@ -353,26 +375,6 @@ class _StepsPageState extends State<StepsPage> {
               ],
             ),
           ],
-        ),
-      ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          unselectedItemColor: Colors.white54,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            _buildNavItem(Icons.home, 'Home', 0),
-            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
-            _buildNavItem(Icons.history, 'History', 2),
-            _buildNavItem(Icons.person, 'Me', 3),
-          ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
         ),
       ),
     );

@@ -29,7 +29,7 @@ class _SignupPageState extends State<SignupPage> {
 
   String? verificationCode;
   final String brevoApiKey =
-      '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';
+      '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';
 
   Future<bool> checkInternetConnection() async {
     var connectivityResult = await Connectivity().checkConnectivity();
@@ -57,7 +57,7 @@ class _SignupPageState extends State<SignupPage> {
           'content-type': 'application/json',
         },
         body: jsonEncode({
-          'sender': {'name': 'Fitscale', 'email': 'hannstabalanza@gmail.com'},
+          'sender': {'name': 'Fitscale', 'email': 'jameeescaaabreros@gmail.com'},
           'to': [
             {'email': email}
           ],

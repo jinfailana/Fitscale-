@@ -8,7 +8,6 @@ import 'services/auth_service.dart';
 import 'select_gender.dart';
 import 'SummaryPage/summary_page.dart';
 import 'screens/loading_screen.dart';
-import 'firstlogin.dart';  // Add this import
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,7 +42,8 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       // Check if user has completed setup
-      bool setupCompleted = await _authService.hasCompletedSetup(FirebaseAuth.instance.currentUser!.uid);
+      bool setupCompleted = await _authService
+          .hasCompletedSetup(FirebaseAuth.instance.currentUser!.uid);
 
       if (setupCompleted) {
         Navigator.of(context).pushReplacement(
@@ -69,28 +69,34 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      await GoogleSignIn().signOut(); // Ensure sign-out to allow account selection
+      await GoogleSignIn()
+          .signOut(); // Ensure sign-out to allow account selection
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
       final user = userCredential.user;
 
       if (user != null) {
-        final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final userDoc =
+            FirebaseFirestore.instance.collection('users').doc(user.uid);
         final docSnapshot = await userDoc.get();
 
         if (!docSnapshot.exists) {
           await FirebaseAuth.instance.signOut();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Email not signed up yet. Please sign up first.')),
+            const SnackBar(
+                content:
+                    Text('Email not signed up yet. Please sign up first.')),
           );
           return;
         }
@@ -240,12 +246,15 @@ class _LoginPageState extends State<LoginPage> {
                               filled: true,
                               fillColor: const Color(0xFF2A2A2A),
                               border: const OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(12)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(12)),
                                 borderSide: BorderSide.none,
                               ),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                                  _isPasswordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
                                   color: Colors.white54,
                                 ),
                                 onPressed: () {
@@ -352,14 +361,18 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8), // Adjust spacing between labels
+                                const SizedBox(
+                                    height: 8), // Adjust spacing between labels
 
                                 // Forgot Password Section - Aligned with "Create an account?"
                                 TextButton(
                                   style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero, // Remove default padding
-                                    minimumSize: Size.zero, // Remove minimum size constraints
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Reduce tap target size
+                                    padding: EdgeInsets
+                                        .zero, // Remove default padding
+                                    minimumSize: Size
+                                        .zero, // Remove minimum size constraints
+                                    tapTargetSize: MaterialTapTargetSize
+                                        .shrinkWrap, // Reduce tap target size
                                   ),
                                   onPressed: () {
                                     Navigator.push(

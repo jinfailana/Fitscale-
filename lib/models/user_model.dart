@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class UserModel {
   final String id;
   final String email;
@@ -95,12 +97,12 @@ class UserModel {
 
   bool get isSetupComplete {
     return gender != null &&
-           goal != null &&
-           age != null &&
-           height != null &&
-           weight != null &&
-           activityLevel != null &&
-           workPlace != null;
+        goal != null &&
+        age != null &&
+        height != null &&
+        weight != null &&
+        activityLevel != null &&
+        workPlace != null;
   }
 
   String getNextSetupStep() {
@@ -115,6 +117,45 @@ class UserModel {
   double? get bmi {
     if (height == null || weight == null) return null;
     return weight! / ((height! / 100) * (height! / 100));
+  }
+
+  Map<String, dynamic>? get bmiCategory {
+    if (bmi == null) return null;
+
+    if (bmi! < 18.5) {
+      return {
+        'category': 'Underweight',
+        'description':
+            'You are below the normal weight range. Consider consulting a healthcare provider for guidance on healthy weight gain.',
+        'color': Colors.blue,
+      };
+    } else if (bmi! < 25) {
+      return {
+        'category': 'Normal Weight',
+        'description':
+            'Your weight is within the healthy range. Maintain your current lifestyle!',
+        'color': Colors.green,
+      };
+    } else if (bmi! < 30) {
+      return {
+        'category': 'Overweight',
+        'description':
+            'You are above the normal weight range. Consider increasing physical activity and monitoring calorie intake.',
+        'color': Colors.orange,
+      };
+    } else {
+      return {
+        'category': 'Obese',
+        'description':
+            'You are significantly above the normal weight range. Please consult a healthcare provider for guidance.',
+        'color': Colors.red,
+      };
+    }
+  }
+
+  String? get bmiFormatted {
+    if (bmi == null) return null;
+    return bmi!.toStringAsFixed(1);
   }
 
   double? get dailyCalorieNeeds {
@@ -147,4 +188,4 @@ class UserModel {
 
     return bmr * activityFactor;
   }
-} 
+}

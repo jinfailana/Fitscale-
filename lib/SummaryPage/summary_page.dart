@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/user_model.dart';
+import '../widgets/bmi_card.dart';
 import 'manage_acc.dart';
 import 'steps_page.dart';
 import 'measure_weight.dart';
@@ -16,7 +18,8 @@ class CustomPageRoute extends PageRouteBuilder {
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
             const curve = Curves.easeInOut;
-            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var tween =
+                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
             var offsetAnimation = animation.drive(tween);
 
             return SlideTransition(
@@ -38,6 +41,7 @@ class _SummaryPageState extends State<SummaryPage> {
   int _selectedIndex = 0;
   String username = '';
   String email = '';
+  UserModel? userModel;
 
   @override
   void initState() {
@@ -58,6 +62,10 @@ class _SummaryPageState extends State<SummaryPage> {
           setState(() {
             username = userDoc['username'] ?? 'User';
             email = userDoc['email'] ?? 'No Email';
+            userModel = UserModel.fromMap({
+              ...userDoc.data()!,
+              'id': user.uid,
+            });
           });
         }
       }
@@ -225,12 +233,10 @@ class _SummaryPageState extends State<SummaryPage> {
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-        
         automaticallyImplyLeading: false,
         title: Image.asset(
           'assets/Fitscale_LOGO.png',
           height: 80,
-          
         ),
         actions: [
           Padding(
@@ -338,15 +344,75 @@ class _SummaryPageState extends State<SummaryPage> {
       onTap: () {
         // Handle navigation based on the card type
         if (title == 'Set Step Goal') {
-          Navigator.push(
-            context,
-            CustomPageRoute(child: const StepsPage()),
-          );
+          if (userModel != null) {
+            Navigator.push(
+              context,
+              CustomPageRoute(child: StepsPage(user: userModel!)),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please wait while we load your profile data...'),
+                backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+              ),
+            );
+          }
         } else if (title == '0kg') {
-          Navigator.push(
-            context,
-            CustomPageRoute(child: const MeasureWeightPage()),
-          );
+          if (userModel != null) {
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.transparent,
+              isScrollControlled: true,
+              builder: (context) => Container(
+                height: MediaQuery.of(context).size.height * 0.8,
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(28, 28, 30, 1.0),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(20)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'BMI Information',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: BMICard(user: userModel!),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              CustomPageRoute(child: const MeasureWeightPage()),
+            );
+          }
         }
         // Add more conditions for other cards if needed
       },

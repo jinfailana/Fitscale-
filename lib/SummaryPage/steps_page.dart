@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user_model.dart';
 
 import 'dart:math' as math;
 
-
 class StepsPage extends StatefulWidget {
-  const StepsPage({super.key});
+  final UserModel user;
+  const StepsPage({
+    super.key,
+    required this.user,
+  });
 
   @override
   State<StepsPage> createState() => _StepsPageState();
@@ -19,6 +23,37 @@ class _StepsPageState extends State<StepsPage> {
   double _distance = 0;
   int _selectedIndex = 0;
 
+  Map<String, dynamic> _getRecommendedSteps() {
+    if (widget.user.bmi == null) {
+      return {
+        'steps': 6500,
+        'description': 'Standard daily activity',
+      };
+    }
+
+    if (widget.user.bmi! < 18.5) {
+      return {
+        'steps': 5000,
+        'description': 'Light activity for gradual fitness improvement',
+      };
+    } else if (widget.user.bmi! < 25) {
+      return {
+        'steps': 8000,
+        'description': 'Maintain healthy lifestyle',
+      };
+    } else if (widget.user.bmi! < 30) {
+      return {
+        'steps': 10000,
+        'description': 'Weight management and fitness improvement',
+      };
+    } else {
+      return {
+        'steps': 12000,
+        'description': 'Active lifestyle for weight management',
+      };
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -27,8 +62,9 @@ class _StepsPageState extends State<StepsPage> {
 
   void loadGoal() async {
     final prefs = await SharedPreferences.getInstance();
+    final recommendedSteps = _getRecommendedSteps();
     setState(() {
-      _goal = prefs.getInt('step_goal') ?? 650;
+      _goal = prefs.getInt('step_goal') ?? recommendedSteps['steps'];
       _steps = prefs.getInt('current_steps') ?? 0;
       _updateStats();
     });
@@ -42,7 +78,8 @@ class _StepsPageState extends State<StepsPage> {
     });
   }
 
-  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
+  BottomNavigationBarItem _buildNavItem(
+      IconData icon, String label, int index) {
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -185,7 +222,8 @@ class _StepsPageState extends State<StepsPage> {
                       child: ElevatedButton(
                         onPressed: () => _showSetGoalDialog(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                          backgroundColor:
+                              const Color.fromRGBO(223, 77, 15, 1.0),
                           minimumSize: const Size(100, 45),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -220,7 +258,6 @@ class _StepsPageState extends State<StepsPage> {
                   icon: Icons.location_on,
                   value: _distance.toStringAsFixed(1),
                   label: 'total distance',
-               
                   progress: _distance / 10,
                 ),
               ],
@@ -306,7 +343,7 @@ class _StepsPageState extends State<StepsPage> {
 
   Future<void> _showSetGoalDialog() async {
     bool isRecommended = true;
-    int? selectedGoal;  // Track the selected goal
+    int? selectedGoal; // Track the selected goal
 
     return showModalBottomSheet(
       context: context,
@@ -339,7 +376,7 @@ class _StepsPageState extends State<StepsPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 40),  // For balance
+                  const SizedBox(width: 40), // For balance
                 ],
               ),
               const SizedBox(height: 20),
@@ -351,7 +388,7 @@ class _StepsPageState extends State<StepsPage> {
                     child: Text(
                       'Recommended',
                       style: TextStyle(
-                        color: isRecommended 
+                        color: isRecommended
                             ? const Color.fromRGBO(223, 77, 15, 1.0)
                             : Colors.white,
                         fontSize: 16,
@@ -364,7 +401,7 @@ class _StepsPageState extends State<StepsPage> {
                     child: Text(
                       'Custom',
                       style: TextStyle(
-                        color: !isRecommended 
+                        color: !isRecommended
                             ? const Color.fromRGBO(223, 77, 15, 1.0)
                             : Colors.white,
                         fontSize: 16,
@@ -376,7 +413,7 @@ class _StepsPageState extends State<StepsPage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: isRecommended 
+                child: isRecommended
                     ? _buildRecommendedGoals(selectedGoal, (goal) {
                         setState(() => selectedGoal = goal);
                       })
@@ -385,15 +422,17 @@ class _StepsPageState extends State<StepsPage> {
                       }),
               ),
               ElevatedButton(
-                onPressed: selectedGoal == null ? null : () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt('step_goal', selectedGoal!);
-                  setState(() {
-                    _goal = selectedGoal!;
-                    _updateStats();
-                  });
-                  Navigator.pop(context);
-                },
+                onPressed: selectedGoal == null
+                    ? null
+                    : () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setInt('step_goal', selectedGoal!);
+                        setState(() {
+                          _goal = selectedGoal!;
+                          _updateStats();
+                        });
+                        Navigator.pop(context);
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                   minimumSize: const Size(double.infinity, 50),
@@ -401,7 +440,8 @@ class _StepsPageState extends State<StepsPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   // Button will be semi-transparent when disabled
-                  disabledBackgroundColor: const Color.fromRGBO(223, 77, 15, 0.5),
+                  disabledBackgroundColor:
+                      const Color.fromRGBO(223, 77, 15, 0.5),
                 ),
                 child: const Text(
                   'Done',
@@ -420,11 +460,15 @@ class _StepsPageState extends State<StepsPage> {
   }
 
   Widget _buildRecommendedGoals(int? selectedGoal, Function(int) onSelect) {
+    final recommendedSteps = _getRecommendedSteps();
     final goals = [
-      {'steps': '2500', 'description': 'Become active'},
-      {'steps': '5000', 'description': 'Keep fit'},
-      {'steps': '8000', 'description': 'Boost metabolism'},
-      {'steps': '15000', 'description': 'Lose weight'},
+      {'steps': '2500', 'description': 'Light activity'},
+      {'steps': '5000', 'description': 'Moderate activity'},
+      {
+        'steps': recommendedSteps['steps'].toString(),
+        'description': recommendedSteps['description']
+      },
+      {'steps': '15000', 'description': 'High activity'},
     ];
 
     return ListView.builder(
@@ -432,14 +476,14 @@ class _StepsPageState extends State<StepsPage> {
       itemBuilder: (context, index) {
         final currentGoal = int.parse(goals[index]['steps']!);
         final isSelected = selectedGoal == currentGoal;
-        
+
         return GestureDetector(
           onTap: () => onSelect(currentGoal),
           child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: isSelected 
+              color: isSelected
                   ? const Color.fromRGBO(223, 77, 15, 1.0)
                   : const Color.fromRGBO(45, 45, 45, 1.0),
               borderRadius: BorderRadius.circular(10),
@@ -463,6 +507,16 @@ class _StepsPageState extends State<StepsPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (index == 2) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    'Recommended based on your BMI',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -478,14 +532,14 @@ class _StepsPageState extends State<StepsPage> {
       itemCount: customGoals.length,
       itemBuilder: (context, index) {
         final isSelected = selectedGoal == customGoals[index];
-        
+
         return GestureDetector(
           onTap: () => onSelect(customGoals[index]),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 5),
             padding: const EdgeInsets.symmetric(vertical: 15),
             decoration: BoxDecoration(
-              color: isSelected 
+              color: isSelected
                   ? const Color.fromRGBO(223, 77, 15, 1.0)
                   : const Color.fromRGBO(45, 45, 45, 1.0),
               borderRadius: BorderRadius.circular(10),
@@ -528,7 +582,7 @@ class SemiCircleProgressPainter extends CustomPainter {
 
     // Draw black background arc
     final blackBackgroundPaint = Paint()
-      ..color = const Color.fromRGBO(28, 28, 30, 1.0) 
+      ..color = const Color.fromRGBO(28, 28, 30, 1.0)
       ..style = PaintingStyle.stroke
       ..strokeWidth = meterStrokeWidth;
 
@@ -596,13 +650,13 @@ class SemiCircleProgressPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
     textPainter.layout();
-    
+
     // Left "0"
     textPainter.paint(
       canvas,
       Offset(center.dx - radius - 20, center.dy - 6),
     );
-    
+
     // Right "0"
     textPainter.paint(
       canvas,
@@ -614,7 +668,7 @@ class SemiCircleProgressPainter extends CustomPainter {
       final isLongTick = i % 2 == 0;
       final angle = math.pi + (math.pi / 20) * i;
       final tickLength = isLongTick ? 12.0 : 8.0;
-      
+
       final startPoint = Offset(
         center.dx + (radius - tickLength) * math.cos(angle),
         center.dy + (radius - tickLength) * math.sin(angle),
@@ -623,7 +677,7 @@ class SemiCircleProgressPainter extends CustomPainter {
         center.dx + (radius + tickLength) * math.cos(angle),
         center.dy + (radius + tickLength) * math.sin(angle),
       );
-      
+
       canvas.drawLine(
         startPoint,
         endPoint,

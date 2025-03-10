@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/workout_plan.dart';
+import '../models/workout_history.dart';
 import 'manage_acc.dart';
 import 'steps_page.dart';
 import 'measure_weight.dart';
 import '../HistoryPage/history.dart';
 import '../screens/recommendations_page.dart';
 import '../models/user_model.dart';
+import '../services/workout_history_service.dart';
+import 'package:intl/intl.dart';
 
 class CustomPageRoute extends PageRouteBuilder {
   final Widget child;
@@ -44,12 +47,15 @@ class _SummaryPageState extends State<SummaryPage> {
   String username = '';
   String email = '';
   double userWeight = 0.0;
-  List<WorkoutPlan> myWorkouts = [];
+  List<WorkoutHistory> _recentWorkouts = [];
+  bool _isLoading = true;
+  final WorkoutHistoryService _historyService = WorkoutHistoryService();
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _loadRecentWorkouts();
   }
 
   Future<void> _fetchUserData() async {
@@ -68,39 +74,41 @@ class _SummaryPageState extends State<SummaryPage> {
             email = userData['email'] ?? '';
             userWeight = (userData['weight'] ?? 0.0).toDouble();
           });
-
-          // Fetch user's workouts
-          final workoutsCollection = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('workouts')
-              .get();
-
-          setState(() {
-            myWorkouts = workoutsCollection.docs.map((doc) {
-              final data = doc.data();
-              return WorkoutPlan(
-                name: data['name'] ?? '',
-                description: data['description'] ?? '',
-                icon: IconData(data['iconCode'] ?? 0xe1d8,
-                    fontFamily: 'MaterialIcons'),
-                exercises: (data['exercises'] as List<dynamic>? ?? [])
-                    .map((e) => Exercise(
-                          name: e['name'] ?? '',
-                          sets: e['sets'] ?? '',
-                          reps: e['reps'] ?? '',
-                          rest: e['rest'] ?? '',
-                          icon: IconData(e['iconCode'] ?? 0xe1d8,
-                              fontFamily: 'MaterialIcons'),
-                        ))
-                    .toList(),
-              );
-            }).toList();
-          });
         }
       }
     } catch (e) {
       print('Error fetching user data: $e');
+    }
+  }
+
+  Future<void> _loadRecentWorkouts() async {
+    try {
+      final history = await _historyService.getWorkoutHistory();
+      setState(() {
+        // Get unique workouts by name and date, sorted by date
+        final uniqueWorkouts = history
+            .fold<Map<String, WorkoutHistory>>(
+              {},
+              (map, workout) {
+                final key =
+                    '${workout.workoutName}_${workout.date.toIso8601String()}';
+                if (!map.containsKey(key)) {
+                  map[key] = workout;
+                }
+                return map;
+              },
+            )
+            .values
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+
+        // Take only the 3 most recent workouts
+        _recentWorkouts = uniqueWorkouts.take(4).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading recent workouts: $e');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -425,74 +433,83 @@ class _SummaryPageState extends State<SummaryPage> {
                   ),
                 ],
               ),
-              child: myWorkouts.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No Workouts Found',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                  : SizedBox(
-                      height: 200, // Fixed height for scrollable container
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: myWorkouts.map((workout) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: const Color.fromRGBO(
-                                          223, 77, 15, 0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Icon(
-                                      workout.icon,
-                                      color: const Color.fromRGBO(
-                                          223, 77, 15, 1.0),
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          workout.name,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _recentWorkouts.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No Workouts Found',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : SizedBox(
+                          height: 200,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: _recentWorkouts.map((workout) {
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: const Color.fromRGBO(
+                                              223, 77, 15, 0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
                                         ),
-                                        Text(
-                                          workout.description,
-                                          style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 12,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                        child: Icon(
+                                          Icons.fitness_center,
+                                          color: const Color.fromRGBO(
+                                              223, 77, 15, 1.0),
+                                          size: 24,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              workout.workoutName,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              '${workout.setsCompleted}/${workout.totalSets} sets completed',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            Text(
+                                              DateFormat('MMM d, y')
+                                                  .format(workout.date),
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
+                                );
+                              }).toList(),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
             ),
           ],
         ),

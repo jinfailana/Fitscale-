@@ -53,6 +53,10 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                         rest: e['rest'] ?? '',
                         icon: IconData(e['iconCode'] ?? 0xe1d8,
                             fontFamily: 'MaterialIcons'),
+                        musclesWorked:
+                            List<String>.from(e['musclesWorked'] ?? []),
+                        instructions:
+                            List<String>.from(e['instructions'] ?? []),
                       ))
                   .toList(),
             );
@@ -102,6 +106,8 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                     'reps': e.reps,
                     'rest': e.rest,
                     'iconCode': e.icon.codePoint,
+                    'musclesWorked': e.musclesWorked,
+                    'instructions': e.instructions,
                   })
               .toList(),
         });
@@ -132,6 +138,54 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
   }
 
   Future<void> removeFromMyWorkouts(WorkoutPlan workout) async {
+    // Show confirmation dialog
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color.fromRGBO(44, 44, 46, 1.0),
+          title: const Text(
+            'Remove Workout',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to remove this workout? All progress tracking data will also be deleted.',
+            style: TextStyle(
+              color: Colors.white70,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.white70,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                'Remove',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) {
+      return; // User cancelled the removal
+    }
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
@@ -147,6 +201,18 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
           await doc.reference.delete();
         }
 
+        // Delete workout history for this workout
+        final historyCollection = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('workout_history')
+            .where('workoutName', isEqualTo: workout.name)
+            .get();
+
+        for (var doc in historyCollection.docs) {
+          await doc.reference.delete();
+        }
+
         // Update local state
         setState(() {
           myWorkouts.removeWhere((w) => w.name == workout.name);
@@ -154,13 +220,19 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Workout removed successfully'),
+            content: Text('Workout and progress history removed successfully'),
             backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
           ),
         );
       }
     } catch (e) {
       print('Error removing workout: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error removing workout'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -271,7 +343,12 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
   List<WorkoutPlan> _getCurrentWorkouts() {
     switch (selectedTabIndex) {
       case 0:
-        return workout_logic.generateRecommendations(widget.user);
+        // Get current recommendations and filter out workouts that are already in My Workouts
+        List<WorkoutPlan> recommendations =
+            workout_logic.generateRecommendations(widget.user);
+        return recommendations.where((workout) {
+          return !myWorkouts.any((myWorkout) => myWorkout.name == workout.name);
+        }).toList();
       case 1:
         return myWorkouts;
       case 2:
@@ -281,11 +358,12 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         List<WorkoutPlan> recommendations =
             workout_logic.generateRecommendations(widget.user);
 
-        // Filter out workouts that are already in recommendations
+        // Filter out workouts that are already in recommendations or My Workouts
         return allWorkouts.where((workout) {
           return !recommendations.any((recommended) =>
-              recommended.name == workout.name &&
-              recommended.description == workout.description);
+                  recommended.name == workout.name &&
+                  recommended.description == workout.description) &&
+              !myWorkouts.any((myWorkout) => myWorkout.name == workout.name);
         }).toList();
       default:
         return [];

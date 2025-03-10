@@ -143,6 +143,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "1 minute sprint, 2 minute walk",
             rest: intensity == "advanced" ? "45 sec" : "60 sec",
             icon: Icons.directions_run,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Run at high intensity for 1 minute",
+              "Walk at moderate intensity for 2 minutes",
+              "Repeat for the duration"
+            ],
           ),
           Exercise(
             name: equipment.contains("Dumbbells")
@@ -152,6 +158,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: getIntensityBasedReps(intensity),
             rest: "45 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Quadriceps", "Glutes", "Core"],
+            instructions: [
+              "Perform exercises in sequence",
+              "Maintain proper form throughout",
+              "Rest between sets as needed"
+            ],
           ),
           Exercise(
             name: "Rowing Machine",
@@ -159,6 +171,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "500 meters",
             rest: "60 sec",
             icon: Icons.rowing,
+            musclesWorked: ["Back", "Legs", "Core", "Shoulders"],
+            instructions: [
+              "Sit on rowing machine with feet strapped in",
+              "Pull handle towards chest while extending legs",
+              "Return to starting position with control"
+            ],
           ),
           Exercise(
             name: "Battle Ropes",
@@ -166,6 +184,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "30 seconds",
             rest: "30 sec",
             icon: Icons.waves,
+            musclesWorked: ["Shoulders", "Arms"],
+            instructions: [
+              "Hold ropes in hands",
+              "Swings to create tension",
+              "Return to starting position"
+            ],
           ),
         ],
       ),
@@ -182,6 +206,13 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: intensity == "beginner" ? "12" : "20",
             rest: "30 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Quadriceps", "Glutes", "Core"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Keep your back straight",
+              "Lower your body until thighs are parallel to the ground",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Box Jumps",
@@ -189,6 +220,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: intensity == "beginner" ? "8" : "12",
             rest: "45 sec",
             icon: Icons.height,
+            musclesWorked: ["Quadriceps", "Glutes"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Jump up to a box",
+              "Land softly on the box"
+            ],
           ),
           Exercise(
             name: equipment.contains("Cable Machine")
@@ -198,6 +235,13 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "15 each side",
             rest: "30 sec",
             icon: Icons.rotate_right,
+            musclesWorked: ["Back", "Biceps"],
+            instructions: [
+              "Sit on cable machine with feet on platform",
+              "Pull handles towards lower chest",
+              "Keep back straight",
+              "Return to starting position"
+            ],
           ),
           Exercise(
             name: "Stair Master",
@@ -205,6 +249,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "3 minutes",
             rest: "60 sec",
             icon: Icons.stairs,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Walk or run up and down stairs",
+              "Maintain proper form",
+              "Repeat for the duration"
+            ],
           ),
         ],
       ),
@@ -222,6 +272,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: getIntensityBasedReps(intensity),
             rest: "45 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Full Body"],
+            instructions: [
+              "Stand with feet together",
+              "Jump up to standing position",
+              "Return to squat position"
+            ],
           ),
           Exercise(
             name: "Mountain Climbers",
@@ -229,6 +285,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "${intensity == 'beginner' ? '30' : '45'} seconds",
             rest: "30 sec",
             icon: Icons.directions_run,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand on hands and feet",
+              "Climb up and down",
+              "Maintain proper form"
+            ],
           ),
           Exercise(
             name: "High Knees",
@@ -236,6 +298,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "30 seconds",
             rest: "30 sec",
             icon: Icons.directions_run,
+            musclesWorked: ["Legs"],
+            instructions: [
+              "Stand with feet together",
+              "Lift knees up to waist",
+              "Lower back down"
+            ],
           ),
           Exercise(
             name: "Jumping Jacks",
@@ -243,6 +311,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "1 minute",
             rest: "30 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand with feet together",
+              "Jump up to standing position",
+              "Return to squat position"
+            ],
           ),
         ],
       ),
@@ -257,6 +331,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: intensity == "beginner" ? "10" : "15",
             rest: "30 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand with feet together",
+              "Jump up to standing position",
+              "Land softly on the ground"
+            ],
           ),
           Exercise(
             name: "Plank to Downward Dog",
@@ -264,6 +344,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "10",
             rest: "30 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Start in plank position",
+              "Extend legs into downward dog",
+              "Return to plank position"
+            ],
           ),
           Exercise(
             name: "Lateral Jumps",
@@ -271,6 +357,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "30 seconds",
             rest: "30 sec",
             icon: Icons.swap_horiz,
+            musclesWorked: ["Legs"],
+            instructions: [
+              "Stand with feet together",
+              "Jump to one side",
+              "Land softly on the ground"
+            ],
           ),
           Exercise(
             name: "Star Jumps",
@@ -278,6 +370,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "45 seconds",
             rest: "30 sec",
             icon: Icons.grade,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand with feet together",
+              "Jump up to standing position",
+              "Land softly on the ground"
+            ],
           ),
         ],
       ),
@@ -292,6 +390,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "20 seconds work, 10 seconds rest",
             rest: "60 sec between sets",
             icon: Icons.accessibility,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand with feet together",
+              "Skate in place",
+              "Repeat for the duration"
+            ],
           ),
           Exercise(
             name: "Squat Pulse",
@@ -299,6 +403,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "20 seconds work, 10 seconds rest",
             rest: "60 sec between sets",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Squat down to a chair",
+              "Return to standing position"
+            ],
           ),
           Exercise(
             name: "Mountain Climbers Sprint",
@@ -306,6 +416,12 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "20 seconds work, 10 seconds rest",
             rest: "60 sec between sets",
             icon: Icons.directions_run,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand with feet together",
+              "Climb up and down",
+              "Repeat for the duration"
+            ],
           ),
           Exercise(
             name: "Plank Hold",
@@ -313,6 +429,11 @@ List<WorkoutPlan> getWeightLossWorkouts({
             reps: "20 seconds work, 10 seconds rest",
             rest: "60 sec between sets",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Start in plank position",
+              "Hold for the specified time"
+            ],
           ),
         ],
       ),
@@ -354,6 +475,13 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "8-12",
             rest: "90 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Quadriceps", "Glutes", "Core"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Keep your back straight",
+              "Lower your body until thighs are parallel to the ground",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: equipment.contains("Bench") ? "Bench Press" : "Push-ups",
@@ -361,6 +489,13 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: intensity == "beginner" ? "8" : "12",
             rest: "90 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Chest", "Shoulders", "Triceps"],
+            instructions: [
+              "Lie on bench with feet flat on ground",
+              "Grip bar slightly wider than shoulders",
+              "Lower bar to chest",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: equipment.contains("Cable Machine")
@@ -370,6 +505,13 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "10-12",
             rest: "90 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Back", "Biceps", "Rear Deltoids"],
+            instructions: [
+              "Sit at cable machine with feet on platform",
+              "Pull handles towards lower chest",
+              "Keep back straight",
+              "Return to starting position"
+            ],
           ),
         ],
       ),
@@ -386,6 +528,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "8-12",
             rest: "60 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Shoulders", "Triceps", "Chest"],
+            instructions: [
+              "Hold dumbbells at shoulder level",
+              "Press weights overhead",
+              "Lower back to starting position"
+            ],
           ),
           Exercise(
             name: equipment.contains("Pull-up Bar")
@@ -395,6 +543,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "8-10",
             rest: "90 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Back", "Biceps", "Rear Deltoids"],
+            instructions: [
+              "Hang from bar with overhand grip",
+              "Pull body up until chin clears bar",
+              "Lower back down with control"
+            ],
           ),
           Exercise(
             name: equipment.contains("Dumbbells")
@@ -404,6 +558,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "12-15",
             rest: "60 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Shoulders", "Upper Chest", "Triceps"],
+            instructions: [
+              "Hold dumbbells at sides",
+              "Raise arms to shoulder level",
+              "Lower back down with control"
+            ],
           ),
         ],
       ),
@@ -421,6 +581,13 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: intensity == "beginner" ? "8-10" : "12-15",
             rest: "60 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Chest", "Shoulders", "Triceps"],
+            instructions: [
+              "Lie on the ground",
+              "Place hands slightly wider than shoulders",
+              "Lower body down to the ground",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Bulgarian Split Squats",
@@ -428,6 +595,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "12 each leg",
             rest: "60 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Quadriceps", "Glutes"],
+            instructions: [
+              "Stand with one foot forward",
+              "Lower body down until thighs are parallel to the ground",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Pike Push-ups",
@@ -435,6 +608,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: intensity == "beginner" ? "6-8" : "10-12",
             rest: "60 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Shoulders", "Upper Chest", "Triceps"],
+            instructions: [
+              "Stand on hands and feet",
+              "Lift one leg up",
+              "Lower back down with control"
+            ],
           ),
           Exercise(
             name: "Inverted Rows",
@@ -442,6 +621,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "10-12",
             rest: "60 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Back", "Biceps"],
+            instructions: [
+              "Hang from bar with overhand grip",
+              "Pull body up until chin clears bar",
+              "Lower back down with control"
+            ],
           ),
         ],
       ),
@@ -456,6 +641,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "12-15",
             rest: "60 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Chest", "Shoulders", "Triceps"],
+            instructions: [
+              "Lie on a decline bench",
+              "Lower body down",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Pistol Squats",
@@ -463,6 +654,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "8 each leg",
             rest: "90 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Quadriceps", "Glutes"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Lower body down until thighs are parallel to the ground",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Handstand Wall Push-ups",
@@ -470,6 +667,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: intensity == "beginner" ? "3-5" : "6-8",
             rest: "90 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Chest", "Shoulders", "Triceps"],
+            instructions: [
+              "Stand on hands and feet",
+              "Lift body up",
+              "Push back down with control"
+            ],
           ),
           Exercise(
             name: "L-Sit Holds",
@@ -477,6 +680,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "20 seconds",
             rest: "60 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Sit on the ground",
+              "Lift one leg up",
+              "Hold for the specified time"
+            ],
           ),
         ],
       ),
@@ -491,6 +700,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "20 seconds",
             rest: "45 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Lie on the ground",
+              "Lift one leg up",
+              "Lower body down"
+            ],
           ),
           Exercise(
             name: "Dragon Flags",
@@ -498,6 +713,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: intensity == "beginner" ? "5-8" : "8-12",
             rest: "60 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Lie on the ground",
+              "Lift one arm and one leg up",
+              "Lower back down"
+            ],
           ),
           Exercise(
             name: "Hollow Body Holds",
@@ -505,6 +726,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "30 seconds",
             rest: "45 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Lie on the ground",
+              "Lift one arm and one leg up",
+              "Lower back down"
+            ],
           ),
           Exercise(
             name: "Russian Twists",
@@ -512,6 +739,12 @@ List<WorkoutPlan> getMuscleGainWorkouts({
             reps: "20 each side",
             rest: "45 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Sit on the ground",
+              "Lift one arm and one leg up",
+              "Twist body"
+            ],
           ),
         ],
       ),
@@ -538,6 +771,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "500 meters",
             rest: "60 sec",
             icon: Icons.rowing,
+            musclesWorked: ["Back", "Legs", "Core", "Shoulders"],
+            instructions: [
+              "Sit on rowing machine with feet strapped in",
+              "Pull handle towards chest while extending legs",
+              "Return to starting position with control"
+            ],
           ),
           Exercise(
             name: equipment.contains("Dumbbells")
@@ -547,6 +786,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: intensity == "beginner" ? "10" : "15",
             rest: "45 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Full Body", "Core", "Cardiovascular"],
+            instructions: [
+              "Perform exercises in sequence",
+              "Maintain proper form throughout",
+              "Rest between sets as needed"
+            ],
           ),
           Exercise(
             name: equipment.contains("Cable Machine")
@@ -556,6 +801,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "12-15",
             rest: "45 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Back", "Shoulders", "Arms"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Pull handles towards chest",
+              "Return to starting position"
+            ],
           ),
           Exercise(
             name: "Stability Ball Core",
@@ -563,6 +814,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "45 seconds",
             rest: "30 sec",
             icon: Icons.circle,
+            musclesWorked: ["Core", "Lower Back", "Hip Flexors"],
+            instructions: [
+              "Lie on stability ball",
+              "Keep core engaged",
+              "Hold position for specified time"
+            ],
           ),
         ],
       ),
@@ -579,6 +836,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "12",
             rest: "45 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Full Body"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Swing kettlebell to shoulder",
+              "Return to starting position"
+            ],
           ),
           Exercise(
             name: "Medicine Ball Slams",
@@ -586,6 +849,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "10",
             rest: "45 sec",
             icon: Icons.fitness_center,
+            musclesWorked: ["Full Body"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Slam medicine ball to chest",
+              "Return to starting position"
+            ],
           ),
           Exercise(
             name: "TRX Rows",
@@ -593,6 +862,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "12",
             rest: "45 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Back", "Biceps"],
+            instructions: [
+              "Hang from TRX bar",
+              "Pull body up until chin clears bar",
+              "Lower back down with control"
+            ],
           ),
           Exercise(
             name: "Plank Variations",
@@ -600,6 +875,11 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "30 seconds each",
             rest: "30 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Start in plank position",
+              "Hold for the specified time"
+            ],
           ),
         ],
       ),
@@ -617,6 +897,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "1 minute",
             rest: "30 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Stand with feet together",
+              "Jump up to standing position",
+              "Return to squat position"
+            ],
           ),
           Exercise(
             name: "Push-ups",
@@ -624,6 +910,13 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: intensity == "beginner" ? "5-8" : "10-12",
             rest: "45 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Chest", "Shoulders", "Triceps"],
+            instructions: [
+              "Lie on the ground",
+              "Place hands slightly wider than shoulders",
+              "Lower body down",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Bodyweight Squats",
@@ -631,6 +924,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "15",
             rest: "45 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Quadriceps", "Glutes"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Lower body down until thighs are parallel to the ground",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Plank Hold",
@@ -638,6 +937,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "30 seconds",
             rest: "30 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Core"],
+            instructions: [
+              "Lie on the ground",
+              "Lift one arm and one leg up",
+              "Lower back down"
+            ],
           ),
         ],
       ),
@@ -652,6 +957,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "5 flows",
             rest: "30 sec",
             icon: Icons.wb_sunny,
+            musclesWorked: ["Full Body"],
+            instructions: [
+              "Stand with feet together",
+              "Lift one arm and one leg up",
+              "Lower body down"
+            ],
           ),
           Exercise(
             name: "Walking Lunges",
@@ -659,6 +970,13 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "10 each leg",
             rest: "45 sec",
             icon: Icons.directions_walk,
+            musclesWorked: ["Legs"],
+            instructions: [
+              "Stand with feet together",
+              "Lift one leg forward",
+              "Lower body down until thighs are parallel to the ground",
+              "Push back up to starting position"
+            ],
           ),
           Exercise(
             name: "Bird Dogs",
@@ -666,6 +984,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "10 each side",
             rest: "30 sec",
             icon: Icons.accessibility_new,
+            musclesWorked: ["Back", "Core"],
+            instructions: [
+              "Lie on the ground",
+              "Lift one arm and one leg up",
+              "Lower body down"
+            ],
           ),
           Exercise(
             name: "Superman Holds",
@@ -673,6 +997,12 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
             reps: "20 seconds",
             rest: "30 sec",
             icon: Icons.accessibility,
+            musclesWorked: ["Back", "Core"],
+            instructions: [
+              "Lie on the ground",
+              "Lift one arm and one leg up",
+              "Lower body down"
+            ],
           ),
         ],
       ),
@@ -697,6 +1027,12 @@ WorkoutPlan getCardioWorkout({
           reps: "1 minute run, 1 minute walk",
           rest: "30 sec",
           icon: Icons.directions_run,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Run at high intensity for 1 minute",
+            "Walk at moderate intensity for 1 minute",
+            "Repeat for the duration"
+          ],
         ),
         Exercise(
           name: "Elliptical Sprints",
@@ -704,6 +1040,12 @@ WorkoutPlan getCardioWorkout({
           reps: "2 minutes",
           rest: "60 sec",
           icon: Icons.accessibility,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Stand on elliptical",
+            "Pedal at high intensity",
+            "Rest between sprints"
+          ],
         ),
         Exercise(
           name: "Stair Climber",
@@ -711,6 +1053,12 @@ WorkoutPlan getCardioWorkout({
           reps: "3 minutes",
           rest: "60 sec",
           icon: Icons.stairs,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Stand on stair climber",
+            "Climb stairs",
+            "Repeat for the duration"
+          ],
         ),
         Exercise(
           name: "Rowing Sprints",
@@ -718,6 +1066,12 @@ WorkoutPlan getCardioWorkout({
           reps: "250 meters",
           rest: "60 sec",
           icon: Icons.rowing,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Sit on rowing machine",
+            "Pull handle towards chest",
+            "Repeat for the duration"
+          ],
         ),
       ],
     );
@@ -733,6 +1087,12 @@ WorkoutPlan getCardioWorkout({
           reps: "45 seconds",
           rest: "30 sec",
           icon: Icons.directions_run,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Stand with feet together",
+            "Lift one knee up to waist",
+            "Lower back down"
+          ],
         ),
         Exercise(
           name: "Mountain Climbers",
@@ -740,6 +1100,12 @@ WorkoutPlan getCardioWorkout({
           reps: "30 seconds",
           rest: "30 sec",
           icon: Icons.accessibility_new,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Stand on hands and feet",
+            "Climb up and down",
+            "Maintain proper form"
+          ],
         ),
         Exercise(
           name: "Jumping Jacks",
@@ -747,6 +1113,12 @@ WorkoutPlan getCardioWorkout({
           reps: "1 minute",
           rest: "30 sec",
           icon: Icons.accessibility,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Stand with feet together",
+            "Jump up to standing position",
+            "Return to squat position"
+          ],
         ),
         Exercise(
           name: "Burpee Variations",
@@ -754,6 +1126,13 @@ WorkoutPlan getCardioWorkout({
           reps: intensity == "beginner" ? "8" : "12",
           rest: "45 sec",
           icon: Icons.accessibility_new,
+          musclesWorked: ["Legs", "Cardiovascular"],
+          instructions: [
+            "Stand with feet together",
+            "Jump up to standing position",
+            "Lower body down",
+            "Jump back up to standing position"
+          ],
         ),
       ],
     );
@@ -780,6 +1159,12 @@ WorkoutPlan getStrengthWorkout({
           reps: "8-12",
           rest: "90 sec",
           icon: Icons.fitness_center,
+          musclesWorked: ["Back", "Biceps", "Glutes"],
+          instructions: [
+            "Stand with feet shoulder-width apart",
+            "Lower body down until thighs are parallel to the ground",
+            "Push back up to starting position"
+          ],
         ),
         Exercise(
           name: equipment.contains("Dumbbells")
@@ -789,6 +1174,12 @@ WorkoutPlan getStrengthWorkout({
           reps: intensity == "beginner" ? "8" : "12",
           rest: "60 sec",
           icon: Icons.accessibility_new,
+          musclesWorked: ["Shoulders", "Triceps", "Chest"],
+          instructions: [
+            "Stand with feet shoulder-width apart",
+            "Press weights overhead",
+            "Lower back to starting position"
+          ],
         ),
         Exercise(
           name: equipment.contains("Cable Machine")
@@ -798,6 +1189,13 @@ WorkoutPlan getStrengthWorkout({
           reps: "12",
           rest: "60 sec",
           icon: Icons.fitness_center,
+          musclesWorked: ["Back", "Biceps", "Rear Deltoids"],
+          instructions: [
+            "Sit at cable machine with feet on platform",
+            "Pull handles towards lower chest",
+            "Keep back straight",
+            "Return to starting position"
+          ],
         ),
         Exercise(
           name:
@@ -806,6 +1204,12 @@ WorkoutPlan getStrengthWorkout({
           reps: "10",
           rest: "90 sec",
           icon: Icons.fitness_center,
+          musclesWorked: ["Quadriceps", "Glutes", "Core"],
+          instructions: [
+            "Stand with feet shoulder-width apart",
+            "Lower body down until thighs are parallel to the ground",
+            "Push back up to starting position"
+          ],
         ),
       ],
     );
@@ -821,6 +1225,13 @@ WorkoutPlan getStrengthWorkout({
           reps: intensity == "beginner" ? "8" : "12",
           rest: "60 sec",
           icon: Icons.accessibility_new,
+          musclesWorked: ["Chest", "Shoulders", "Triceps"],
+          instructions: [
+            "Lie on the ground",
+            "Place hands slightly wider than shoulders",
+            "Lower body down",
+            "Push back up to starting position"
+          ],
         ),
         Exercise(
           name: "Bodyweight Squats",
@@ -828,6 +1239,12 @@ WorkoutPlan getStrengthWorkout({
           reps: intensity == "beginner" ? "12" : "20",
           rest: "60 sec",
           icon: Icons.accessibility,
+          musclesWorked: ["Quadriceps", "Glutes"],
+          instructions: [
+            "Stand with feet shoulder-width apart",
+            "Lower body down until thighs are parallel to the ground",
+            "Push back up to starting position"
+          ],
         ),
         Exercise(
           name: "Dips",
@@ -835,6 +1252,12 @@ WorkoutPlan getStrengthWorkout({
           reps: intensity == "beginner" ? "5" : "10",
           rest: "60 sec",
           icon: Icons.accessibility_new,
+          musclesWorked: ["Triceps", "Chest"],
+          instructions: [
+            "Hang from a bar",
+            "Lower body down",
+            "Push back up to starting position"
+          ],
         ),
         Exercise(
           name: "Glute Bridges",
@@ -842,6 +1265,12 @@ WorkoutPlan getStrengthWorkout({
           reps: "15",
           rest: "45 sec",
           icon: Icons.accessibility,
+          musclesWorked: ["Glutes"],
+          instructions: [
+            "Lie on the ground",
+            "Lift one leg up",
+            "Lower body down"
+          ],
         ),
       ],
     );

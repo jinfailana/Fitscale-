@@ -38,7 +38,7 @@ dependencies:
   email_validator: ^2.1.17
   resend: ^1.0.0
   #pedometer: ^3.0.0
- # sensors_plus: ^3.0.3
+  # sensors_plus: ^3.0.3
   shared_preferences: ^2.2.0
   intl: ^0.18.1
   # The following adds the Cupertino Icons font to your application.

@@ -156,17 +156,7 @@ class _SignupPageState extends State<SignupPage> {
       if (!mounted) return;
 
       // Show success modal
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => SuccessModal(
-          message: 'Account Verified Successfully!',
-          onProceed: () {
-            Navigator.pop(context);
-            Navigator.pushReplacementNamed(context, '/login');
-          },
-        ),
-      );
+      await _showSuccessModal(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -205,21 +195,35 @@ class _SignupPageState extends State<SignupPage> {
 
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // Check if email is already registered
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: googleUser.email)
+          .get();
+
+      if (userDoc.docs.isNotEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This email is already registered. Please sign in instead.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
       final user = userCredential.user;
 
       if (user != null) {
-        final userDoc =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
 
         // Check if the user document already exists
         final docSnapshot = await userDoc.get();
@@ -241,21 +245,20 @@ class _SignupPageState extends State<SignupPage> {
                 'signInMethod': 'google',
                 'createdAt': FieldValue.serverTimestamp(),
               });
+
+              // Show success modal
+              if (!mounted) return;
+              await _showSuccessModal(context);
+
+              // Navigate to gender selection page
+              if (!mounted) return;
+              Navigator.pushReplacementNamed(context, '/select_gender');
             } catch (e) {
               print('Error storing user data: $e');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Failed to store user data: $e')),
               );
             }
-
-            // Show success modal
-            await _showSuccessModal(context);
-
-            // Sign out the user
-            await FirebaseAuth.instance.signOut();
-
-            // Redirect to login page
-            Navigator.pushReplacementNamed(context, '/login');
           }
         }
       }
@@ -272,18 +275,63 @@ class _SignupPageState extends State<SignupPage> {
   Future<void> _showSuccessModal(BuildContext context) async {
     return showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Signed Up Successfully'),
-          content: const Text('Your account has been created.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
+        return Dialog(
+          backgroundColor: const Color(0xFF2A2A2A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                  size: 64,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Signed Up Successfully',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Your account has been created.',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -611,6 +659,120 @@ class _SignupPageState extends State<SignupPage> {
                   ],
                 ),
               ),
+      ),
+    );
+  }
+}
+
+// Create a new class for the username modal
+class UsernameInputModal extends StatelessWidget {
+  final TextEditingController _usernameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  UsernameInputModal({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF333232),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'CREATE USERNAME',
+                  style: TextStyle(
+                    color: Color.fromRGBO(223, 77, 15, 1.0),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _usernameController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'USERNAME',
+                    labelStyle: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    filled: true,
+                    fillColor: Color(0xFF2A2A2A),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Username is required';
+                    } else if (!RegExp(r'^[a-zA-Z]+$').hasMatch(value)) {
+                      return 'Username must contain only alphabets';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      Navigator.pop(context, _usernameController.text);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 12),
+                        child: Text(
+                          'CONTINUE',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 20),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.play_arrow,
+                            size: 25,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

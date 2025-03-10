@@ -234,24 +234,9 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
               '5. Select the scale from the list of available devices',
               style: TextStyle(color: Colors.white70),
             ),
-            SizedBox(height: 10),
-            Text(
-              'After pairing, return to this app and enter your weight.',
-              style: TextStyle(color: Colors.white70),
-            ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: _showWeightInputDialog,
-            style: TextButton.styleFrom(
-              backgroundColor: const Color.fromRGBO(45, 45, 45, 1.0),
-            ),
-            child: const Text(
-              'Enter Weight Manually',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);

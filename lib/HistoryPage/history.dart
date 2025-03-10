@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'history_item.dart';
 import '../SummaryPage/summary_page.dart';
+import '../models/workout_history.dart';
+import '../services/workout_history_service.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -10,41 +15,61 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  // Add month selection logic
+  final WorkoutHistoryService _historyService = WorkoutHistoryService();
   final List<String> months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
   ];
-  
-  // Initialize with current month and fixed year
+
   String selectedMonth = DateTime.now().month.toString();
   int selectedYear = 2025;
   int selectedTabIndex = 0;
   int _selectedIndex = 2;
+  List<WorkoutHistory> _workoutHistory = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Convert the month number to month name
     selectedMonth = months[DateTime.now().month - 1];
+    _loadWorkoutHistory();
+  }
+
+  Future<void> _loadWorkoutHistory() async {
+    setState(() => _isLoading = true);
+    try {
+      final history = await _historyService.getWorkoutHistory();
+      setState(() {
+        _workoutHistory = history;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading workout history: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
-    
+
     if (index == 0) {
       Navigator.pushReplacement(
         context,
         CustomPageRoute(child: const SummaryPage()),
       );
     } else if (index == 3) {
-      // Show profile modal - this should match the SummaryPage implementation
       _showProfileModal(context);
     }
-    
-    setState(() {
-      _selectedIndex = index;
-    });
   }
 
   void _showProfileModal(BuildContext context) {
@@ -105,7 +130,6 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Year display (not selectable)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -124,7 +148,6 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Month selection
                   Expanded(
                     child: ListView.builder(
                       itemCount: months.length,
@@ -161,29 +184,243 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: _selectedIndex == index
-              ? const Color.fromRGBO(223, 77, 15, 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(_selectedIndex == index ? 15 : 10),
-          border: Border.all(
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 2,
+  Widget _buildWorkoutHistoryList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_workoutHistory.isEmpty) {
+      return const Center(
+        child: Text(
+          'No workout history available',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
           ),
         ),
-        child: Icon(icon,
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.white54),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _workoutHistory.length,
+      itemBuilder: (context, index) {
+        final history = _workoutHistory[index];
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(44, 44, 46, 1.0),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color.fromRGBO(223, 77, 15, 1.0),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    history.workoutName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: history.isCompleted
+                          ? const Color.fromRGBO(223, 77, 15, 0.2)
+                          : Colors.grey.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      history.isCompleted ? 'Completed' : 'In Progress',
+                      style: TextStyle(
+                        color: history.isCompleted
+                            ? const Color.fromRGBO(223, 77, 15, 1.0)
+                            : Colors.grey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                history.exerciseName,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.timer,
+                    color: Colors.white70,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${history.duration} min',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Icon(
+                    Icons.fitness_center,
+                    color: Colors.white70,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${history.setsCompleted}/${history.totalSets} sets',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                DateFormat('MMM d, yyyy h:mm a').format(history.date),
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
+              ),
+              if (history.notes.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  history.notes,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityHistoryTable() {
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(44, 44, 46, 1.0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color.fromRGBO(223, 77, 15, 1.0),
+          width: 1,
+        ),
       ),
-      label: label,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Activities history',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _showMonthPicker,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(28, 28, 30, 1.0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          '$selectedMonth $selectedYear',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(
+            height: 1,
+            color: Color.fromRGBO(28, 28, 30, 1.0),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildTabButton('Workout', 0),
+                      const SizedBox(width: 24),
+                      _buildTabButton('Steps', 1),
+                      const SizedBox(width: 24),
+                      _buildTabButton('Diet', 2),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(
+            height: 1,
+            color: Color.fromRGBO(28, 28, 30, 1.0),
+          ),
+          Expanded(
+            child: selectedTabIndex == 0
+                ? _buildWorkoutHistoryList()
+                : Center(
+                    child: Text(
+                      'No ${selectedTabIndex == 1 ? 'steps' : 'diet'} history available',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -202,7 +439,6 @@ class _HistoryPageState extends State<HistoryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // History title and subtitle
               const Text(
                 'History',
                 style: TextStyle(
@@ -219,8 +455,6 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              
-              // Activity History Table
               Expanded(
                 child: _buildActivityHistoryTable(),
               ),
@@ -260,7 +494,9 @@ class _HistoryPageState extends State<HistoryPage> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.transparent,
+              color: isSelected
+                  ? const Color.fromRGBO(223, 77, 15, 1.0)
+                  : Colors.transparent,
               width: 2,
             ),
           ),
@@ -268,7 +504,9 @@ class _HistoryPageState extends State<HistoryPage> {
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected ? const Color.fromRGBO(223, 77, 15, 1.0) : Colors.grey,
+            color: isSelected
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.grey,
             fontSize: 16,
           ),
         ),
@@ -276,108 +514,31 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildActivityHistoryTable() {
-    return Container(
-      margin: const EdgeInsets.only(top: 24),
-      decoration: BoxDecoration(
-        color: const Color.fromRGBO(44, 44, 46, 1.0),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color.fromRGBO(223, 77, 15, 1.0),
-          width: 1,
+  BottomNavigationBarItem _buildNavItem(
+      IconData icon, String label, int index) {
+    return BottomNavigationBarItem(
+      icon: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(8.0),
+        decoration: BoxDecoration(
+          color: _selectedIndex == index
+              ? const Color.fromRGBO(223, 77, 15, 0.1)
+              : Colors.transparent,
+          borderRadius:
+              BorderRadius.circular(_selectedIndex == index ? 15 : 10),
+          border: Border.all(
+            color: _selectedIndex == index
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.transparent,
+            width: 2,
+          ),
         ),
+        child: Icon(icon,
+            color: _selectedIndex == index
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.white54),
       ),
-      child: Column(
-        children: [
-          // Header with title and date selector
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Activities history',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _showMonthPicker,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(28, 28, 30, 1.0),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '$selectedMonth $selectedYear',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(
-            height: 1,
-            color: Color.fromRGBO(28, 28, 30, 1.0),
-          ),
-          // Activity type tabs - Centered
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildTabButton('Workout', 0),
-                      const SizedBox(width: 24),
-                      _buildTabButton('Steps', 1),
-                      const SizedBox(width: 24),
-                      _buildTabButton('Diet', 2),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(
-            height: 1,
-            color: Color.fromRGBO(28, 28, 30, 1.0),
-          ),
-          // Placeholder for future activity data - Centered
-          Expanded(
-            child: Center(
-              child: Text(
-                'No ${selectedTabIndex == 0 ? 'workout' : selectedTabIndex == 1 ? 'steps' : 'diet'} history available',
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ],
-      ),
+      label: label,
     );
   }
 }

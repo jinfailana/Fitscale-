@@ -1,0 +1,2 @@
+C:/Users/Jazzy/fitscale2/Fitscale-/android/app/.cxx/Debug/1ok2j1f2/x86/CMakeFiles/edit_cache.dir
+C:/Users/Jazzy/fitscale2/Fitscale-/android/app/.cxx/Debug/1ok2j1f2/x86/CMakeFiles/rebuild_cache.dir

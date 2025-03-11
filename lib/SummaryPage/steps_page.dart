@@ -24,6 +24,7 @@ class _StepsPageState extends State<StepsPage> {
   Map<String, dynamic>? _userData;
   double? _bmi;
   String _bmiCategory = '';
+  bool _goalAchieved = false;
 
   @override
   void initState() {
@@ -165,8 +166,23 @@ class _StepsPageState extends State<StepsPage> {
   void _updateStats() {
     setState(() {
       _percentage = (_steps / _goal) * 100;
+      
+      if (_percentage > 100) {
+        _percentage = 100;
+      }
+      
       _calories = (_steps * 0.04).round();
       _distance = _steps * 0.0007;
+      
+      if (_steps >= _goal && !_goalAchieved) {
+        _goalAchieved = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Congratulations! You reached your daily step goal!'),
+            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+          ),
+        );
+      }
     });
   }
 
@@ -744,11 +760,18 @@ class SemiCircleProgressPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = meterStrokeWidth
         ..strokeCap = StrokeCap.round;
-
+      
+      // Convert percentage (0-100) to proportion (0-1)
+      double normalizedPercentage = percentage / 100;
+      
+      // Ensure it's between 0 and 1 for proper arc drawing
+      normalizedPercentage = normalizedPercentage.clamp(0.0, 1.0);
+      
+      // Draw arc from π to π+π*normalizedPercentage
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-        math.pi,
-        math.pi * percentage,
+        math.pi,  // Start at 180 degrees (left)
+        math.pi * normalizedPercentage,  // Draw proportionally to percentage
         false,
         progressPaint,
       );

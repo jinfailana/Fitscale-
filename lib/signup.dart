@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -29,7 +30,7 @@ class _SignupPageState extends State<SignupPage> {
 
   String? verificationCode;
   final String brevoApiKey =
-      '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';
+      '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';
 
   Future<bool> checkInternetConnection() async {
     var connectivityResult = await Connectivity().checkConnectivity();
@@ -57,7 +58,7 @@ class _SignupPageState extends State<SignupPage> {
           'content-type': 'application/json',
         },
         body: jsonEncode({
-          'sender': {'name': 'Fitscale', 'email': 'hannstabalanza@gmail.com'},
+          'sender': {'name': 'Fitscale', 'email': 'micodelacruz519@gmail.com'},
           'to': [
             {'email': email}
           ],
@@ -775,5 +776,88 @@ class UsernameInputModal extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class StepApiService {
+  // Replace with your actual API endpoint
+  static const String _baseUrl = 'https://yourapi.com/api';
+  
+  // Send step goal to API
+  static Future<bool> sendStepGoal(int goalSteps) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+      
+      final userId = user.uid;
+      final response = await http.post(
+        Uri.parse('$_baseUrl/steps/goal'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getAuthToken()}',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'goalSteps': goalSteps,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Step goal successfully sent to API');
+        return true;
+      } else {
+        print('Failed to send step goal. Status: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error sending step goal to API: $e');
+      return false;
+    }
+  }
+  
+  // Send current step progress to API
+  static Future<bool> sendStepProgress(int currentSteps, int goalSteps) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+      
+      final userId = user.uid;
+      final percentage = (currentSteps / goalSteps * 100).clamp(0, 100);
+      
+      final response = await http.post(
+        Uri.parse('$_baseUrl/steps/progress'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getAuthToken()}',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'currentSteps': currentSteps,
+          'goalSteps': goalSteps,
+          'percentage': percentage,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Step progress successfully sent to API');
+        return true;
+      } else {
+        print('Failed to send step progress. Status: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error sending step progress to API: $e');
+      return false;
+    }
+  }
+  
+  // Helper method to get auth token
+  static Future<String> _getAuthToken() async {
+    // Implement your authentication token retrieval logic here
+    // For example, you might store it in SharedPreferences after login
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token') ?? '';
   }
 }

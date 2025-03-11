@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # fs_app
+=======
+# fitscale_app
+>>>>>>> 9a7b68a (first commit)
 
 A new Flutter project.
 

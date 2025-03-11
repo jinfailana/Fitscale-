@@ -1,6 +1,11 @@
 {
+<<<<<<< HEAD
     "name": "fs_app",
     "short_name": "fs_app",
+=======
+    "name": "fitscale_app",
+    "short_name": "fitscale_app",
+>>>>>>> 9a7b68a (first commit)
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

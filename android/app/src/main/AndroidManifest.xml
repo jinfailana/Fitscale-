@@ -1,8 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
+<<<<<<< HEAD
         android:label="FitScale"
         android:name="${applicationName}"
         android:icon="@mipmap/fitscalelogo">
+=======
+        android:label="fitscale_app"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+>>>>>>> 9a7b68a (first commit)
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,5 +48,8 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
+<<<<<<< HEAD
   
+=======
+>>>>>>> 9a7b68a (first commit)
 </manifest>

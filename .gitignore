@@ -5,12 +5,20 @@
 *.swp
 .DS_Store
 .atom/
+<<<<<<< HEAD
 .build/
 .buildlog/
 .history
 .svn/
 .swiftpm/
 migrate_working_dir/
+=======
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+>>>>>>> 9a7b68a (first commit)
 # IntelliJ related
 *.iml
 *.ipr

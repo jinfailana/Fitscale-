@@ -42,5 +42,7 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
-  
+    <!-- Add the permission outside the <application> tag -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
 </manifest>

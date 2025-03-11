@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:pedometer/pedometer.dart'; // Add this package
+import 'package:permission_handler/permission_handler.dart'; // Add this package
 import 'dart:math' as math;
 
 class StepsPage extends StatefulWidget {
@@ -22,21 +24,143 @@ class _StepsPageState extends State<StepsPage> {
   Map<String, dynamic>? _userData;
   double? _bmi;
   String _bmiCategory = '';
+  
+  // Step tracking related variables
+  late Stream<StepCount> _stepCountStream;
+  late Stream<PedestrianStatus> _pedestrianStatusStream;
+  String _status = 'unknown';
+  int _stepsToday = 0;
+  DateTime _lastResetDate = DateTime.now();
+  int? _lastTotalSteps;
 
   @override
   void initState() {
     super.initState();
     loadGoal();
     fetchUserDataAndCalculateBMI();
+    _requestPermissions(); // Request permissions before initializing step counter
+    _checkAndResetStepCounter(); // Check if we need to reset the counter (new day)
   }
 
   void loadGoal() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _goal = prefs.getInt('step_goal') ?? 650;
-      _steps = prefs.getInt('current_steps') ?? 0;
+      _stepsToday = prefs.getInt('current_steps') ?? 0;
+      _steps = _stepsToday;
+      _lastResetDate = DateTime.fromMillisecondsSinceEpoch(
+        prefs.getInt('last_reset_date') ?? DateTime.now().millisecondsSinceEpoch
+      );
       _updateStats();
     });
+  }
+
+  Future<void> _requestPermissions() async {
+    if (await Permission.activityRecognition.request().isGranted) {
+      // Permission granted, initialize step counter
+      initPlatformState();
+    } else {
+      // Show dialog explaining why permission is needed
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Permission Required'),
+          content: const Text(
+            'This app needs activity recognition permission to count your steps.'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _checkAndResetStepCounter() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastReset = DateTime(_lastResetDate.year, _lastResetDate.month, _lastResetDate.day);
+    
+    if (today.isAfter(lastReset)) {
+      // It's a new day, reset the counter
+      _stepsToday = 0;
+      _lastResetDate = now;
+      _saveCurrentSteps();
+    }
+  }
+
+  void initPlatformState() {
+    // Setup step counter
+    _pedestrianStatusStream = Pedometer.pedestrianStatusStream;
+    _pedestrianStatusStream.listen(
+      _onPedestrianStatusChanged,
+      onError: _onPedestrianStatusError,
+    );
+
+    _stepCountStream = Pedometer.stepCountStream;
+    _stepCountStream.listen(
+      _onStepCount,
+      onError: _onStepCountError,
+    );
+  }
+
+  void _onStepCount(StepCount event) async {
+    // This handles step counting from the pedometer
+    int totalSteps = event.steps;
+    
+    final prefs = await SharedPreferences.getInstance();
+    if (_lastTotalSteps == null) {
+      // First time using the app in this session
+      _lastTotalSteps = prefs.getInt('last_total_steps');
+      if (_lastTotalSteps == null) {
+        // Very first time using the app
+        _lastTotalSteps = totalSteps;
+        await prefs.setInt('last_total_steps', totalSteps);
+      }
+    }
+    
+    // Calculate new steps taken since last reading
+    int stepsSinceLastReading = totalSteps - _lastTotalSteps!;
+    if (stepsSinceLastReading > 0) {
+      // Only update if positive (avoid pedometer resets)
+      _stepsToday += stepsSinceLastReading;
+      _steps = _stepsToday;
+      
+      // Save the new total steps count
+      _lastTotalSteps = totalSteps;
+      await prefs.setInt('last_total_steps', totalSteps);
+      
+      // Save current day's step count
+      _saveCurrentSteps();
+      
+      // Update UI
+      setState(() {
+        _updateStats();
+      });
+    }
+  }
+
+  void _onPedestrianStatusChanged(PedestrianStatus event) {
+    setState(() {
+      _status = event.status;
+    });
+  }
+
+  void _onStepCountError(error) {
+    print('Step count error: $error');
+  }
+
+  void _onPedestrianStatusError(error) {
+    print('Pedestrian status error: $error');
+  }
+
+  void _saveCurrentSteps() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('current_steps', _stepsToday);
+    await prefs.setInt('last_reset_date', _lastResetDate.millisecondsSinceEpoch);
   }
 
   Future<void> fetchUserDataAndCalculateBMI() async {
@@ -432,122 +556,63 @@ class _StepsPageState extends State<StepsPage> {
   }
 
   Future<void> _showSetGoalDialog() async {
-    bool isRecommended = true;
-    int? selectedGoal; // Track the selected goal
+  int? selectedGoal; // Track the selected goal
 
-    return showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          height: 500,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios,
-                      color: Color.fromRGBO(223, 77, 15, 1.0),
+  return showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const Text(
+              'Select Your Daily Step Goal',
+              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            
+            // Show BMI Recommended Goals
+            Expanded(
+              child: ListView(
+                children: _calculateStepGoalsByBMI().map((goal) {
+                  return ListTile(
+                    title: Text(
+                      "${goal['steps']} steps",
+                      style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Text(
-                    'Daily Step Goal',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 40), // For balance
-                ],
+                    tileColor: _goal == goal['steps']
+                        ? const Color.fromRGBO(223, 77, 15, 1.0)
+                        : Colors.transparent,
+                    onTap: () => setState(() => selectedGoal = goal['steps']),
+                  );
+                }).toList(),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => isRecommended = true),
-                    child: Text(
-                      'Recommended',
-                      style: TextStyle(
-                        color: isRecommended
-                            ? const Color.fromRGBO(223, 77, 15, 1.0)
-                            : Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => setState(() => isRecommended = false),
-                    child: Text(
-                      'Custom',
-                      style: TextStyle(
-                        color: !isRecommended
-                            ? const Color.fromRGBO(223, 77, 15, 1.0)
-                            : Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: isRecommended
-                    ? _buildRecommendedGoals(selectedGoal, (goal) {
-                        setState(() => selectedGoal = goal);
-                      })
-                    : _buildCustomGoals(selectedGoal, (goal) {
-                        setState(() => selectedGoal = goal);
-                      }),
-              ),
-              ElevatedButton(
-                onPressed: selectedGoal == null
-                    ? null
-                    : () async {
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.setInt('step_goal', selectedGoal!);
-                        setState(() {
-                          _goal = selectedGoal!;
-                          _updateStats();
-                        });
-                        Navigator.pop(context);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  // Button will be semi-transparent when disabled
-                  disabledBackgroundColor:
-                      const Color.fromRGBO(223, 77, 15, 0.5),
-                ),
-                child: const Text(
-                  'Done',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+            
+            // Confirm Button
+            ElevatedButton(
+              onPressed: selectedGoal == null ? null : () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt('step_goal', selectedGoal!);
+                setState(() {
+                  _goal = selectedGoal!;  // Update the goal
+                  _updateStats();  // Recalculate progress
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Done'),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildRecommendedGoals(int? selectedGoal, Function(int) onSelect) {
     if (_userData == null || _bmi == null) {
@@ -829,3 +894,4 @@ class CircularProgressPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+

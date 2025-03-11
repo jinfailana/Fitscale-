@@ -27,7 +27,7 @@ class _SignupPageState extends State<SignupPage> {
 
   String? verificationCode;
   final String brevoApiKey =
-      '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';
+      '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';
 
   Future<void> sendVerificationEmail(String email) async {
     try {
@@ -41,7 +41,7 @@ class _SignupPageState extends State<SignupPage> {
           'content-type': 'application/json',
         },
         body: jsonEncode({
-          'sender': {'name': 'Fitscale', 'email': 'hannstabalanza@gmail.com'},
+          'sender': {'name': 'Fitscale', 'email': 'jameeescaaabreros@gmail.com'},
           'to': [
             {'email': email}
           ],

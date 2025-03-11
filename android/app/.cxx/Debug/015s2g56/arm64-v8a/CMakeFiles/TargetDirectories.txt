@@ -1,0 +1,2 @@
+C:/Users/James/softeng/Fitscale-/Fitscale-/android/app/.cxx/Debug/015s2g56/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/James/softeng/Fitscale-/Fitscale-/android/app/.cxx/Debug/015s2g56/arm64-v8a/CMakeFiles/rebuild_cache.dir

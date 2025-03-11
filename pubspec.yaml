@@ -30,36 +30,24 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^2.15.0
-  firebase_auth: ^4.7.2
-  cloud_firestore: ^4.8.4
-  cloud_functions: ^4.7.6 # Updated version
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.17.8
+  cloud_firestore: ^4.17.2
+  cloud_functions: ^4.7.6
   google_sign_in: ^6.2.1
   email_validator: ^2.1.17
-  resend: ^1.0.0
-  #pedometer: ^3.0.0
-  # sensors_plus: ^3.0.3
-  shared_preferences: ^2.2.0
-  intl: ^0.18.1
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-
-#Google Icons
-google_fonts: ^2.1.0
-
-#State Management
-provider: ^6.0.1
+  shared_preferences: ^2.2.2
+  intl: ^0.19.0
+  pedometer: ^4.0.0
+  permission_handler: ^11.3.0
+  google_fonts: ^6.2.1
+  provider: ^6.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^3.0.0
+  pigeon: ^24.2.2 
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -29,6 +29,8 @@ class _StepsPageState extends State<StepsPage> {
   double _distance = 0;
   int? _lastGoalSetDate;
   String _status = 'unknown';
+  int _initialSteps = 0;
+  int _stepsSinceGoal = 0;
 
   @override
   void initState() {
@@ -79,7 +81,11 @@ class _StepsPageState extends State<StepsPage> {
 
   void onStepCount(StepCount event) {
     setState(() {
+      if (_initialSteps == 0) {
+        _initialSteps = event.steps;
+      }
       _steps = event.steps;
+      _stepsSinceGoal = _steps - _initialSteps;
       _updateStats();
     });
   }
@@ -96,9 +102,9 @@ class _StepsPageState extends State<StepsPage> {
 
   void _updateStats() {
     setState(() {
-      _percentage = (_steps / _goal) * 100;
-      _calories = (_steps * 0.04).round();
-      _distance = _steps * 0.0007;
+      _percentage = (_stepsSinceGoal / _goal) * 100;
+      _calories = (_stepsSinceGoal * 0.04).round();
+      _distance = _stepsSinceGoal * 0.0007;
     });
   }
 
@@ -158,6 +164,8 @@ class _StepsPageState extends State<StepsPage> {
         setState(() {
           _goal = selectedGoal;
           _lastGoalSetDate = DateTime.now().millisecondsSinceEpoch;
+          _initialSteps = _steps;
+          _stepsSinceGoal = 0;
           _updateStats();
         });
       }
@@ -226,7 +234,7 @@ class _StepsPageState extends State<StepsPage> {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: '$_steps',
+                      text: '$_stepsSinceGoal',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 48,
@@ -278,7 +286,7 @@ class _StepsPageState extends State<StepsPage> {
                         ),
                       ),
                       Text(
-                        '${_goal - _steps} steps left',
+                        '${_goal - _stepsSinceGoal} steps left',
                         style: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 16,

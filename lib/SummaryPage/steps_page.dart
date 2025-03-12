@@ -31,20 +31,24 @@ class _StepsPageState extends State<StepsPage> {
   String _status = 'unknown';
   int _initialSteps = 0;
   int _stepsSinceGoal = 0;
+  bool _hasSetGoal = false;  // Add this to track if goal is set
 
   @override
   void initState() {
     super.initState();
-    _loadUserGoal();
+    _checkExistingGoal();
     _requestPermissions();
   }
 
-  Future<void> _loadUserGoal() async {
+  Future<void> _checkExistingGoal() async {
     try {
       final goal = await _stepGoalsService.getUserGoal();
       setState(() {
         _goal = goal;
-        _updateStats();
+        _hasSetGoal = goal != 0;  // Set to true if there's an existing goal
+        if (_hasSetGoal) {
+          _updateStats();
+        }
       });
     } catch (e) {
       print('Error loading user goal: $e');
@@ -197,124 +201,279 @@ class _StepsPageState extends State<StepsPage> {
             fontSize: 16,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.more_horiz,
-              color: Color.fromRGBO(223, 77, 15, 1.0),
-            ),
-            onPressed: _showSetGoalDialog,
-          ),
-        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 32),
-            const Text(
-              'Steps Taken',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+      body: _hasSetGoal ? _buildTrackingUI() : _buildSetGoalUI(),
+    );
+  }
+
+  Widget _buildSetGoalUI() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 32),
+          const Text(
+            'Track your steps',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
             ),
-            const Text(
-              'Track your steps',
-              style: TextStyle(
+          ),
+          const SizedBox(height: 40),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/footsteps.png',  // Add footsteps icon
+                width: 24,
+                height: 24,
                 color: Colors.grey,
-                fontSize: 16,
               ),
-            ),
-            const SizedBox(height: 24),
-            Center(
-              child: Text.rich(
-                TextSpan(
+              const SizedBox(width: 8),
+              const Text(
+                'SET',
+                style: TextStyle(
+                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text(
+                ' goal',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 60),
+          SizedBox(
+            height: 200,
+            child: CustomPaint(
+              size: const Size(double.infinity, 200),
+              painter: SemiCircleProgressPainter(
+                percentage: 0,
+                backgroundColor: Colors.grey[800]!,
+                progressColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                goalSteps: 0,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    TextSpan(
-                      text: '$_stepsSinceGoal',
-                      style: const TextStyle(
+                    const Text(
+                      '0%',
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 48,
+                        fontSize: 36,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const TextSpan(
-                      text: ' steps',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 20,
+                    ElevatedButton(
+                      onPressed: _showSetGoalDialog,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        'SET',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                'You are on track to it! Keep it up.',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 16,
-                ),
+          ),
+          const SizedBox(height: 40),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildEmptyStatCard(
+                icon: Icons.local_fire_department,
+                value: '0',
+                label: 'kcal',
               ),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              height: 200,
-              child: CustomPaint(
-                size: const Size(double.infinity, 200),
-                painter: SemiCircleProgressPainter(
-                  percentage: _percentage / 100,
-                  backgroundColor: Colors.grey[800]!,
-                  progressColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                  goalSteps: _goal,
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${_percentage.toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${_goal - _stepsSinceGoal} steps left',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _buildEmptyStatCard(
+                icon: Icons.location_on,
+                value: '0',
+                label: 'total distance',
               ),
-            ),
-            const SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildStatCard(
-                  icon: Icons.local_fire_department,
-                  value: '${_calories}+',
-                  label: 'kcal',
-                ),
-                _buildStatCard(
-                  icon: Icons.location_on,
-                  value: '${_distance.toStringAsFixed(1)}m',
-                  label: 'total distance',
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyStatCard({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      width: 150,
+      height: 150,
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(28, 28, 30, 1.0),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color.fromRGBO(223, 77, 15, 1.0),
+          width: 2,
         ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: const Color.fromRGBO(223, 77, 15, 1.0),
+            size: 32,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrackingUI() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 32),
+          const Text(
+            'Steps Taken',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Text(
+            'Track your steps',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$_stepsSinceGoal',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: ' steps',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              'You are on track to it! Keep it up.',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+          SizedBox(
+            height: 200,
+            child: CustomPaint(
+              size: const Size(double.infinity, 200),
+              painter: SemiCircleProgressPainter(
+                percentage: _percentage / 100,
+                backgroundColor: Colors.grey[800]!,
+                progressColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                goalSteps: _goal,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${_percentage.toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${_goal - _stepsSinceGoal} steps left',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildStatCard(
+                icon: Icons.local_fire_department,
+                value: '${_calories}+',
+                label: 'kcal',
+              ),
+              _buildStatCard(
+                icon: Icons.location_on,
+                value: '${_distance.toStringAsFixed(1)}m',
+                label: 'total distance',
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

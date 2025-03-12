@@ -248,8 +248,11 @@ class _SummaryPageState extends State<SummaryPage> {
   Widget _buildProfileOption(IconData icon, String title, String subtitle) {
     return GestureDetector(
       onTap: () {
-        // No navigation action needed
-        Navigator.pop(context); // Just close the modal
+        Navigator.pop(context); // Close the modal first
+        Navigator.push(
+          context,
+          CustomPageRoute(child: const ManageAccPage()),
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -316,9 +319,17 @@ class _SummaryPageState extends State<SummaryPage> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                CustomPageRoute(child: const ManageAccPage()),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
+            ),
           ),
         ],
       ),

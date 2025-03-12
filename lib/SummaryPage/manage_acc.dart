@@ -405,55 +405,138 @@ class _ManageAccPageState extends State<ManageAccPage> {
 
     showDialog(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Change Username'),
-          content: TextField(
-            controller: usernameController,
-            decoration: const InputDecoration(
-              labelText: 'New Username',
-              border: OutlineInputBorder(),
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(28, 28, 30, 1.0),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFDF4D0F), width: 2),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Name',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: TextField(
+                      controller: usernameController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        hintText: 'Enter Name',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(60, 60, 62, 1.0),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'CANCEL',
+                                style: TextStyle(
+                                  color: Color(0xFFDF4D0F),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () async {
+                            final newUsername = usernameController.text.trim();
+                            if (newUsername.isNotEmpty && newUsername != username) {
+                              try {
+                                final user = FirebaseAuth.instance.currentUser;
+                                if (user != null) {
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(user.uid)
+                                      .update({'username': newUsername});
+                                  setState(() {
+                                    username = newUsername;
+                                  });
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Username changed successfully.'),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                print('Error changing username: $e');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to change username: $e'),
+                                  ),
+                                );
+                              }
+                            } else if (newUsername.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Username cannot be empty'),
+                                ),
+                              );
+                            } else {
+                              Navigator.pop(context);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDF4D0F),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'SAVE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final newUsername = usernameController.text.trim();
-                if (newUsername.isNotEmpty && newUsername != username) {
-                  try {
-                    final user = FirebaseAuth.instance.currentUser;
-                    if (user != null) {
-                      await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(user.uid)
-                          .update({'username': newUsername});
-                      setState(() {
-                        username = newUsername;
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Username changed successfully.'),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    print('Error changing username: $e');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to change username: $e'),
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Submit'),
-            ),
-          ],
         );
       },
     );
@@ -480,91 +563,189 @@ class _ManageAccPageState extends State<ManageAccPage> {
 
     showDialog(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Change Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentPasswordController,
-                decoration: const InputDecoration(
-                  labelText: 'Current Password',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: newPasswordController,
-                decoration: const InputDecoration(
-                  labelText: 'New Password',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: confirmNewPasswordController,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm New Password',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(28, 28, 30, 1.0),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFDF4D0F), width: 2),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                final currentPassword = currentPasswordController.text.trim();
-                final newPassword = newPasswordController.text.trim();
-                final confirmNewPassword =
-                    confirmNewPasswordController.text.trim();
-
-                if (newPassword != confirmNewPassword) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('New passwords do not match.'),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Change Password',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
-                  );
-                  return;
-                }
-
-                if (newPassword.isNotEmpty && currentPassword.isNotEmpty) {
-                  try {
-                    // Re-authenticate the user
-                    final user = FirebaseAuth.instance.currentUser;
-                    final cred = EmailAuthProvider.credential(
-                        email: user!.email!, password: currentPassword);
-
-                    await user.reauthenticateWithCredential(cred);
-
-                    // Update the password
-                    await user.updatePassword(newPassword);
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Password changed successfully.'),
+                  ),
+                  const SizedBox(height: 20),
+                  // Current Password Field
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: TextField(
+                      controller: currentPasswordController,
+                      style: const TextStyle(color: Colors.white),
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Current Password',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        border: InputBorder.none,
                       ),
-                    );
-                  } catch (e) {
-                    print('Error changing password: $e');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to change password: $e'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // New Password Field
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: TextField(
+                      controller: newPasswordController,
+                      style: const TextStyle(color: Colors.white),
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        hintText: 'New Password',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        border: InputBorder.none,
                       ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Submit'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Confirm Password Field
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: TextField(
+                      controller: confirmNewPasswordController,
+                      style: const TextStyle(color: Colors.white),
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Confirm Password',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  // Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(60, 60, 62, 1.0),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'CANCEL',
+                                style: TextStyle(
+                                  color: Color(0xFFDF4D0F),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () async {
+                            final currentPassword = currentPasswordController.text.trim();
+                            final newPassword = newPasswordController.text.trim();
+                            final confirmNewPassword = confirmNewPasswordController.text.trim();
+
+                            if (newPassword != confirmNewPassword) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('New passwords do not match.'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (newPassword.isEmpty || currentPassword.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('All fields are required.'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            try {
+                              // Re-authenticate the user
+                              final user = FirebaseAuth.instance.currentUser;
+                              final cred = EmailAuthProvider.credential(
+                                  email: user!.email!, password: currentPassword);
+
+                              await user.reauthenticateWithCredential(cred);
+
+                              // Update the password
+                              await user.updatePassword(newPassword);
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Password changed successfully.'),
+                                ),
+                              );
+                            } catch (e) {
+                              print('Error changing password: $e');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to change password: $e'),
+                                ),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDF4D0F),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'SAVE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         );
       },
     );

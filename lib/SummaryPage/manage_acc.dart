@@ -120,9 +120,33 @@ class _ManageAccPageState extends State<ManageAccPage> {
 
           if (recommendedWorkouts.isEmpty) {
             return const Center(
-              child: Text(
-                'No recommended workout data to display',
-                style: TextStyle(color: Colors.white70),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.fitness_center,
+                    color: Color(0xFFDF4D0F),
+                    size: 48,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No recommended workout data to display',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Add and complete recommended workouts to see progress',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             );
           }

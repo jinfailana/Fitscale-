@@ -85,8 +85,13 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
     return const Color.fromRGBO(223, 77, 15, 1.0);
   }
 
+  bool _isWorkoutCompleted() {
+    return _workout.exercises.every((exercise) => exercise.isCompleted);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isAllExercisesCompleted = _isWorkoutCompleted();
     return Scaffold(
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
       appBar: AppBar(
@@ -127,20 +132,40 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
-                        color: Colors.orange.withOpacity(0.2),
-                        child: const Row(
+                        color: isAllExercisesCompleted
+                            ? Colors.green.withOpacity(0.2)
+                            : Colors.orange.withOpacity(0.2),
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.timer, color: Colors.orange),
-                            SizedBox(width: 8),
+                            Icon(
+                                isAllExercisesCompleted
+                                    ? Icons.check_circle
+                                    : Icons.timer,
+                                color: isAllExercisesCompleted
+                                    ? Colors.green
+                                    : Colors.orange),
+                            const SizedBox(width: 8),
                             Text(
-                              'Workout in Progress',
+                              isAllExercisesCompleted
+                                  ? 'Workout Completed!'
+                                  : 'Workout in Progress',
                               style: TextStyle(
-                                color: Colors.orange,
+                                color: isAllExercisesCompleted
+                                    ? Colors.green
+                                    : Colors.orange,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            if (isAllExercisesCompleted) ...[
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: 20,
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -178,6 +203,49 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                           ..._workout.exercises
                               .map((exercise) => GestureDetector(
                                     onTap: () async {
+                                      if (!_isInMyWorkouts) {
+                                        // Show warning dialog if workout is not in My Workouts
+                                        await showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              backgroundColor:
+                                                  const Color.fromRGBO(
+                                                      44, 44, 46, 1.0),
+                                              title: const Text(
+                                                'Workout Not Added',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              content: const Text(
+                                                'You need to add this workout to My Workouts before performing exercises.',
+                                                style: TextStyle(
+                                                  color: Colors.white70,
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(),
+                                                  child: const Text(
+                                                    'OK',
+                                                    style: TextStyle(
+                                                      color: Color.fromRGBO(
+                                                          223, 77, 15, 1.0),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                        return;
+                                      }
                                       await Navigator.push(
                                         context,
                                         MaterialPageRoute(
@@ -198,10 +266,23 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                             44, 44, 46, 1.0),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color:
-                                              _getExerciseBorderColor(exercise),
+                                          color: isAllExercisesCompleted
+                                              ? Colors.green
+                                              : _getExerciseBorderColor(
+                                                  exercise),
                                           width: 2,
                                         ),
+                                        // Add opacity to indicate non-clickable state
+                                        gradient: !_isInMyWorkouts
+                                            ? LinearGradient(
+                                                colors: [
+                                                  const Color.fromRGBO(
+                                                      44, 44, 46, 0.7),
+                                                  const Color.fromRGBO(
+                                                      44, 44, 46, 0.7),
+                                                ],
+                                              )
+                                            : null,
                                       ),
                                       child: Row(
                                         children: [
@@ -226,19 +307,35 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                Text(
-                                                  exercise.name,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      exercise.name,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    if (exercise
+                                                        .isCompleted) ...[
+                                                      const SizedBox(width: 8),
+                                                      const Icon(
+                                                        Icons.star,
+                                                        color: Colors.amber,
+                                                        size: 20,
+                                                      ),
+                                                    ],
+                                                  ],
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Text(
                                                   '${exercise.sets} sets × ${exercise.reps} | Rest: ${exercise.rest}',
-                                                  style: const TextStyle(
-                                                    color: Colors.white70,
+                                                  style: TextStyle(
+                                                    color: exercise.isCompleted
+                                                        ? Colors.grey
+                                                        : Colors.white70,
                                                     fontSize: 14,
                                                   ),
                                                 ),
@@ -246,7 +343,9 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                                     0) ...[
                                                   const SizedBox(height: 4),
                                                   Text(
-                                                    'Progress: ${exercise.setsCompleted}/${exercise.sets} sets',
+                                                    exercise.isCompleted
+                                                        ? 'Completed!'
+                                                        : 'Progress: ${exercise.setsCompleted}/${exercise.sets} sets',
                                                     style: TextStyle(
                                                       color:
                                                           exercise.isCompleted

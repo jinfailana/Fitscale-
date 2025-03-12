@@ -422,10 +422,10 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
               const Text(
                 'RECOMMENDED WORKOUT',
                 style: TextStyle(
@@ -433,8 +433,8 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
-              ),
-              const SizedBox(height: 8),
+                      ),
+                      const SizedBox(height: 8),
               const Text(
                 "Let's start your activities!",
                 style: TextStyle(
@@ -507,21 +507,21 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            plan.name,
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          Text(
-                                            plan.description,
-                                            style: const TextStyle(
+                      Text(
+                        plan.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        plan.description,
+                        style: const TextStyle(
                                               fontSize: 14,
-                                              color: Colors.white70,
-                                            ),
-                                          ),
+                          color: Colors.white70,
+                        ),
+                      ),
                                         ],
                                       ),
                                     ),
@@ -547,7 +547,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                       ),
                                     const SizedBox(width: 16),
                                     TextButton(
-                                      onPressed: () {
+                          onPressed: () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
@@ -559,24 +559,24 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                             ),
                                           ),
                                         );
-                                      },
-                                      child: const Text(
-                                        'More',
+                          },
+                          child: const Text(
+                            'More',
                                         style: TextStyle(
                                           color:
                                               Color.fromRGBO(223, 77, 15, 1.0),
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
+                    ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
               ),
             ],
           ),

@@ -33,15 +33,13 @@ class _SignupPageState extends State<SignupPage> {
       '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';
 
   Future<bool> checkInternetConnection() async {
-    var connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      return false;
-    }
-    
     try {
-      final result = await InternetAddress.lookup('google.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } on SocketException catch (_) {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        return false;
+      }
+      return true;
+    } catch (e) {
       return false;
     }
   }
@@ -665,7 +663,6 @@ class _SignupPageState extends State<SignupPage> {
   }
 }
 
-// Create a new class for the username modal
 class UsernameInputModal extends StatelessWidget {
   final TextEditingController _usernameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();

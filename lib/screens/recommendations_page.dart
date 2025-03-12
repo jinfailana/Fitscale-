@@ -6,6 +6,11 @@ import '../utils/recommendation_logic.dart' as workout_logic;
 import 'workout_details_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../navigation/custom_navbar.dart';
+import '../SummaryPage/summary_page.dart';
+import '../HistoryPage/history.dart';
+import '../utils/custom_page_route.dart';
+import '../SummaryPage/manage_acc.dart';
 
 class RecommendationsPage extends StatefulWidget {
   final UserModel user;
@@ -375,20 +380,206 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
       _selectedIndex = index;
     });
 
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/home');
-        break;
-      case 1:
-        // Already on this page
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(context, '/history');
-        break;
-      case 3:
-        Navigator.pushReplacementNamed(context, '/me');
-        break;
+    if (index == 0) {
+      Navigator.pushReplacement(
+        context,
+        CustomPageRoute(
+          child: const SummaryPage(),
+          transitionType: TransitionType.leftToRight,
+        ),
+      );
+    } else if (index == 2) {
+      Navigator.pushReplacement(
+        context,
+        CustomPageRoute(
+          child: const HistoryPage(),
+          transitionType: TransitionType.rightToLeft,
+        ),
+      );
+    } else if (index == 3) {
+      // Show profile modal - this is handled in the CustomNavBar
     }
+    // No need to handle index 1 (current page)
+  }
+
+  void _showProfileModal(BuildContext context) {
+    // Fetch user data from Firestore
+    final user = FirebaseAuth.instance.currentUser;
+    String username = 'User';
+    String email = user?.email ?? '';
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Fetch user data if available
+            if (user != null) {
+              FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get()
+                  .then((doc) {
+                if (doc.exists) {
+                  setState(() {
+                    username = doc['username'] ?? 'User';
+                    email = user.email ?? '';
+                  });
+                }
+              }).catchError((e) {
+                print('Error fetching user data: $e');
+              });
+            }
+            
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color.fromRGBO(28, 28, 30, 1.0),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Spacer(),
+                        const Text(
+                          'Profile',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(
+                              color: Color(0xFFDF4D0F),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // User profile card
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context); // Close the modal first
+                        Navigator.push(
+                          context,
+                          CustomPageRoute(child: const ManageAccPage()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(28, 28, 30, 1.0),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFDF4D0F)),
+                        ),
+                        child: Row(
+                          children: [
+                            // Profile picture
+                            CircleAvatar(
+                              backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
+                              radius: 20,
+                              child: const Icon(
+                                Icons.person,
+                                color: Color(0xFFDF4D0F),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // User info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    username,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    email,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // My Device option
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Handle device settings
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(28, 28, 30, 1.0),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFDF4D0F)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.devices,
+                              color: Color(0xFFDF4D0F),
+                              size: 24,
+                            ),
+                            const SizedBox(width: 16),
+                            const Text(
+                              'My Device',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Future<void> _loadAndNavigateToRecommendations() async {
+    // Already on recommendations page, so no need to navigate
   }
 
   @override
@@ -550,9 +741,8 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                       onPressed: () {
                                         Navigator.push(
                                           context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                WorkoutDetailsPage(
+                                          CustomPageRoute(
+                                            child: WorkoutDetailsPage(
                                               workout: plan,
                                               onAddToWorkoutList:
                                                   addToMyWorkouts,
@@ -582,25 +772,11 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          unselectedItemColor: Colors.white54,
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: [
-            _buildNavItem(Icons.home, 'Home', 0),
-            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
-            _buildNavItem(Icons.history, 'History', 2),
-            _buildNavItem(Icons.person, 'Me', 3),
-          ],
-        ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        showProfileModal: _showProfileModal,
+        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
       ),
     );
   }
@@ -623,34 +799,6 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
-    );
-  }
-
-  BottomNavigationBarItem _buildNavItem(
-      IconData icon, String label, int index) {
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: _selectedIndex == index
-              ? const Color.fromRGBO(223, 77, 15, 0.1)
-              : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(_selectedIndex == index ? 15 : 10),
-          border: Border.all(
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Icon(icon,
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.white54),
-      ),
-      label: label,
     );
   }
 }

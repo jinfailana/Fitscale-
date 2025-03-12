@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../navigation/custom_navbar.dart';
+import '../utils/custom_page_route.dart';
+import '../screens/recommendations_page.dart';
+import '../HistoryPage/history.dart';
+import '../models/user_model.dart';
 
 class ManageAccPage extends StatefulWidget {
   const ManageAccPage({super.key});
@@ -12,6 +17,7 @@ class ManageAccPage extends StatefulWidget {
 class _ManageAccPageState extends State<ManageAccPage> {
   String username = '';
   String signInMethod = '';
+  int _selectedIndex = 3; // Set to 3 for the "Me" tab
 
   @override
   void initState() {
@@ -37,6 +43,244 @@ class _ManageAccPageState extends State<ManageAccPage> {
       }
     } catch (e) {
       print('Error fetching user data: $e');
+    }
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    
+    if (index != 3) { // If not on the current "Me" tab
+      Navigator.pop(context); // Pop the current page first
+      
+      if (index == 0) {
+        // Navigate to SummaryPage is handled by popping back
+      } else if (index == 2) {
+        Navigator.pushReplacement(
+          context,
+          CustomPageRoute(child: const HistoryPage()),
+        );
+      }
+    }
+  }
+
+  void _showProfileModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(28, 28, 30, 1.0),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 75.0),
+                      child: const Text(
+                        'Profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(
+                          color: Color.fromRGBO(223, 77, 15, 1.0),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildProfileModalOption(
+                  Icons.person, 
+                  username, 
+                  '',
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Already on account page, no need to navigate
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildProfileModalOption(
+                  Icons.devices, 
+                  'My Device', 
+                  '',
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Handle device settings navigation if needed
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildProfileModalOption(
+                  Icons.logout, 
+                  'Log Out', 
+                  '',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showLogoutConfirmationDialog(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileModalOption(
+    IconData icon, 
+    String title, 
+    String subtitle, 
+    {required Function() onTap}
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFDF4D0F)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: const Color(0xFFDF4D0F)),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadAndNavigateToRecommendations() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('No user logged in');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Please log in to view recommendations')),
+        );
+        return;
+      }
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        print('User document does not exist');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User profile not found')),
+        );
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+
+      // Validate required date fields
+      if (userData['createdAt'] == null || userData['updatedAt'] == null) {
+        print('Missing date fields in user data');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid user profile data')),
+        );
+        return;
+      }
+
+      final userModel = UserModel(
+        id: user.uid,
+        email: userData['email'] ?? '',
+        gender: userData['gender'],
+        goal: userData['goal'],
+        age: userData['age'],
+        weight: userData['weight'] != null
+            ? (userData['weight'] as num).toDouble()
+            : null,
+        height: userData['height'] != null
+            ? (userData['height'] as num).toDouble()
+            : null,
+        activityLevel: userData['activityLevel'],
+        workoutPlace: userData['workoutPlace'],
+        preferredWorkouts: userData['preferredWorkouts'] != null
+            ? List<String>.from(userData['preferredWorkouts'])
+            : null,
+        gymEquipment: userData['gymEquipment'] != null
+            ? List<String>.from(userData['gymEquipment'])
+            : null,
+        setupCompleted: userData['setupCompleted'] ?? false,
+        currentSetupStep: userData['currentSetupStep'] ?? 'registered',
+        createdAt: userData['createdAt'] is String
+            ? DateTime.parse(userData['createdAt'])
+            : (userData['createdAt'] as Timestamp).toDate(),
+        updatedAt: userData['updatedAt'] is String
+            ? DateTime.parse(userData['updatedAt'])
+            : (userData['updatedAt'] as Timestamp).toDate(),
+      );
+
+      Navigator.push(
+        context,
+        CustomPageRoute(
+          child: RecommendationsPage(user: userModel),
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('Error loading recommendations: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to load recommendations: ${e.toString()}')),
+      );
     }
   }
 
@@ -97,6 +341,12 @@ class _ManageAccPageState extends State<ManageAccPage> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        showProfileModal: _showProfileModal,
+        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
       ),
     );
   }

@@ -11,29 +11,8 @@ import '../screens/recommendations_page.dart';
 import '../models/user_model.dart';
 import '../services/workout_history_service.dart';
 import 'package:intl/intl.dart';
-
-class CustomPageRoute extends PageRouteBuilder {
-  final Widget child;
-
-  CustomPageRoute({required this.child})
-      : super(
-          transitionDuration: const Duration(milliseconds: 300),
-          pageBuilder: (context, animation, secondaryAnimation) => child,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(1.0, 0.0);
-            const end = Offset.zero;
-            const curve = Curves.easeInOut;
-            var tween =
-                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-            var offsetAnimation = animation.drive(tween);
-
-            return SlideTransition(
-              position: offsetAnimation,
-              child: child,
-            );
-          },
-        );
-}
+import '../navigation/custom_navbar.dart';
+import '../utils/custom_page_route.dart';
 
 class SummaryPage extends StatefulWidget {
   const SummaryPage({super.key});
@@ -116,16 +95,6 @@ class _SummaryPageState extends State<SummaryPage> {
     setState(() {
       _selectedIndex = index;
     });
-    if (index == 2) {
-      Navigator.push(
-        context,
-        CustomPageRoute(child: const HistoryPage()),
-      );
-    } else if (index == 3) {
-      _showProfileModal(context);
-    } else if (index == 1) {
-      _loadAndNavigateToRecommendations();
-    }
   }
 
   Future<void> _loadAndNavigateToRecommendations() async {
@@ -213,34 +182,6 @@ class _SummaryPageState extends State<SummaryPage> {
     }
   }
 
-  BottomNavigationBarItem _buildNavItem(
-      IconData icon, String label, int index) {
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: _selectedIndex == index
-              ? const Color.fromRGBO(223, 77, 15, 0.1)
-              : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(_selectedIndex == index ? 15 : 10),
-          border: Border.all(
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Icon(icon,
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.white54),
-      ),
-      label: label,
-    );
-  }
-
   void _showProfileModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -308,6 +249,7 @@ class _SummaryPageState extends State<SummaryPage> {
     return GestureDetector(
       onTap: () {
         if (title == username) {
+          Navigator.pop(context); // Close the modal first
           Navigator.push(
             context,
             CustomPageRoute(child: const ManageAccPage()),
@@ -379,9 +321,17 @@ class _SummaryPageState extends State<SummaryPage> {
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  CustomPageRoute(child: const ManageAccPage()),
+                );
+              },
+              child: const Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
+            ),
           ),
         ],
       ),
@@ -512,25 +462,11 @@ class _SummaryPageState extends State<SummaryPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          unselectedItemColor: Colors.white54,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            _buildNavItem(Icons.home, 'Home', 0),
-            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
-            _buildNavItem(Icons.history, 'History', 2),
-            _buildNavItem(Icons.person, 'Me', 3),
-          ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-        ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        showProfileModal: _showProfileModal,
+        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
       ),
     );
   }

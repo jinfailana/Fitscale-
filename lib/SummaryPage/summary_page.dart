@@ -385,133 +385,131 @@ class _SummaryPageState extends State<SummaryPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(25.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 0.1),
-            const Text(
-              'Summary',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 0.1),
+              const Text(
+                'Summary',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            _buildAnimatedSummaryCard('Set Step Goal',
-                'Daily goal: No goal yet', Icons.directions_walk),
-            _buildAnimatedSummaryCard(
-                userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
-                'Current Weight',
-                Icons.monitor_weight),
-            _buildAnimatedSummaryCard(
-                'Set Diets!', 'Mark your meals today!', Icons.restaurant),
-            const SizedBox(height: 20),
-            const Text(
-              'Recent Workout',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+              const SizedBox(height: 20),
+              _buildAnimatedSummaryCard('Set Step Goal',
+                  'Daily goal: No goal yet', Icons.directions_walk),
+              _buildAnimatedSummaryCard(
+                  userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
+                  'Current Weight',
+                  Icons.monitor_weight),
+              _buildAnimatedSummaryCard(
+                  'Set Diets!', 'Mark your meals today!', Icons.restaurant),
+              const SizedBox(height: 20),
+              const Text(
+                'Recent Workout',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: Border.all(
-                    color: Color.fromRGBO(223, 77, 15, 1.0), width: 1),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(50),
-                    blurRadius: 5,
-                    offset: const Offset(0, 4),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: const Color.fromRGBO(223, 77, 15, 1.0),
+                    width: 1,
                   ),
-                ],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _recentWorkouts.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No Workouts Found',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _recentWorkouts.length,
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            itemBuilder: (context, index) {
+                              final workout = _recentWorkouts[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromRGBO(
+                                            223, 77, 15, 0.2),
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                      ),
+                                      child: const Icon(
+                                        Icons.fitness_center,
+                                        color: Color.fromRGBO(
+                                            223, 77, 15, 1.0),
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            workout.workoutName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${workout.setsCompleted}/${workout.totalSets} sets completed',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          Text(
+                                            DateFormat('MMM d, y')
+                                                .format(workout.date),
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
               ),
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _recentWorkouts.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No Workouts Found',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        )
-                      : SizedBox(
-                          height: 200,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: _recentWorkouts.map((workout) {
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: const Color.fromRGBO(
-                                              223, 77, 15, 0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Icon(
-                                          Icons.fitness_center,
-                                          color: const Color.fromRGBO(
-                                              223, 77, 15, 1.0),
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              workout.workoutName,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              '${workout.setsCompleted}/${workout.totalSets} sets completed',
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            Text(
-                                              DateFormat('MMM d, y')
-                                                  .format(workout.date),
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-            ),
-          ],
+              const SizedBox(height: 20), // Add some padding at the bottom
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Theme(

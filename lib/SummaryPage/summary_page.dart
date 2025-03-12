@@ -423,15 +423,10 @@ class _SummaryPageState extends State<SummaryPage> {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 border: Border.all(
-                    color: Color.fromRGBO(223, 77, 15, 1.0), width: 1),
+                  color: const Color.fromRGBO(223, 77, 15, 1.0),
+                  width: 1,
+                ),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(50),
-                    blurRadius: 5,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -448,66 +443,67 @@ class _SummaryPageState extends State<SummaryPage> {
                         )
                       : SizedBox(
                           height: 200,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: _recentWorkouts.map((workout) {
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: const Color.fromRGBO(
-                                              223, 77, 15, 0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Icon(
-                                          Icons.fitness_center,
-                                          color: const Color.fromRGBO(
-                                              223, 77, 15, 1.0),
-                                          size: 24,
-                                        ),
+                          child: ListView.builder(
+                            itemCount: _recentWorkouts.length,
+                            physics: const BouncingScrollPhysics(),
+                            itemBuilder: (context, index) {
+                              final workout = _recentWorkouts[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromRGBO(
+                                            223, 77, 15, 0.2),
+                                        borderRadius:
+                                            BorderRadius.circular(20),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              workout.workoutName,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              '${workout.setsCompleted}/${workout.totalSets} sets completed',
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            Text(
-                                              DateFormat('MMM d, y')
-                                                  .format(workout.date),
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                      child: const Icon(
+                                        Icons.fitness_center,
+                                        color: Color.fromRGBO(
+                                            223, 77, 15, 1.0),
+                                        size: 24,
                                       ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            workout.workoutName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${workout.setsCompleted}/${workout.totalSets} sets completed',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          Text(
+                                            DateFormat('MMM d, y')
+                                                .format(workout.date),
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ),
             ),

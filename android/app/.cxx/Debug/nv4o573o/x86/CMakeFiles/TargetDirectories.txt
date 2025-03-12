@@ -1,0 +1,2 @@
+C:/fitscale/Fitscale-/android/app/.cxx/Debug/nv4o573o/x86/CMakeFiles/edit_cache.dir
+C:/fitscale/Fitscale-/android/app/.cxx/Debug/nv4o573o/x86/CMakeFiles/rebuild_cache.dir

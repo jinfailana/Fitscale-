@@ -385,67 +385,68 @@ class _SummaryPageState extends State<SummaryPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(25.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 0.1),
-            const Text(
-              'Summary',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            _buildAnimatedSummaryCard('Set Step Goal',
-                'Daily goal: No goal yet', Icons.directions_walk),
-            _buildAnimatedSummaryCard(
-                userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
-                'Current Weight',
-                Icons.monitor_weight),
-            _buildAnimatedSummaryCard(
-                'Set Diets!', 'Mark your meals today!', Icons.restaurant),
-            const SizedBox(height: 20),
-            const Text(
-              'Recent Workout',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: Border.all(
-                  color: const Color.fromRGBO(223, 77, 15, 1.0),
-                  width: 1,
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 0.1),
+              const Text(
+                'Summary',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
                 ),
-                borderRadius: BorderRadius.circular(12),
               ),
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _recentWorkouts.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No Workouts Found',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+              const SizedBox(height: 20),
+              _buildAnimatedSummaryCard('Set Step Goal',
+                  'Daily goal: No goal yet', Icons.directions_walk),
+              _buildAnimatedSummaryCard(
+                  userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
+                  'Current Weight',
+                  Icons.monitor_weight),
+              _buildAnimatedSummaryCard(
+                  'Set Diets!', 'Mark your meals today!', Icons.restaurant),
+              const SizedBox(height: 20),
+              const Text(
+                'Recent Workout',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: const Color.fromRGBO(223, 77, 15, 1.0),
+                    width: 1,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _recentWorkouts.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No Workouts Found',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        )
-                      : SizedBox(
-                          height: 200,
-                          child: ListView.builder(
+                          )
+                        : ListView.builder(
                             itemCount: _recentWorkouts.length,
-                            physics: const BouncingScrollPhysics(),
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
                             itemBuilder: (context, index) {
                               final workout = _recentWorkouts[index];
                               return Container(
@@ -505,9 +506,10 @@ class _SummaryPageState extends State<SummaryPage> {
                               );
                             },
                           ),
-                        ),
-            ),
-          ],
+              ),
+              const SizedBox(height: 20), // Add some padding at the bottom
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Theme(

@@ -15,7 +15,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = '1.8'
     }
 
     defaultConfig {
@@ -45,3 +45,8 @@ flutter {
 }
 
 apply plugin: 'com.google.gms.google-services'
+
+dependencies {
+    // implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    // other dependencies...
+}

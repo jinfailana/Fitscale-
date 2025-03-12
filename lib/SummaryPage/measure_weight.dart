@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 class MeasureWeightPage extends StatefulWidget {
   const MeasureWeightPage({Key? key}) : super(key: key);
@@ -14,6 +17,7 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
   double weight = 0.0;
   bool isLoading = true;
   Map<String, dynamic>? weightHistoryData;
+  static const platform = MethodChannel('com.fitscale.app/settings');
 
   @override
   void initState() {
@@ -185,6 +189,121 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
     );
   }
 
+  // Simplified method to show instructions and handle Bluetooth settings
+  void _connectToScale() {
+    // First show instructions
+    _showManualInstructions();
+  }
+
+  // Show a dialog with instructions for manually connecting
+  void _showManualInstructions() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+        title: const Text(
+          'Connect to Smart Scale',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'To connect to your smart scale:',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Text(
+              '1. Open your device settings',
+              style: TextStyle(color: Colors.white70),
+            ),
+            Text(
+              '2. Go to Bluetooth settings',
+              style: TextStyle(color: Colors.white70),
+            ),
+            Text(
+              '3. Make sure Bluetooth is turned on',
+              style: TextStyle(color: Colors.white70),
+            ),
+            Text(
+              '4. Put your scale in pairing mode',
+              style: TextStyle(color: Colors.white70),
+            ),
+            Text(
+              '5. Select the scale from the list of available devices',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _openBluetoothSettings();
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+            ),
+            child: const Text(
+              'Open Bluetooth Settings',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Add this method to open Bluetooth settings
+  Future<void> _openBluetoothSettings() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Opening Bluetooth settings...'),
+          backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      if (Platform.isAndroid) {
+        // Try multiple approaches for Android
+        try {
+          // First try the platform channel
+          await platform.invokeMethod('openBluetoothSettings');
+        } catch (e) {
+          print('Platform channel failed: $e');
+          // If that fails, show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please check that your MainActivity.kt file is set up correctly'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      } else if (Platform.isIOS) {
+        // iOS doesn't allow direct opening of settings
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('On iOS, please go to Settings > Bluetooth manually'),
+            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error opening Bluetooth settings: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open Bluetooth settings. Please go to Settings > Bluetooth manually.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -271,7 +390,7 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: _showWeightInputDialog,
+                    onPressed: _connectToScale,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                       minimumSize: const Size(double.infinity, 50),
@@ -395,4 +514,4 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
             ),
     );
   }
-} 
+}

@@ -828,7 +828,7 @@ class _HistoryPageState extends State<HistoryPage> {
           text,
           style: TextStyle(
             color: isSelected
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                ? Colors.white
                 : Colors.white70,
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

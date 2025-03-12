@@ -402,177 +402,173 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     // No need to handle index 1 (current page)
   }
 
-  void _showProfileModal(BuildContext context) {
-    // Fetch user data from Firestore
+  void _showProfileModal(BuildContext context) async {
+    // Pre-fetch user data before showing the modal
     final user = FirebaseAuth.instance.currentUser;
     String username = 'User';
     String email = user?.email ?? '';
     
+    // Fetch user data synchronously before showing the modal
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+            
+        if (doc.exists) {
+          username = doc['username'] ?? 'User';
+          email = user.email ?? '';
+        }
+      } catch (e) {
+        print('Error fetching user data: $e');
+      }
+    }
+    
+    // Now show the modal with the pre-fetched data
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            // Fetch user data if available
-            if (user != null) {
-              FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .get()
-                  .then((doc) {
-                if (doc.exists) {
-                  setState(() {
-                    username = doc['username'] ?? 'User';
-                    email = user.email ?? '';
-                  });
-                }
-              }).catchError((e) {
-                print('Error fetching user data: $e');
-              });
-            }
-            
-            return Container(
-              decoration: BoxDecoration(
-                color: const Color.fromRGBO(28, 28, 30, 1.0),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(28, 28, 30, 1.0),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Spacer(),
-                        const Text(
-                          'Profile',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: const Text(
-                            'Done',
-                            style: TextStyle(
-                              color: Color(0xFFDF4D0F),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    // User profile card
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context); // Close the modal first
-                        Navigator.push(
-                          context,
-                          CustomPageRoute(child: const ManageAccPage()),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color.fromRGBO(28, 28, 30, 1.0),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFDF4D0F)),
-                        ),
-                        child: Row(
-                          children: [
-                            // Profile picture
-                            CircleAvatar(
-                              backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
-                              radius: 20,
-                              child: const Icon(
-                                Icons.person,
-                                color: Color(0xFFDF4D0F),
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            // User info
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    username,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    email,
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
-                          ],
-                        ),
+                    const Spacer(),
+                    const Text(
+                      'Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    // My Device option
-                    GestureDetector(
-                      onTap: () {
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
                         Navigator.pop(context);
-                        // Handle device settings
                       },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color.fromRGBO(28, 28, 30, 1.0),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFDF4D0F)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.devices,
-                              color: Color(0xFFDF4D0F),
-                              size: 24,
-                            ),
-                            const SizedBox(width: 16),
-                            const Text(
-                              'My Device',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Spacer(),
-                            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
-                          ],
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(
+                          color: Color(0xFFDF4D0F),
+                          fontSize: 16,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            );
-          }
+                const SizedBox(height: 20),
+                // User profile card
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context); // Close the modal first
+                    Navigator.push(
+                      context,
+                      CustomPageRoute(child: const ManageAccPage()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(28, 28, 30, 1.0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: Row(
+                      children: [
+                        // Profile picture
+                        CircleAvatar(
+                          backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
+                          radius: 20,
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFFDF4D0F),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // User info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                username,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                email,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // My Device option
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Handle device settings
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(28, 28, 30, 1.0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.devices,
+                          color: Color(0xFFDF4D0F),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 16),
+                        const Text(
+                          'My Device',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -878,7 +874,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         text,
         style: TextStyle(
           color: isSelected
-              ? const Color.fromRGBO(223, 77, 15, 1.0)
+              ? Colors.white
               : Colors.white70,
             fontSize: 14,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

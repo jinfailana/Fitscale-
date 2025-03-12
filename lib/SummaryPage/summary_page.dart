@@ -319,17 +319,9 @@ class _SummaryPageState extends State<SummaryPage> {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                CustomPageRoute(child: const ManageAccPage()),
-              );
-            },
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
           ),
         ],
       ),

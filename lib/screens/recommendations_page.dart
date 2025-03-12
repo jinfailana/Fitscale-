@@ -588,39 +588,24 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      appBar: AppBar(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(0),
+        child: AppBar(
         backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.orange),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-            const Text(
-              'Summary',
-              style: TextStyle(
-                color: Colors.orange,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
         ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'RECOMMENDED WORKOUT',
                 style: TextStyle(
-                  color: Colors.white,
+                   color: Color(0xFFDF4D0F),
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -634,27 +619,70 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(44, 44, 46, 0.5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color.fromRGBO(60, 60, 62, 1.0),
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildTabButton('Recommended Workouts', 0),
-                  const SizedBox(width: 16),
+                    _buildTabButton('Recommended', 0),
                   _buildTabButton('My Workouts', 1),
-                  const SizedBox(width: 16),
-                  _buildTabButton('Other Workouts', 2),
+                    _buildTabButton('Other', 2),
                 ],
+                ),
               ),
               const SizedBox(height: 20),
               Expanded(
                 child: selectedTabIndex == 1 && myWorkouts.isEmpty
-                    ? const Center(
-                        child: Text(
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color.fromRGBO(223, 77, 15, 0.1),
+                                borderRadius: BorderRadius.circular(50),
+                                border: Border.all(
+                                  color: const Color.fromRGBO(223, 77, 15, 0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.fitness_center,
+                                color: const Color.fromRGBO(223, 77, 15, 0.7),
+                                size: 64,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            const Text(
                           'No Added Workouts Yet',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                                fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              child: const Text(
+                                'Add workouts from the Recommended tab to build your personal collection',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     : ListView.builder(
@@ -722,41 +750,75 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    if (selectedTabIndex ==
-                                        1) // Only show remove button in My Workouts
-                                      TextButton(
-                                        onPressed: () =>
-                                            removeFromMyWorkouts(plan),
-                                        child: const Text(
+                                    if (selectedTabIndex == 1) // Only show remove button in My Workouts
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                        child: TextButton(
+                                          onPressed: () => removeFromMyWorkouts(plan),
+                                          style: TextButton.styleFrom(
+                                            backgroundColor: Colors.red.withOpacity(0.1),
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                              side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                                            ),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.delete_outline, color: Colors.red, size: 16),
+                                              SizedBox(width: 4),
+                                              Text(
                                           'Remove',
                                           style: TextStyle(
                                             color: Colors.red,
-                                            fontSize: 16,
+                                                  fontSize: 14,
                                             fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
-                                    const SizedBox(width: 16),
-                                    TextButton(
+                                    const SizedBox(width: 12),
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                      child: TextButton(
                                       onPressed: () {
                                         Navigator.push(
                                           context,
-                                          CustomPageRoute(
-                                            child: WorkoutDetailsPage(
+                                            CustomPageRoute(
+                                              child: WorkoutDetailsPage(
                                               workout: plan,
-                                              onAddToWorkoutList:
-                                                  addToMyWorkouts,
+                                                onAddToWorkoutList: addToMyWorkouts,
+                                              ),
                                             ),
+                                          );
+                                        },
+                                        style: TextButton.styleFrom(
+                                          backgroundColor: const Color.fromRGBO(223, 77, 15, 0.1),
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                            side: const BorderSide(color: Color.fromRGBO(223, 77, 15, 0.3)),
                                           ),
-                                        );
-                                      },
-                                      child: const Text(
-                                        'More',
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.fitness_center, color: Color.fromRGBO(223, 77, 15, 1.0), size: 16),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Details',
                                         style: TextStyle(
-                                          color:
-                                              Color.fromRGBO(223, 77, 15, 1.0),
-                                          fontSize: 16,
+                                                color: Color.fromRGBO(223, 77, 15, 1.0),
+                                                fontSize: 14,
                                           fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -789,14 +851,38 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
           selectedTabIndex = index;
         });
       },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color.fromRGBO(223, 77, 15, 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected 
+              ? const Color.fromRGBO(223, 77, 15, 1.0)
+              : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: isSelected 
+            ? [
+                BoxShadow(
+                  color: const Color.fromRGBO(223, 77, 15, 0.3),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                )
+              ] 
+            : null,
+        ),
       child: Text(
         text,
         style: TextStyle(
           color: isSelected
               ? const Color.fromRGBO(223, 77, 15, 1.0)
               : Colors.white70,
-          fontSize: 16,
+            fontSize: 14,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     );

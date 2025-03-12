@@ -42,11 +42,15 @@ class _HistoryPageState extends State<HistoryPage> {
   int _selectedIndex = 2;
   List<WorkoutHistory> _workoutHistory = [];
   bool _isLoading = true;
+  List<WorkoutHistory> _filteredWorkouts = [];
 
   @override
   void initState() {
     super.initState();
-    selectedMonth = months[DateTime.now().month - 1];
+    // Initialize with current month and year
+    final now = DateTime.now();
+    selectedMonth = months[now.month - 1];
+    selectedYear = now.year;
     _loadWorkoutHistory();
   }
 
@@ -57,11 +61,26 @@ class _HistoryPageState extends State<HistoryPage> {
       setState(() {
         _workoutHistory = history;
         _isLoading = false;
+        _filterWorkoutsByMonth();
       });
     } catch (e) {
       print('Error loading workout history: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  void _filterWorkoutsByMonth() {
+    if (_workoutHistory.isEmpty) {
+      _filteredWorkouts = [];
+      return;
+    }
+
+    final monthIndex = months.indexOf(selectedMonth) + 1;
+    
+    _filteredWorkouts = _workoutHistory.where((workout) {
+      return workout.date.month == monthIndex && 
+             workout.date.year == selectedYear;
+    }).toList();
   }
 
   void _onItemTapped(int index) {
@@ -356,7 +375,17 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  // Add this method to handle year changes
+  void _applyYearChange(int newYear) {
+    setState(() {
+      selectedYear = newYear;
+      _filterWorkoutsByMonth();
+    });
+  }
+
   void _showMonthPicker() {
+    int tempYear = selectedYear; // Temporary variable to track year changes in the modal
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
@@ -380,29 +409,51 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(223, 77, 15, 1.0),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      '2025',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  // Year selector
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                        onPressed: () {
+                          setModalState(() {
+                            tempYear--;
+                          });
+                        },
                       ),
-                    ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(223, 77, 15, 1.0),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$tempYear',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
+                        onPressed: () {
+                          setModalState(() {
+                            tempYear++;
+                          });
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   Expanded(
                     child: ListView.builder(
                       itemCount: months.length,
                       itemBuilder: (context, index) {
-                        final bool isSelected = months[index] == selectedMonth;
+                        final bool isSelected = months[index] == selectedMonth && tempYear == selectedYear;
                         return ListTile(
                           title: Text(
                             months[index],
@@ -416,8 +467,11 @@ class _HistoryPageState extends State<HistoryPage> {
                             ),
                           ),
                           onTap: () {
+                            // Apply both month and year changes
                             setState(() {
                               selectedMonth = months[index];
+                              selectedYear = tempYear; // Apply the year change
+                              _filterWorkoutsByMonth();
                             });
                             Navigator.pop(context);
                           },
@@ -451,10 +505,22 @@ class _HistoryPageState extends State<HistoryPage> {
       );
     }
 
+    if (_filteredWorkouts.isEmpty) {
+      return Center(
+        child: Text(
+          'No workouts found for $selectedMonth $selectedYear',
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
-      itemCount: _workoutHistory.length,
+      itemCount: _filteredWorkouts.length,
       itemBuilder: (context, index) {
-        final history = _workoutHistory[index];
+        final history = _filteredWorkouts[index];
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(16),
@@ -632,22 +698,21 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(28, 28, 30, 0.7),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color.fromRGBO(60, 60, 62, 1.0),
+                width: 1,
+              ),
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildTabButton('Workout', 0),
-                      const SizedBox(width: 24),
-                      _buildTabButton('Steps', 1),
-                      const SizedBox(width: 24),
-                      _buildTabButton('Diet', 2),
-                    ],
-                  ),
-                ),
+                _buildTabButton('Workout', 0),
+                _buildTabButton('Steps', 1),
+                _buildTabButton('Diet', 2),
               ],
             ),
           ),
@@ -678,21 +743,24 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-        elevation: 0,
-        automaticallyImplyLeading: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(0),
+        child: AppBar(
+          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+          elevation: 0,
+          automaticallyImplyLeading: false,
+        ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'History',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFFDF4D0F),
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -727,27 +795,43 @@ class _HistoryPageState extends State<HistoryPage> {
       onTap: () {
         setState(() {
           selectedTabIndex = index;
+          // If we're on the workout tab, apply the month filter
+          if (index == 0) {
+            _filterWorkoutsByMonth();
+          }
         });
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isSelected
-                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                  : Colors.transparent,
-              width: 2,
-            ),
+          color: isSelected ? const Color.fromRGBO(223, 77, 15, 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected 
+              ? const Color.fromRGBO(223, 77, 15, 1.0)
+              : Colors.transparent,
+            width: 1.5,
           ),
+          boxShadow: isSelected 
+            ? [
+                BoxShadow(
+                  color: const Color.fromRGBO(223, 77, 15, 0.3),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                )
+              ] 
+            : null,
         ),
         child: Text(
           text,
           style: TextStyle(
             color: isSelected
                 ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.grey,
-            fontSize: 16,
+                : Colors.white70,
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),

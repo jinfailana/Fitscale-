@@ -235,7 +235,7 @@ class _StepsPageState extends State<StepsPage> {
                   .get()
                   .then((doc) {
                 if (doc.exists) {
-                  setState(() {
+    setState(() {
                     username = doc['username'] ?? 'User';
                     email = user.email ?? '';
                   });
@@ -292,7 +292,7 @@ class _StepsPageState extends State<StepsPage> {
                       onTap: () {
                         Navigator.pop(context); // Close the modal first
                         Navigator.push(
-                          context,
+        context,
                           CustomPageRoute(child: const ManageAccPage()),
                         );
                       },

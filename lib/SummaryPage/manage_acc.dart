@@ -6,6 +6,7 @@ import '../utils/custom_page_route.dart';
 import '../screens/recommendations_page.dart';
 import '../HistoryPage/history.dart';
 import '../models/user_model.dart';
+import '../firstlogin.dart';
 
 class ManageAccPage extends StatefulWidget {
   const ManageAccPage({super.key});
@@ -595,7 +596,18 @@ class _ManageAccPageState extends State<ManageAccPage> {
               onPressed: () async {
                 try {
                   await FirebaseAuth.instance.signOut();
-                  Navigator.pushReplacementNamed(context, '/login');
+                  
+                  // Close the dialog
+                  Navigator.pop(context);
+                  
+                  // Navigate to login page and clear all previous routes
+                  Navigator.of(context).pushAndRemoveUntil(
+                    CustomPageRoute(
+                      child: const FirstLoginCheck(),
+                      transitionType: TransitionType.fade,
+                    ),
+                    (route) => false, // This predicate ensures all previous routes are removed
+                  );
                 } catch (e) {
                   print('Error signing out: $e');
                   ScaffoldMessenger.of(context).showSnackBar(

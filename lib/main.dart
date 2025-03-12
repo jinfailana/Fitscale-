@@ -26,9 +26,10 @@ import 'auth_check.dart';
 import 'intro_screen.dart';
 import 'models/user_model.dart'; // Import your UserModel
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+  );
   runApp(const MyApp());
 }
 

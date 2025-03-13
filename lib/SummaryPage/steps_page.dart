@@ -8,6 +8,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'dart:math' show pi, cos, sin;
 import '../widgets/goal_selection_sheet.dart';
+import 'package:flutter/foundation.dart';
+
+import 'dart:io';  
+import 'package:http/http.dart' as http;
+import '../services/step_goal_service.dart';
+
 
 class StepsPage extends StatefulWidget {
   const StepsPage({super.key});
@@ -36,6 +42,11 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   int _goal = 0;
   DateTime? _lastGoalSetDate;
 
+  final StepGoalService _stepGoalService = StepGoalService();
+
+  int _initialSteps = 0;
+  bool _isFirstReading = true;
+
   @override
   void initState() {
     super.initState();
@@ -56,13 +67,55 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
       final user = _auth.currentUser;
       if (user != null) {
         _userId = user.uid;
-        await _checkExistingGoal();
+        await _initializeUserData();
         await _requestPermissions();
         await _initializePedometer();
       }
     } catch (e) {
       print('Error initializing tracking: $e');
       _showError('Failed to initialize tracking');
+    }
+  }
+
+  Future<void> _initializeUserData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        _userId = user.uid;
+        
+        // Get the last saved steps for today
+        final userDoc = await _firestore.collection('users').doc(_userId).get();
+        final data = userDoc.data();
+        
+        if (data != null) {
+          final lastUpdateDate = data['date'] as Timestamp?;
+          final today = DateTime.now();
+          final todayDate = DateTime(today.year, today.month, today.day);
+          
+          // If last update was today, use those steps
+          if (lastUpdateDate != null && 
+              lastUpdateDate.toDate().isAtSameMomentAs(todayDate)) {
+            setState(() {
+              _steps = data['current_steps'] ?? 0;
+              _calories = data['calories'] ?? 0;
+              _distance = (data['distance'] ?? 0).toDouble();
+            });
+          } else {
+            // If it's a new day, start from 0
+            await _firestore.collection('users').doc(_userId).set({
+              'current_steps': 0,
+              'calories': 0,
+              'distance': 0,
+              'last_updated': FieldValue.serverTimestamp(),
+              'date': Timestamp.fromDate(todayDate),
+            }, SetOptions(merge: true));
+          }
+        }
+        
+        await _checkExistingGoal();
+      }
+    } catch (e) {
+      print('Error initializing user data: $e');
     }
   }
 
@@ -131,6 +184,11 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     try {
       _stepCountSubscription?.cancel();
       _pedestrianStatusSubscription?.cancel();
+      
+      // Reset step counting variables
+      _isFirstReading = true;
+      _initialSteps = 0;
+      _steps = 0;
 
       _stepCountSubscription = Pedometer.stepCountStream.listen(
         onStepCount,
@@ -150,8 +208,14 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   }
 
   void onStepCount(StepCount event) async {
+    if (_isFirstReading) {
+      _initialSteps = event.steps;
+      _isFirstReading = false;
+    }
+
     setState(() {
-      _steps = event.steps;
+      // Calculate actual steps taken since app started
+      _steps = event.steps - _initialSteps;
       _updateStats();
     });
 
@@ -169,22 +233,55 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
       // Calculate percentage if goal is set, otherwise show 0
       _percentage = _hasSetGoal ? (_steps / _goal * 100).clamp(0, 100) : 0;
 
-      // Calculate calories and distance regardless of goal
+      // Update calories and distance based on actual steps
+      // Average calorie burn per step (varies by person)
       _calories = (_steps * 0.04).round();
+      // Average stride length (in km) - can be adjusted based on user height
       _distance = _steps * 0.0007;
     });
   }
 
   Future<void> _saveStepsToFirestore() async {
+    // Check for internet connectivity
     try {
-      await _firestore.collection('users').doc(_userId).update({
-        'current_steps': _steps,
-        'calories': _calories,
-        'distance': _distance,
-        'last_updated': FieldValue.serverTimestamp(),
-      });
+      final result = await InternetAddress.lookup('google.com');
+      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+        final now = DateTime.now();
+        final lastUpdate = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .get()
+            .then((doc) => doc.data()?['last_updated'] as Timestamp?);
+
+        // Check if last update was from a different day
+        if (lastUpdate != null) {
+          final lastUpdateDate = lastUpdate.toDate();
+          final today = DateTime(now.year, now.month, now.day);
+          final lastDate = DateTime(
+              lastUpdateDate.year, lastUpdateDate.month, lastUpdateDate.day);
+
+          // Reset stats if it's a new day
+          if (lastDate.isBefore(today)) {
+            setState(() {
+              _steps = 0;
+              _calories = 0;
+              _distance = 0;
+              _percentage = 0;
+            });
+          }
+        }
+
+        // Save current stats
+        await _firestore.collection('users').doc(_userId).update({
+          'current_steps': _steps,
+          'calories': _calories,
+          'distance': _distance,
+          'last_updated': FieldValue.serverTimestamp(),
+          'date': Timestamp.fromDate(DateTime(now.year, now.month, now.day)),
+        });
+      }
     } catch (e) {
-      print('Error saving steps: $e');
+      print('No internet connection or error saving: $e');
     }
   }
 
@@ -196,56 +293,51 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   }
 
   Future<void> _showGoalSelectionSheet() async {
-    // Check if goal was set today
-    if (_lastGoalSetDate != null) {
-      final now = DateTime.now();
-      final lastSetDate = DateTime(_lastGoalSetDate!.year,
-          _lastGoalSetDate!.month, _lastGoalSetDate!.day);
-      final today = DateTime(now.year, now.month, now.day);
-
-      if (lastSetDate == today) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You can only set a new goal once per day'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
+    try {
+      // Get user's BMI from Firestore
+      final userDoc = await _firestore.collection('users').doc(_userId).get();
+      final userData = userDoc.data();
+      
+      double? bmi;
+      if (userData != null && userData['weight'] != null && userData['height'] != null) {
+        final weight = (userData['weight'] as num).toDouble();
+        final height = (userData['height'] as num).toDouble() / 100; // convert to meters
+        bmi = weight / (height * height);
       }
-    }
 
-    final selectedGoal = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => GoalSelectionSheet(
-        recommendedGoals: [
-          {'steps': 2500, 'description': 'Become active'},
-          {'steps': 5000, 'description': 'Keep fit'},
-          {'steps': 8000, 'description': 'Boost metabolism'},
-          {'steps': 15000, 'description': 'Lose weight'},
-        ],
-      ),
-    );
+      // Get recommended goals based on BMI
+      final recommendedGoals = await _stepGoalService.getRecommendedStepGoals(bmi ?? 25);
 
-    if (selectedGoal != null) {
-      final now = DateTime.now();
-      setState(() {
-        _hasSetGoal = true;
-        _goal = selectedGoal;
-        _lastGoalSetDate = now;
-        _updateStats();
-      });
+      final selectedGoal = await showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => GoalSelectionSheet(
+          recommendedGoals: recommendedGoals,
+        ),
+      );
 
-      try {
-        await _firestore.collection('users').doc(_userId).update({
-          'step_goal': selectedGoal,
-          'goal_set_date': Timestamp.fromDate(now),
+      if (selectedGoal != null) {
+        final now = DateTime.now();
+        setState(() {
+          _hasSetGoal = true;
+          _goal = selectedGoal;
+          _lastGoalSetDate = now;
+          _updateStats();
         });
-      } catch (e) {
-        print('Error saving goal: $e');
-        _showError('Failed to save goal');
+
+        try {
+          await _firestore.collection('users').doc(_userId).update({
+            'step_goal': selectedGoal,
+            'goal_set_date': Timestamp.fromDate(now),
+          });
+        } catch (e) {
+          print('Error saving goal: $e');
+          _showError('Failed to save goal');
+        }
       }
+    } catch (e) {
+      print('Error showing goal selection: $e');
     }
   }
 
@@ -281,49 +373,69 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
               'Track your steps',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 24,
+                fontSize: 32,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
-            RichText(
-              text: const TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'SET ',
-                    style: TextStyle(
-                      color: Color.fromRGBO(223, 77, 15, 1.0),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+            const SizedBox(height: 24),
+            if (!_hasSetGoal) ...[
+              RichText(
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'SET ',
+                      style: TextStyle(
+                        color: Color.fromRGBO(223, 77, 15, 1.0),
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  TextSpan(
-                    text: 'goal',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    TextSpan(
+                      text: 'goal',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+            ],
+            const Spacer(flex: 1),
+            Text(
+              '$_steps',
+              style: const TextStyle(
+                color: Color.fromRGBO(223, 77, 15, 1.0),
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            const Spacer(flex: 1),
+            const Text(
+              'steps taken',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
             Center(
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   CustomPaint(
-                    size: const Size(300, 150),
+                    size: const Size(340, 170),
                     painter: SemiCircleProgressPainter(
                       percentage: _percentage,
                       color: const Color.fromRGBO(223, 77, 15, 1.0),
+                      goal: _goal,
                     ),
                   ),
                   Column(
@@ -331,24 +443,32 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
                       Text(
                         '${_percentage.round()}%',
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
+                          color: Color.fromRGBO(223, 77, 15, 1.0),
+                          fontSize: 40,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _showGoalSelectionSheet,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromRGBO(223, 77, 15, 1.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      if (!_hasSetGoal) ...[
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _showGoalSelectionSheet,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            minimumSize: const Size(100, 44),
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
                           ),
-                          minimumSize: const Size(80, 36),
+                          child: const Text(
+                            'SET',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        child: const Text('SET'),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -425,17 +545,19 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
 class SemiCircleProgressPainter extends CustomPainter {
   final double percentage;
   final Color color;
+  final int goal;
 
   SemiCircleProgressPainter({
     required this.percentage,
     required this.color,
+    required this.goal,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color.withOpacity(0.2)
-      ..strokeWidth = 8.0 // Thicker line
+      ..strokeWidth = 8.0
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -455,7 +577,7 @@ class SemiCircleProgressPainter extends CustomPainter {
     if (percentage > 0) {
       final progressPaint = Paint()
         ..color = color
-        ..strokeWidth = 8.0 // Thicker line
+        ..strokeWidth = 8.0
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
 
@@ -468,17 +590,17 @@ class SemiCircleProgressPainter extends CustomPainter {
       );
     }
 
-    // Draw tick marks
+    // Draw tick marks (lines instead of dots)
     final tickPaint = Paint()
       ..color = Colors.white.withOpacity(0.5)
-      ..strokeWidth = 3.0 // Slightly thicker ticks
+      ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
     for (int i = 0; i <= 10; i++) {
       final angle = pi + (pi * i / 10);
       final outerPoint = Offset(
-        center.dx + (radius) * cos(angle),
-        center.dy + (radius) * sin(angle),
+        center.dx + radius * cos(angle),
+        center.dy + radius * sin(angle),
       );
       final innerPoint = Offset(
         center.dx + (radius - 10) * cos(angle),
@@ -487,15 +609,22 @@ class SemiCircleProgressPainter extends CustomPainter {
       canvas.drawLine(innerPoint, outerPoint, tickPaint);
     }
 
-    // Draw 0 labels
-    const textStyle = TextStyle(
-      color: Colors.grey,
+    // Draw labels
+    final textStyle = TextStyle(
+      color: Colors.grey[400],
       fontSize: 12,
       fontWeight: FontWeight.bold,
     );
 
-    // Left 0
-    final leftTextSpan = TextSpan(text: '0', style: textStyle);
+    // Left label (0)
+    const leftTextSpan = TextSpan(
+      text: '0',
+      style: TextStyle(
+        color: Colors.grey,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+    );
     final leftTextPainter = TextPainter(
       text: leftTextSpan,
       textDirection: TextDirection.ltr,
@@ -506,8 +635,11 @@ class SemiCircleProgressPainter extends CustomPainter {
       Offset(0, size.height - leftTextPainter.height),
     );
 
-    // Right 0
-    final rightTextSpan = TextSpan(text: '0', style: textStyle);
+    // Right label (goal)
+    final rightTextSpan = TextSpan(
+      text: goal.toString(),
+      style: textStyle,
+    );
     final rightTextPainter = TextPainter(
       text: rightTextSpan,
       textDirection: TextDirection.ltr,
@@ -515,13 +647,12 @@ class SemiCircleProgressPainter extends CustomPainter {
     rightTextPainter.layout();
     rightTextPainter.paint(
       canvas,
-      Offset(size.width - rightTextPainter.width,
-          size.height - rightTextPainter.height),
+      Offset(size.width - rightTextPainter.width, size.height - rightTextPainter.height),
     );
   }
 
   @override
   bool shouldRepaint(SemiCircleProgressPainter oldDelegate) {
-    return oldDelegate.percentage != percentage;
+    return oldDelegate.percentage != percentage || oldDelegate.goal != goal;
   }
 }

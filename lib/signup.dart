@@ -27,7 +27,7 @@ class _SignupPageState extends State<SignupPage> {
 
   String? verificationCode;
   final String brevoApiKey =
-      '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';
+      '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';
 
   Future<void> sendVerificationEmail(String email) async {
     try {

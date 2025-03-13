@@ -537,6 +537,124 @@ class _SummaryPageState extends State<SummaryPage> {
 
   Widget _buildAnimatedSummaryCard(
       String title, String subtitle, IconData icon) {
+    if (title == 'Set Step Goal') {
+      return StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(FirebaseAuth.instance.currentUser?.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            final userData = snapshot.data!.data() as Map<String, dynamic>?;
+            final stepGoal = userData?['step_goal'];
+            
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  CustomPageRoute(child: const StepsPage()),
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Color.fromRGBO(223, 77, 15, 1.0),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          stepGoal != null ? 'Daily goal: $stepGoal steps' : 'No goal yet',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(icon, color: const Color.fromRGBO(223, 77, 15, 1.0), size: 40),
+                  ],
+                ),
+              ),
+            );
+          }
+          return const CircularProgressIndicator();
+        },
+      );
+    } else if (title.contains('kg')) {
+      // Navigate to MeasureWeightPage when weight card is tapped
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            CustomPageRoute(child: const MeasureWeightPage()),
+          ).then((_) {
+            // Refresh data when returning from MeasureWeightPage
+            _fetchUserData();
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(50),
+                blurRadius: 5,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color.fromRGBO(223, 77, 15, 1.0),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              Icon(icon, color: Color.fromRGBO(223, 77, 15, 1.0), size: 40),
+            ],
+          ),
+        ),
+      );
+    }
     return GestureDetector(
       onTap: () {
         // Handle navigation based on the card type

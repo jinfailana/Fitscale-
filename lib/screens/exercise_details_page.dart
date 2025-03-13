@@ -47,7 +47,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   void initState() {
     super.initState();
     _confettiController =
-        ConfettiController(duration: const Duration(seconds: 3));
+        ConfettiController(duration: const Duration(seconds: 60));
     _completedSets = widget.exercise.setsCompleted;
     _isCompleted = widget.exercise.isCompleted;
     _startTime = DateTime.now();
@@ -279,10 +279,24 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   void _startRestTimer() {
     if (_isResting) return; // Don't start if already resting
 
+    final totalSets = int.tryParse(widget.exercise.sets) ?? 0;
+    final isFinalSet = _completedSets >= totalSets;
+
     setState(() {
       _isResting = true;
       _remainingSeconds = _restTimeInSeconds;
     });
+
+    // Show appropriate message based on whether this is the final set
+    if (isFinalSet) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Final set completed! Rest before finishing exercise.'),
+          backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
 
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -304,11 +318,20 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           timer.cancel();
 
           // Check if all sets are completed after rest timer
-          final totalSets = int.tryParse(widget.exercise.sets) ?? 0;
-          if (_completedSets >= totalSets) {
+          if (isFinalSet) {
             setState(() {
               _isCompleted = true;
             });
+
+            // Play haptic feedback to indicate completion
+            HapticFeedback.heavyImpact();
+            Future.delayed(const Duration(milliseconds: 100), () {
+              HapticFeedback.heavyImpact();
+            });
+            Future.delayed(const Duration(milliseconds: 200), () {
+              HapticFeedback.heavyImpact();
+            });
+
             // Update progress and show completion dialog
             _updateProgressAndShowCompletion();
           } else {
@@ -346,6 +369,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
 
   @override
   void dispose() {
+    _confettiController.stop();
     _confettiController.dispose();
     _timer?.cancel();
     _notesController.dispose();
@@ -563,7 +587,12 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   }
 
   void _showCompletionDialog() {
+    // Reset and play the confetti controller
+    _confettiController.stop();
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 60));
     _confettiController.play();
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -608,6 +637,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: () {
+                          _confettiController.stop();
                           Navigator.of(context).pop(); // Close dialog
                           Navigator.of(context)
                               .pop(); // Return to workout details
@@ -643,7 +673,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                   emissionFrequency: 0.05,
                   numberOfParticles: 50,
                   gravity: 0.1,
-                  shouldLoop: false,
+                  shouldLoop: true,
                   colors: const [
                     Colors.green,
                     Colors.amber,
@@ -887,6 +917,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
 
                                                     // Start rest timer when a set is completed
                                                     _startRestTimer();
+
+                                                    // The rest timer will handle showing messages and completion
                                                   }
                                                 : null,
                                         icon: const Icon(
@@ -1091,6 +1123,31 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                                                 return;
                                               }
 
+                                              // Check if all sets are completed
+                                              final totalSets = int.tryParse(
+                                                      widget.exercise.sets) ??
+                                                  0;
+                                              if (_completedSets >= totalSets) {
+                                                // Start rest timer before completing
+                                                if (!_isResting) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                          'All sets completed! Starting final rest period...'),
+                                                      backgroundColor:
+                                                          Color.fromRGBO(
+                                                              223, 77, 15, 1.0),
+                                                      duration:
+                                                          Duration(seconds: 2),
+                                                    ),
+                                                  );
+                                                  _startRestTimer();
+                                                }
+                                                return;
+                                              }
+
+                                              // If we get here, we're updating progress for a partially completed exercise
                                               try {
                                                 final user = FirebaseAuth
                                                     .instance.currentUser;

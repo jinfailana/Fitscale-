@@ -290,6 +290,12 @@ class _ManageAccPageState extends State<ManageAccPage> {
                           isStrokeCapRound: true,
                           dotData: FlDotData(
                             show: true,
+                            checkToShowDot: (spot, barData) {
+                              final index = barData.spots.indexOf(spot);
+                              return index == 0 ||
+                                  index == barData.spots.length - 1 ||
+                                  index % 3 == 0;
+                            },
                             getDotPainter: (spot, percent, barData, index) =>
                                 FlDotCirclePainter(
                               radius: 4,
@@ -685,6 +691,12 @@ class _ManageAccPageState extends State<ManageAccPage> {
                                   isStrokeCapRound: true,
                                   dotData: FlDotData(
                                     show: true,
+                                    checkToShowDot: (spot, barData) {
+                                      final index = barData.spots.indexOf(spot);
+                                      return index == 0 ||
+                                          index == barData.spots.length - 1 ||
+                                          index % 3 == 0;
+                                    },
                                     getDotPainter:
                                         (spot, percent, barData, index) =>
                                             FlDotCirclePainter(

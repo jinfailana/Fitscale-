@@ -8,6 +8,7 @@ import 'steps_page.dart';
 import 'measure_weight.dart';
 import '../HistoryPage/history.dart';
 import '../screens/recommendations_page.dart';
+import '../screens/diet_recommendations_page.dart';
 import '../models/user_model.dart';
 import '../services/workout_history_service.dart';
 import 'package:intl/intl.dart';
@@ -480,6 +481,12 @@ class _SummaryPageState extends State<SummaryPage> {
             // Refresh data when returning from MeasureWeightPage
             _fetchUserData();
           });
+        } else if (title == 'Set Diets!') {
+          // Navigate to DietRecommendationsPage when diet card is tapped
+          Navigator.push(
+            context,
+            CustomPageRoute(child: const DietRecommendationsPage()),
+          );
         }
         // Add more conditions for other cards if needed
       },

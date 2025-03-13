@@ -78,6 +78,7 @@ flutter:
     - assets/Fitscale_background.png
     - assets/Fitscale_LOGO.png
     - assets/google_logo.png
+    - assets/diet_images/
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

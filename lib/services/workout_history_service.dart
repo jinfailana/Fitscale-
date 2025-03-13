@@ -89,4 +89,4 @@ class WorkoutHistoryService {
       rethrow;
     }
   }
-}
+} 

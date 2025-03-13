@@ -43,6 +43,9 @@ dependencies:
   google_fonts: ^6.2.1
   provider: ^6.0.0
   connectivity_plus: ^5.0.2
+  flutter_svg: ^2.0.9
+  fl_chart: ^0.66.0
+  confetti: ^0.7.0
    #sensors_plus: ^3.0.3
    #resend: ^1.0.0
 

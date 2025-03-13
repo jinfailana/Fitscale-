@@ -36,6 +36,7 @@ class _HistoryPageState extends State<HistoryPage> {
   int selectedTabIndex = 0;
   int _selectedIndex = 2;
   List<WorkoutHistory> _workoutHistory = [];
+  List<Map<String, dynamic>> _stepHistory = [];
   bool _isLoading = true;
 
   @override
@@ -43,6 +44,7 @@ class _HistoryPageState extends State<HistoryPage> {
     super.initState();
     selectedMonth = months[DateTime.now().month - 1];
     _loadWorkoutHistory();
+    _loadStepHistory();
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -56,6 +58,36 @@ class _HistoryPageState extends State<HistoryPage> {
     } catch (e) {
       print('Error loading workout history: $e');
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadStepHistory() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final selectedMonthIndex = months.indexOf(selectedMonth) + 1;
+        final startDate = DateTime(selectedYear, selectedMonthIndex, 1);
+        final endDate = DateTime(selectedYear, selectedMonthIndex + 1, 0);
+
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('step_history')
+            .where('user_id', isEqualTo: user.uid)
+            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+            .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+            .orderBy('date', descending: true)
+            .get();
+
+        setState(() {
+          _stepHistory = querySnapshot.docs
+              .map((doc) => {
+                    ...doc.data() as Map<String, dynamic>,
+                    'id': doc.id,
+                  })
+              .toList();
+        });
+      }
+    } catch (e) {
+      print('Error loading step history: $e');
     }
   }
 
@@ -319,6 +351,86 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  Widget _buildStepHistoryList() {
+    if (_stepHistory.isEmpty) {
+      return const Center(
+        child: Text(
+          'No steps history available',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _stepHistory.length,
+      itemBuilder: (context, index) {
+        final history = _stepHistory[index];
+        final date = (history['date'] as Timestamp).toDate();
+        final steps = history['steps'] as int;
+        final isCompleted = history['completed'] as bool;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(44, 44, 46, 1.0),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color.fromRGBO(223, 77, 15, 1.0),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(223, 77, 15, 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.directions_walk,
+                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Steps Taken',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '$steps Steps',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                DateFormat('MMM d, yyyy').format(date),
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildActivityHistoryTable() {
     return Container(
       margin: const EdgeInsets.only(top: 24),
@@ -408,16 +520,17 @@ class _HistoryPageState extends State<HistoryPage> {
           Expanded(
             child: selectedTabIndex == 0
                 ? _buildWorkoutHistoryList()
-                : Center(
-                    child: Text(
-                      'No ${selectedTabIndex == 1 ? 'steps' : 'diet'} history available',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
+                : selectedTabIndex == 1
+                    ? _buildStepHistoryList()
+                    : Center(
+                        child: Text(
+                          'No ${selectedTabIndex == 2 ? 'diet' : ''} history available',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
           ),
         ],
       ),
@@ -462,21 +575,25 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-        unselectedItemColor: Colors.white54,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: [
-          _buildNavItem(Icons.home, 'Home', 0),
-          _buildNavItem(Icons.fitness_center, 'Workout', 1),
-          _buildNavItem(Icons.history, 'History', 2),
-          _buildNavItem(Icons.person, 'Me', 3),
-        ],
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
+          unselectedItemColor: Colors.white54,
+          type: BottomNavigationBarType.fixed,
+          items: [
+            _buildNavItem(Icons.home, 'Home', 0),
+            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
+            _buildNavItem(Icons.history, 'History', 2),
+            _buildNavItem(Icons.person, 'Me', 3),
+          ],
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+        ),
       ),
     );
   }

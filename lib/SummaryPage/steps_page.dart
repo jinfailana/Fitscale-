@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-import 'package:pedometer/pedometer.dart'; // Add this package
-import 'package:permission_handler/permission_handler.dart'; // Add this package
-import 'dart:math' as math;
-import '../HistoryPage/history.dart';
-import 'summary_page.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:async';
+import 'dart:math' show pi, cos, sin;
+import '../widgets/goal_selection_sheet.dart';
+import 'package:flutter/foundation.dart';
+
+import 'dart:io';  
+import 'package:http/http.dart' as http;
+import '../services/step_goal_service.dart';
+
 
 class StepsPage extends StatefulWidget {
   const StepsPage({super.key});
@@ -16,360 +22,352 @@ class StepsPage extends StatefulWidget {
   State<StepsPage> createState() => _StepsPageState();
 }
 
-class _StepsPageState extends State<StepsPage> {
+class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
+  // Firebase instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _userId;
+
+  // Pedometer streams
+  StreamSubscription<StepCount>? _stepCountSubscription;
+  StreamSubscription<PedestrianStatus>? _pedestrianStatusSubscription;
+
+  // Step tracking variables
   int _steps = 0;
-  int _goal = 650; // Default goal
   double _percentage = 0;
   int _calories = 0;
   double _distance = 0;
-  int _selectedIndex = 1; // Set to 1 for Workouts tab
-  Map<String, dynamic>? _userData;
-  double? _bmi;
-  String _bmiCategory = '';
-  DateTime? _lastGoalSetDate; // Track when the goal was last set
-  bool _goalAchieved = false;  // Add this line at the top with other variables
-
-  // Step tracking related variables
-  late Stream<StepCount> _stepCountStream;
-  late Stream<PedestrianStatus> _pedestrianStatusStream;
   String _status = 'unknown';
-  int _stepsToday = 0;
-  DateTime _lastResetDate = DateTime.now();
-  int? _lastTotalSteps;
-  int _lastRecordedSteps = 0; // To prevent step count reduction
+  bool _hasSetGoal = false;
+  int _goal = 0;
+  DateTime? _lastGoalSetDate;
+
+  final StepGoalService _stepGoalService = StepGoalService();
+
+  int _initialSteps = 0;
+  bool _isFirstReading = true;
+
+  // Add to class variables
+  bool _goalCompleted = false;
 
   @override
   void initState() {
     super.initState();
-    loadGoal();
-    fetchUserDataAndCalculateBMI();
-    _requestPermissions();
-    _checkAndResetStepCounter();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeTracking();
   }
 
-  void loadGoal() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _goal = prefs.getInt('step_goal') ?? 650;
-      _stepsToday = prefs.getInt('current_steps') ?? 0;
-      _steps = _stepsToday;
-      _lastRecordedSteps = _steps; // Initialize last recorded steps
-      _lastResetDate = DateTime.fromMillisecondsSinceEpoch(
-          prefs.getInt('last_reset_date') ??
-              DateTime.now().millisecondsSinceEpoch);
-      _lastGoalSetDate = prefs.getInt('last_goal_set_date') != null
-          ? DateTime.fromMillisecondsSinceEpoch(
-              prefs.getInt('last_goal_set_date')!)
-          : null;
-      _updateStats();
-    });
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stepCountSubscription?.cancel();
+    _pedestrianStatusSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initializeTracking() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        _userId = user.uid;
+        await _initializeUserData();
+        await _requestPermissions();
+        await _initializePedometer();
+      }
+    } catch (e) {
+      print('Error initializing tracking: $e');
+      _showError('Failed to initialize tracking');
+    }
+  }
+
+  Future<void> _initializeUserData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        _userId = user.uid;
+        
+        // Get the last saved steps for today
+        final userDoc = await _firestore.collection('users').doc(_userId).get();
+        final data = userDoc.data();
+        
+        if (data != null) {
+          final lastUpdateDate = data['date'] as Timestamp?;
+          final today = DateTime.now();
+          final todayDate = DateTime(today.year, today.month, today.day);
+          
+          // If last update was today, use those steps
+          if (lastUpdateDate != null && 
+              lastUpdateDate.toDate().isAtSameMomentAs(todayDate)) {
+            setState(() {
+              _steps = data['current_steps'] ?? 0;
+              _calories = data['calories'] ?? 0;
+              _distance = (data['distance'] ?? 0).toDouble();
+            });
+          } else {
+            // If it's a new day, start from 0
+            await _firestore.collection('users').doc(_userId).set({
+              'current_steps': 0,
+              'calories': 0,
+              'distance': 0,
+              'last_updated': FieldValue.serverTimestamp(),
+              'date': Timestamp.fromDate(todayDate),
+            }, SetOptions(merge: true));
+          }
+        }
+        
+        await _checkExistingGoal();
+      }
+    } catch (e) {
+      print('Error initializing user data: $e');
+    }
+  }
+
+  Future<void> _checkExistingGoal() async {
+    try {
+      final doc = await _firestore.collection('users').doc(_userId).get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data?['step_goal'] != null) {
+          setState(() {
+            _hasSetGoal = true;
+            _goal = data?['step_goal'];
+          });
+
+          // Check last goal set date
+          if (data?['goal_set_date'] != null) {
+            _lastGoalSetDate = (data?['goal_set_date'] as Timestamp).toDate();
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking goal: $e');
+    }
   }
 
   Future<void> _requestPermissions() async {
-    if (await Permission.activityRecognition.request().isGranted) {
-      // Permission granted, initialize step counter
-      initPlatformState();
-    } else {
-      // Show dialog explaining why permission is needed
-      showDialog(
+    final statuses = await [
+      Permission.activityRecognition,
+      Permission.sensors,
+    ].request();
+
+    bool allGranted = true;
+    statuses.forEach((permission, status) {
+      if (!status.isGranted) allGranted = false;
+    });
+
+    if (!allGranted) {
+      if (!mounted) return;
+      final shouldOpenSettings = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Permission Required'),
+          title: const Text('Permissions Required'),
           content: const Text(
-              'This app needs activity recognition permission to count your steps.'),
+            'This app needs activity recognition and sensor permissions to count your steps.',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Open Settings'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
             ),
           ],
         ),
       );
-    }
-  }
 
-  void _checkAndResetStepCounter() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final lastReset =
-        DateTime(_lastResetDate.year, _lastResetDate.month, _lastResetDate.day);
-
-    if (today.isAfter(lastReset)) {
-      // It's a new day, reset the counter
-      _stepsToday = 0;
-      _lastResetDate = now;
-      _saveCurrentSteps();
-    }
-  }
-
-  void initPlatformState() {
-    // Setup step counter
-    _pedestrianStatusStream = Pedometer.pedestrianStatusStream;
-    _pedestrianStatusStream.listen(
-      _onPedestrianStatusChanged,
-      onError: _onPedestrianStatusError,
-    );
-
-    _stepCountStream = Pedometer.stepCountStream;
-    _stepCountStream.listen(
-      _onStepCount,
-      onError: _onStepCountError,
-    );
-  }
-
-  void _onStepCount(StepCount event) async {
-    // This handles step counting from the pedometer
-    int totalSteps = event.steps;
-
-    final prefs = await SharedPreferences.getInstance();
-    if (_lastTotalSteps == null) {
-      _lastTotalSteps = prefs.getInt('last_total_steps');
-      if (_lastTotalSteps == null) {
-        _lastTotalSteps = totalSteps;
-        await prefs.setInt('last_total_steps', totalSteps);
+      if (shouldOpenSettings == true) {
+        await openAppSettings();
       }
     }
+  }
 
-    // Calculate new steps taken since last reading
-    int stepsSinceLastReading = totalSteps - _lastTotalSteps!;
-    if (stepsSinceLastReading > 0) {
-      // Only update if positive (avoid pedometer resets)
-      _stepsToday += stepsSinceLastReading;
-      _steps =
-          math.max(_stepsToday, _lastRecordedSteps); // Never decrease steps
-      _lastRecordedSteps = _steps;
+  Future<void> _initializePedometer() async {
+    try {
+      _stepCountSubscription?.cancel();
+      _pedestrianStatusSubscription?.cancel();
+      
+      // Reset step counting variables
+      _isFirstReading = true;
+      _initialSteps = 0;
+      _steps = 0;
 
-      // Save the new total steps count
-      _lastTotalSteps = totalSteps;
-      await prefs.setInt('last_total_steps', totalSteps);
+      _stepCountSubscription = Pedometer.stepCountStream.listen(
+        onStepCount,
+        onError: (error) => _handleSensorError('Step counter', error),
+        cancelOnError: false,
+      );
 
-      // Save current day's step count
-      _saveCurrentSteps();
-
-      // Update UI
-      setState(() {
-        _updateStats();
-      });
+      _pedestrianStatusSubscription = Pedometer.pedestrianStatusStream.listen(
+        onPedestrianStatusChanged,
+        onError: (error) => _handleSensorError('Activity detection', error),
+        cancelOnError: false,
+      );
+    } catch (e) {
+      print('Error initializing pedometer: $e');
+      _handleSensorError('Pedometer', e);
     }
   }
 
-  void _onPedestrianStatusChanged(PedestrianStatus event) {
+  void onStepCount(StepCount event) async {
+    if (_isFirstReading) {
+      _initialSteps = event.steps;
+      _isFirstReading = false;
+    }
+
+    setState(() {
+      // Calculate actual steps taken since app started
+      _steps = event.steps - _initialSteps;
+      _updateStats();
+    });
+
+    await _saveStepsToFirestore();
+  }
+
+  void onPedestrianStatusChanged(PedestrianStatus event) {
     setState(() {
       _status = event.status;
     });
   }
 
-  void _onStepCountError(error) {
-    print('Step count error: $error');
+  void _updateStats() {
+    setState(() {
+      // Calculate percentage if goal is set, otherwise show 0
+      _percentage = _hasSetGoal ? (_steps / _goal * 100).clamp(0, 100) : 0;
+
+      // Update calories and distance based on actual steps
+      // Average calorie burn per step (varies by person)
+      _calories = (_steps * 0.04).round();
+      // Average stride length (in km) - can be adjusted based on user height
+      _distance = _steps * 0.0007;
+    });
   }
 
-  void _onPedestrianStatusError(error) {
-    print('Pedestrian status error: $error');
-  }
-
-  void _saveCurrentSteps() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('current_steps', _stepsToday);
-    await prefs.setInt(
-        'last_reset_date', _lastResetDate.millisecondsSinceEpoch);
-  }
-
-  Future<void> fetchUserDataAndCalculateBMI() async {
+  Future<void> _saveStepsToFirestore() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+      final result = await InternetAddress.lookup('google.com');
+      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
 
-        if (doc.exists) {
-          final userData = doc.data()!;
+        // Check if goal is completed
+        if (_hasSetGoal && _steps >= _goal && !_goalCompleted) {
           setState(() {
-            _userData = userData;
-            // Calculate BMI
-            double heightInMeters = (userData['height'] ?? 170) / 100;
-            double weight = userData['weight']?.toDouble() ?? 70;
-            _bmi = weight / (heightInMeters * heightInMeters);
-            _bmiCategory = _getBMICategory(_bmi!);
+            _goalCompleted = true;
+          });
+          // Record completed goal
+          await _firestore.collection('step_history').add({
+            'user_id': _userId,
+            'steps': _steps,
+            'goal': _goal,
+            'date': Timestamp.fromDate(today),
+            'completed': true,
+          });
+          
+          // Allow setting new goal
+          setState(() {
+            _hasSetGoal = false;
+            _goalCompleted = false;
+          });
+          
+          // Show completion message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Congratulations! You\'ve reached your goal of $_goal steps!'),
+                backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+              ),
+            );
+          }
+        }
+
+        // Save current stats
+        await _firestore.collection('users').doc(_userId).update({
+          'current_steps': _steps,
+          'calories': _calories,
+          'distance': _distance,
+          'last_updated': FieldValue.serverTimestamp(),
+          'date': Timestamp.fromDate(today),
+        });
+
+        // Save daily progress at end of day or when app closes
+        if (_steps > 0) {
+          await _firestore.collection('step_history').add({
+            'user_id': _userId,
+            'steps': _steps,
+            'goal': _goal,
+            'date': Timestamp.fromDate(today),
+            'completed': _goalCompleted,
           });
         }
       }
     } catch (e) {
-      print('Error fetching user data: $e');
+      print('No internet connection or error saving: $e');
     }
   }
 
-  String _getBMICategory(double bmi) {
-    if (bmi < 18.5) return 'Underweight';
-    if (bmi < 24.9) return 'Normal';
-    if (bmi < 29.9) return 'Overweight';
-    return 'Obese';
+  void _handleSensorError(String sensorName, dynamic error) {
+    print('$sensorName error: $error');
+    if (mounted) {
+      _showError('$sensorName is not available on this device');
+    }
   }
 
-  List<Map<String, dynamic>> _calculateStepGoalsByBMI() {
-    // Default values if BMI is not available
-    if (_bmi == null) {
-      return [
-        {'title': 'Become active', 'steps': 3000},
-        {'title': 'Keep fit', 'steps': 7000},
-        {'title': 'Boost metabolism', 'steps': 10000},
-        {'title': 'Lose weight', 'steps': 12000},
-      ];
-    }
-
-    // Base step goals according to BMI category
-    int becomeActiveBase;
-    int keepFitBase;
-    int boostMetabolismBase;
-    int loseWeightBase;
-
-    if (_bmi! < 18.5) {
-      // Underweight
-      // Focus on building strength and healthy weight gain
-      becomeActiveBase = 3000;
-      keepFitBase = 6000;
-      boostMetabolismBase = 8000;
-      loseWeightBase = 9000; // Lower for underweight (focus on nutrition)
-    } else if (_bmi! < 25) {
-      // Normal weight
-      // Maintain healthy weight and fitness
-      becomeActiveBase = 4000;
-      keepFitBase = 7500;
-      boostMetabolismBase = 10000;
-      loseWeightBase = 12000;
-    } else if (_bmi! < 30) {
-      // Overweight
-      // Focus on gradual weight loss and increased activity
-      becomeActiveBase = 5000;
-      keepFitBase = 8000;
-      boostMetabolismBase = 11000;
-      loseWeightBase = 13000;
-    } else if (_bmi! < 35) {
-      // Obese Class I
-      // Start with achievable goals, gradually increase
-      becomeActiveBase = 4000;
-      keepFitBase = 7000;
-      boostMetabolismBase = 9000;
-      loseWeightBase = 11000;
-    } else {
-      // Obese Class II and above
-      // Start with lower goals to prevent injury
-      becomeActiveBase = 3000;
-      keepFitBase = 6000;
-      boostMetabolismBase = 8000;
-      loseWeightBase = 10000;
-    }
-
-    // Age adjustment
-    int age = DateTime.now().year - ((_userData?['birthYear'] ?? 2000) as int);
-    double ageMultiplier = 1.0;
-
-    if (age > 70) {
-      ageMultiplier = 0.7; // Significant reduction for elderly
-    } else if (age > 60) {
-      ageMultiplier = 0.8; // Moderate reduction for seniors
-    } else if (age > 50) {
-      ageMultiplier = 0.9; // Slight reduction for older adults
-    } else if (age < 18) {
-      ageMultiplier = 1.2; // Increase for adolescents (more active)
-    }
-
-    // Apply age adjustment
-    becomeActiveBase = (becomeActiveBase * ageMultiplier).round();
-    keepFitBase = (keepFitBase * ageMultiplier).round();
-    boostMetabolismBase = (boostMetabolismBase * ageMultiplier).round();
-    loseWeightBase = (loseWeightBase * ageMultiplier).round();
-
-    // Round to nearest 500 for cleaner numbers
-    becomeActiveBase = (becomeActiveBase / 500).round() * 500;
-    keepFitBase = (keepFitBase / 500).round() * 500;
-    boostMetabolismBase = (boostMetabolismBase / 500).round() * 500;
-    loseWeightBase = (loseWeightBase / 500).round() * 500;
-
-    return [
-      {'title': 'Become active', 'steps': becomeActiveBase},
-      {'title': 'Keep fit', 'steps': keepFitBase},
-      {'title': 'Boost metabolism', 'steps': boostMetabolismBase},
-      {'title': 'Lose weight', 'steps': loseWeightBase},
-    ];
-  }
-
-  void _updateStats() {
-    setState(() {
-      _percentage = (_steps / _goal) * 100;
+  Future<void> _showGoalSelectionSheet() async {
+    try {
+      // Get user's BMI from Firestore
+      final userDoc = await _firestore.collection('users').doc(_userId).get();
+      final userData = userDoc.data();
       
-      if (_percentage > 100) {
-        _percentage = 100;
+      double? bmi;
+      if (userData != null && userData['weight'] != null && userData['height'] != null) {
+        final weight = (userData['weight'] as num).toDouble();
+        final height = (userData['height'] as num).toDouble() / 100; // convert to meters
+        bmi = weight / (height * height);
       }
-      
-      _calories = (_steps * 0.04).round();
-      _distance = _steps * 0.0007;
-      
-      if (_steps >= _goal && !_goalAchieved) {
-        _goalAchieved = true;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Congratulations! You reached your daily step goal!'),
-            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
-          ),
-        );
-      }
-    });
-  }
 
-  BottomNavigationBarItem _buildNavItem(
-      IconData icon, String label, int index) {
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: _selectedIndex == index
-              ? const Color.fromRGBO(223, 77, 15, 0.1)
-              : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(_selectedIndex == index ? 15 : 10),
-          border: Border.all(
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 2,
-          ),
+      // Get recommended goals based on BMI
+      final recommendedGoals = await _stepGoalService.getRecommendedStepGoals(bmi ?? 25);
+
+      final selectedGoal = await showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => GoalSelectionSheet(
+          recommendedGoals: recommendedGoals,
         ),
-        child: Icon(icon,
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.white54),
-      ),
-      label: label,
-    );
+      );
+
+      if (selectedGoal != null) {
+        final now = DateTime.now();
+        setState(() {
+          _hasSetGoal = true;
+          _goal = selectedGoal;
+          _lastGoalSetDate = now;
+          _updateStats();
+        });
+
+        try {
+          await _firestore.collection('users').doc(_userId).update({
+            'step_goal': selectedGoal,
+            'goal_set_date': Timestamp.fromDate(now),
+          });
+        } catch (e) {
+          print('Error saving goal: $e');
+          _showError('Failed to save goal');
+        }
+      }
+    } catch (e) {
+      print('Error showing goal selection: $e');
+    }
   }
 
-  void _onItemTapped(int index) {
-    if (index == _selectedIndex) return;
-    
-    setState(() {
-      _selectedIndex = index;
-    });
-    
-    // Handle navigation
-    if (index == 0) {
-      // Navigate to Summary page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const SummaryPage()),
-      );
-    } else if (index == 2) {
-      // Navigate to History page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HistoryPage()),
-      );
-    } else if (index == 3) {
-      // Navigate to Profile/Me page
-      // Add your profile page navigation here
-    }
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -395,743 +393,288 @@ class _StepsPageState extends State<StepsPage> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 40),
-            const Center(
-              child: Text(
-                'Track your steps',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w500,
+            const Text(
+              'Track your steps',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (!_hasSetGoal) ...[
+              RichText(
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'SET ',
+                      style: TextStyle(
+                        color: Color.fromRGBO(223, 77, 15, 1.0),
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'goal',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.directions_walk,
-                    color: Colors.grey[600],
-                    size: 32,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'SET',
-                    style: TextStyle(
-                      color: Color.fromRGBO(223, 77, 15, 1.0),
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Text(
-                    ' goal',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                    ),
-                  ),
-                ],
+            ],
+            const Spacer(flex: 1),
+            Text(
+              '$_steps',
+              style: const TextStyle(
+                color: Color.fromRGBO(223, 77, 15, 1.0),
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 350,
+            const Text(
+              'steps taken',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Center(
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   CustomPaint(
-                    size: const Size(double.infinity, 350),
+                    size: const Size(340, 170),
                     painter: SemiCircleProgressPainter(
-                      percentage: _percentage / 100,
-                      backgroundColor: Colors.grey[800]!,
-                      progressColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                      percentage: _percentage,
+                      color: const Color.fromRGBO(223, 77, 15, 1.0),
+                      goal: _goal,
                     ),
                   ),
-                  Positioned(
-                    top: 100,
-                    child: Text(
-                      '${_percentage.toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 64,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 100,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color.fromRGBO(223, 77, 15, 1.0),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color.fromRGBO(223, 77, 15, 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () => _showSetGoalDialog(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromRGBO(223, 77, 15, 1.0),
-                          minimumSize: const Size(100, 45),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'SET',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 1),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildCircularStatCard(
-                  icon: Icons.local_fire_department,
-                  value: '$_calories',
-                  label: 'kcal',
-                  progress: _calories / 1000,
-                ),
-                _buildCircularStatCard(
-                  icon: Icons.location_on,
-                  value: _distance.toStringAsFixed(1),
-                  label: 'total distance',
-                  progress: _distance / 10,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCircularStatCard({
-    required IconData icon,
-    required String value,
-    required String label,
-    required double progress,
-  }) {
-    return SizedBox(
-      width: 160,
-      height: 160,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: const Size(150, 150),
-            painter: CircularProgressPainter(
-              progress: progress,
-              backgroundColor: Colors.grey[800]!,
-              progressColor: const Color.fromRGBO(223, 77, 15, 1.0),
-            ),
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: const Color.fromRGBO(223, 77, 15, 1.0),
-                size: 50,
-              ),
-              const SizedBox(height: 60),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 10,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showSetGoalDialog() async {
-    // Check if goal was set today
-    if (_lastGoalSetDate != null) {
-      final today = DateTime(
-          DateTime.now().year, DateTime.now().month, DateTime.now().day);
-      final lastSet = DateTime(_lastGoalSetDate!.year, _lastGoalSetDate!.month,
-          _lastGoalSetDate!.day);
-
-      if (today.isAtSameMomentAs(lastSet)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'You can only set your goal once per day. Try again tomorrow.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-    }
-
-    int? selectedGoal;
-    bool isRecommended = true;
-
-    return showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Daily Step Goal',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isRecommended = true),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: isRecommended
-                                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          'Recommended',
-                          style: TextStyle(
-                            color: isRecommended
-                                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                                : Colors.grey,
-                            fontSize: 16,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isRecommended = false),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: !isRecommended
-                                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          'Custom',
-                          style: TextStyle(
-                            color: !isRecommended
-                                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                                : Colors.grey,
-                            fontSize: 16,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: !isRecommended
-                    ? ListView(
-                        children: [
-                          _buildCustomGoalOption(1000, selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildCustomGoalOption(1500, selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildCustomGoalOption(2000, selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildCustomGoalOption(2500, selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildCustomGoalOption(3000, selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildCustomGoalOption(3500, selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                        ],
-                      )
-                    : ListView(
-                        children: [
-                          _buildGoalOption(
-                              2500,
-                              'Becoming active',
-                              selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildGoalOption(5000, 'Keep fit', selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildGoalOption(
-                              8000,
-                              'Boost metabolism',
-                              selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                          _buildGoalOption(15000, 'Lose weight', selectedGoal,
-                              (value) => setState(() => selectedGoal = value)),
-                        ],
-                      ),
-              ),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: selectedGoal == null
-                      ? null
-                      : () async {
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.setInt('step_goal', selectedGoal!);
-                          // Save the goal set date
-                          final now = DateTime.now();
-                          await prefs.setInt(
-                              'last_goal_set_date', now.millisecondsSinceEpoch);
-                          setState(() {
-                            _goal = selectedGoal!;
-                            _lastGoalSetDate = now;
-                            _updateStats();
-                          });
-                          Navigator.pop(context);
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Done',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCustomGoalOption(
-      int steps, int? selectedGoal, Function(int) onSelect) {
-    final isSelected = selectedGoal == steps;
-
-    return GestureDetector(
-      onTap: () => onSelect(steps),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color.fromRGBO(223, 77, 15, 1.0)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            '$steps',
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.grey,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGoalOption(
-      int steps, String title, int? selectedGoal, Function(int) onSelect) {
-    final isSelected = selectedGoal == steps;
-
-    return GestureDetector(
-      onTap: () => onSelect(steps),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color.fromRGBO(51, 50, 50, 1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$steps',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'steps/day',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              title,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecommendedGoals(int? selectedGoal, Function(int) onSelect) {
-    if (_userData == null || _bmi == null) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: Color.fromRGBO(223, 77, 15, 1.0),
-        ),
-      );
-    }
-
-    final goals = _calculateStepGoalsByBMI();
-
-    return Column(
-      children: [
-        // BMI Information Card
-        Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: const Color.fromRGBO(45, 45, 45, 1.0),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Your BMI: ${_bmi!.toStringAsFixed(1)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                'Category: $_bmiCategory',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Goals List
-        Expanded(
-          child: ListView.builder(
-            itemCount: goals.length,
-            itemBuilder: (context, index) {
-              final currentGoal = goals[index]['steps'] as int;
-              final isSelected = selectedGoal == currentGoal;
-
-              return GestureDetector(
-                onTap: () => onSelect(currentGoal),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color.fromRGBO(223, 77, 15, 1.0)
-                        : const Color.fromRGBO(45, 45, 45, 1.0),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Column(
                     children: [
                       Text(
-                        goals[index]['title'] as String,
+                        '${_percentage.round()}%',
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                          color: Color.fromRGBO(223, 77, 15, 1.0),
+                          fontSize: 40,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${goals[index]['steps']} steps/day',
-                        style: TextStyle(
-                          color: isSelected ? Colors.white70 : Colors.grey[400],
-                          fontSize: 14,
+                      if (!_hasSetGoal) ...[
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _showGoalSelectionSheet,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            minimumSize: const Size(100, 44),
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                          ),
+                          child: const Text(
+                            'SET',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
+                ],
+              ),
+            ),
+            const Spacer(flex: 1),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatCard(
+                  icon: Icons.local_fire_department,
+                  value: _calories.toString(),
+                  label: 'kcal',
                 ),
-              );
-            },
-          ),
+                _buildStatCard(
+                  icon: Icons.place,
+                  value: _distance.toStringAsFixed(2),
+                  label: 'total distance',
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildCustomGoals(int? selectedGoal, Function(int) onSelect) {
-    final customGoals = [1000, 1500, 2000, 2500, 3000, 3500];
-
-    return ListView.builder(
-      itemCount: customGoals.length,
-      itemBuilder: (context, index) {
-        final isSelected = selectedGoal == customGoals[index];
-
-        return GestureDetector(
-          onTap: () => onSelect(customGoals[index]),
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 5),
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                  : const Color.fromRGBO(45, 45, 45, 1.0),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                '${customGoals[index]}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+  Widget _buildStatCard({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: const Color.fromRGBO(223, 77, 15, 1.0),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: const Color.fromRGBO(223, 77, 15, 1.0),
+            size: 24,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        );
-      },
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class SemiCircleProgressPainter extends CustomPainter {
   final double percentage;
-  final Color backgroundColor;
-  final Color progressColor;
+  final Color color;
+  final int goal;
 
   SemiCircleProgressPainter({
     required this.percentage,
-    required this.backgroundColor,
-    required this.progressColor,
+    required this.color,
+    required this.goal,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height - 150);
-    final radius = size.width * 0.40;
-    final meterStrokeWidth = 25.0;
-    final borderStrokeWidth = 3.0;
-    final borderOffset = 12.0;
-
-    // Draw black background arc
-    final blackBackgroundPaint = Paint()
-      ..color = const Color.fromRGBO(28, 28, 30, 1.0)
+    final paint = Paint()
+      ..color = color.withOpacity(0.2)
+      ..strokeWidth = 8.0
       ..style = PaintingStyle.stroke
-      ..strokeWidth = meterStrokeWidth;
+      ..strokeCap = StrokeCap.round;
 
+    final center = Offset(size.width / 2, size.height);
+    final radius = size.width / 2;
+
+    // Draw background arc
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      math.pi,
-      math.pi,
+      pi,
+      pi,
       false,
-      blackBackgroundPaint,
+      paint,
     );
 
-    // Draw orange border
-    final borderPaint = Paint()
-      ..color = const Color.fromRGBO(223, 77, 15, 1.0)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = borderStrokeWidth;
-
-    // Draw outer border
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius + borderOffset),
-      math.pi,
-      math.pi,
-      false,
-      borderPaint,
-    );
-
-    // Draw inner border
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius - borderOffset),
-      math.pi,
-      math.pi,
-      false,
-      borderPaint,
-    );
-
-    // Draw progress arc
+    // Draw progress arc if percentage > 0
     if (percentage > 0) {
       final progressPaint = Paint()
-        ..color = progressColor
+        ..color = color
+        ..strokeWidth = 8.0
         ..style = PaintingStyle.stroke
-        ..strokeWidth = meterStrokeWidth
         ..strokeCap = StrokeCap.round;
-      
-      // Convert percentage (0-100) to proportion (0-1)
-      double normalizedPercentage = percentage / 100;
-      
-      // Ensure it's between 0 and 1 for proper arc drawing
-      normalizedPercentage = normalizedPercentage.clamp(0.0, 1.0);
-      
-      // Draw arc from π to π+π*normalizedPercentage
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-        math.pi,  // Start at 180 degrees (left)
-        math.pi * normalizedPercentage,  // Draw proportionally to percentage
+        pi,
+        (pi * percentage / 100),
         false,
         progressPaint,
       );
     }
 
-    // Draw tick marks
+    // Draw tick marks (lines instead of dots)
     final tickPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..color = Colors.white.withOpacity(0.5)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
 
-    // Draw tick marks
-    for (var i = 0; i <= 20; i++) {
-      final isLongTick = i % 2 == 0;
-      final angle = math.pi + (math.pi / 20) * i;
-      final tickLength = isLongTick ? 12.0 : 8.0;
-
-      final startPoint = Offset(
-        center.dx + (radius - tickLength) * math.cos(angle),
-        center.dy + (radius - tickLength) * math.sin(angle),
+    for (int i = 0; i <= 10; i++) {
+      final angle = pi + (pi * i / 10);
+      final outerPoint = Offset(
+        center.dx + radius * cos(angle),
+        center.dy + radius * sin(angle),
       );
-      final endPoint = Offset(
-        center.dx + (radius + tickLength) * math.cos(angle),
-        center.dy + (radius + tickLength) * math.sin(angle),
+      final innerPoint = Offset(
+        center.dx + (radius - 10) * cos(angle),
+        center.dy + (radius - 10) * sin(angle),
       );
-
-      canvas.drawLine(
-        startPoint,
-        endPoint,
-        tickPaint..strokeWidth = isLongTick ? 2 : 1,
-      );
+      canvas.drawLine(innerPoint, outerPoint, tickPaint);
     }
-  }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
+    // Draw labels
+    final textStyle = TextStyle(
+      color: Colors.grey[400],
+      fontSize: 12,
+      fontWeight: FontWeight.bold,
+    );
 
-class CircularProgressPainter extends CustomPainter {
-  final double progress;
-  final Color backgroundColor;
-  final Color progressColor;
+    // Left label (0)
+    const leftTextSpan = TextSpan(
+      text: '0',
+      style: TextStyle(
+        color: Colors.grey,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    final leftTextPainter = TextPainter(
+      text: leftTextSpan,
+      textDirection: TextDirection.ltr,
+    );
+    leftTextPainter.layout();
+    leftTextPainter.paint(
+      canvas,
+      Offset(0, size.height - leftTextPainter.height),
+    );
 
-  CircularProgressPainter({
-    required this.progress,
-    required this.backgroundColor,
-    required this.progressColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 7);
-    final radius = size.width * 0.40;
-    final strokeWidth = 10.0;
-
-    // Draw background circle
-    final backgroundPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-
-    canvas.drawCircle(center, radius, backgroundPaint);
-
-    // Draw progress arc
-    final progressPaint = Paint()
-      ..color = progressColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      2 * math.pi * progress,
-      false,
-      progressPaint,
+    // Right label (goal)
+    final rightTextSpan = TextSpan(
+      text: goal.toString(),
+      style: textStyle,
+    );
+    final rightTextPainter = TextPainter(
+      text: rightTextSpan,
+      textDirection: TextDirection.ltr,
+    );
+    rightTextPainter.layout();
+    rightTextPainter.paint(
+      canvas,
+      Offset(size.width - rightTextPainter.width, size.height - rightTextPainter.height),
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(SemiCircleProgressPainter oldDelegate) {
+    return oldDelegate.percentage != percentage || oldDelegate.goal != goal;
+  }
 }

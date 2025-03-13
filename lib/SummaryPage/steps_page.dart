@@ -47,6 +47,9 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   int _initialSteps = 0;
   bool _isFirstReading = true;
 
+  // Add to class variables
+  bool _goalCompleted = false;
+
   @override
   void initState() {
     super.initState();
@@ -242,32 +245,40 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   }
 
   Future<void> _saveStepsToFirestore() async {
-    // Check for internet connectivity
     try {
       final result = await InternetAddress.lookup('google.com');
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
         final now = DateTime.now();
-        final lastUpdate = await _firestore
-            .collection('users')
-            .doc(_userId)
-            .get()
-            .then((doc) => doc.data()?['last_updated'] as Timestamp?);
+        final today = DateTime(now.year, now.month, now.day);
 
-        // Check if last update was from a different day
-        if (lastUpdate != null) {
-          final lastUpdateDate = lastUpdate.toDate();
-          final today = DateTime(now.year, now.month, now.day);
-          final lastDate = DateTime(
-              lastUpdateDate.year, lastUpdateDate.month, lastUpdateDate.day);
-
-          // Reset stats if it's a new day
-          if (lastDate.isBefore(today)) {
-            setState(() {
-              _steps = 0;
-              _calories = 0;
-              _distance = 0;
-              _percentage = 0;
-            });
+        // Check if goal is completed
+        if (_hasSetGoal && _steps >= _goal && !_goalCompleted) {
+          setState(() {
+            _goalCompleted = true;
+          });
+          // Record completed goal
+          await _firestore.collection('step_history').add({
+            'user_id': _userId,
+            'steps': _steps,
+            'goal': _goal,
+            'date': Timestamp.fromDate(today),
+            'completed': true,
+          });
+          
+          // Allow setting new goal
+          setState(() {
+            _hasSetGoal = false;
+            _goalCompleted = false;
+          });
+          
+          // Show completion message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Congratulations! You\'ve reached your goal of $_goal steps!'),
+                backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+              ),
+            );
           }
         }
 
@@ -277,8 +288,19 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
           'calories': _calories,
           'distance': _distance,
           'last_updated': FieldValue.serverTimestamp(),
-          'date': Timestamp.fromDate(DateTime(now.year, now.month, now.day)),
+          'date': Timestamp.fromDate(today),
         });
+
+        // Save daily progress at end of day or when app closes
+        if (_steps > 0) {
+          await _firestore.collection('step_history').add({
+            'user_id': _userId,
+            'steps': _steps,
+            'goal': _goal,
+            'date': Timestamp.fromDate(today),
+            'completed': _goalCompleted,
+          });
+        }
       }
     } catch (e) {
       print('No internet connection or error saving: $e');

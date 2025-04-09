@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'dart:math' show pi, cos, sin;
 import '../widgets/goal_selection_sheet.dart';
 import 'package:flutter/foundation.dart';
-
 import 'dart:io';  
 import 'package:http/http.dart' as http;
 import '../services/step_goal_service.dart';
@@ -97,7 +95,7 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
           
           // If last update was today, use those steps
           if (lastUpdateDate != null && 
-              lastUpdateDate.toDate().isAtSameMomentAs(todayDate)) {
+              _isSameDay(lastUpdateDate.toDate(), todayDate)) {
             setState(() {
               _steps = data['current_steps'] ?? 0;
               _calories = data['calories'] ?? 0;
@@ -122,25 +120,70 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     }
   }
 
+  // Helper method to check if two dates are the same day
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year && date1.month == date2.month && date1.day == date2.day;
+  }
+
   Future<void> _checkExistingGoal() async {
     try {
       final doc = await _firestore.collection('users').doc(_userId).get();
       if (doc.exists) {
         final data = doc.data();
         if (data?['step_goal'] != null) {
-          setState(() {
-            _hasSetGoal = true;
-            _goal = data?['step_goal'];
-          });
-
-          // Check last goal set date
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          
+          // Get the last goal set date
+          DateTime? goalSetDate;
           if (data?['goal_set_date'] != null) {
-            _lastGoalSetDate = (data?['goal_set_date'] as Timestamp).toDate();
+            goalSetDate = (data?['goal_set_date'] as Timestamp).toDate();
+          }
+          
+          // Check if goal was set on a different day
+          if (goalSetDate != null && !_isSameDay(goalSetDate, today)) {
+            // Goal is from a previous day, reset it
+            await _resetGoal();
+          } else {
+            // Goal is from today, use it
+            setState(() {
+              _hasSetGoal = true;
+              _goal = data?['step_goal'];
+              _lastGoalSetDate = goalSetDate;
+            });
           }
         }
       }
     } catch (e) {
       print('Error checking goal: $e');
+    }
+  }
+
+  // New method to reset the goal
+  Future<void> _resetGoal() async {
+    try {
+      setState(() {
+        _hasSetGoal = false;
+        _goal = 0;
+        _percentage = 0;
+        _goalCompleted = false;
+      });
+      
+      await _firestore.collection('users').doc(_userId).update({
+        'step_goal': null,
+        'goal_set_date': null,
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Daily step goal has been reset. Set a new goal for today!'),
+            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error resetting goal: $e');
     }
   }
 

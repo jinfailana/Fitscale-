@@ -9,8 +9,11 @@ import 'measure_weight.dart';
 import '../HistoryPage/history.dart';
 import '../screens/recommendations_page.dart';
 import '../screens/diet_recommendations_page.dart';
+import '../screens/selected_diet_page.dart';
 import '../models/user_model.dart';
 import '../services/workout_history_service.dart';
+import '../services/diet_service.dart';
+import '../models/diet_plan.dart';
 import 'package:intl/intl.dart';
 import '../navigation/custom_navbar.dart';
 import '../utils/custom_page_route.dart';
@@ -30,12 +33,17 @@ class _SummaryPageState extends State<SummaryPage> {
   List<WorkoutHistory> _recentWorkouts = [];
   bool _isLoading = true;
   final WorkoutHistoryService _historyService = WorkoutHistoryService();
+  final DietService _dietService = DietService();
+  String? _selectedDietPlanId;
+  DietPlan? _selectedDietPlan;
+  bool _loadingDiet = true;
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
     _loadRecentWorkouts();
+    _loadSelectedDiet();
   }
 
   Future<void> _fetchUserData() async {
@@ -89,6 +97,35 @@ class _SummaryPageState extends State<SummaryPage> {
     } catch (e) {
       print('Error loading recent workouts: $e');
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadSelectedDiet() async {
+    try {
+      setState(() => _loadingDiet = true);
+      
+      // Get the selected diet plan ID
+      final selectedDietPlanId = await _dietService.getSelectedDietPlan();
+      _selectedDietPlanId = selectedDietPlanId;
+      
+      // If user has a selected diet, get the diet plan details
+      if (selectedDietPlanId != null) {
+        final dietPlans = await _dietService.getDietRecommendations();
+        final selectedPlan = dietPlans.firstWhere(
+          (plan) => plan.id == selectedDietPlanId,
+          orElse: () => dietPlans.first,
+        );
+        
+        setState(() {
+          _selectedDietPlan = selectedPlan;
+          _loadingDiet = false;
+        });
+      } else {
+        setState(() => _loadingDiet = false);
+      }
+    } catch (e) {
+      print('Error loading selected diet: $e');
+      setState(() => _loadingDiet = false);
     }
   }
 
@@ -349,8 +386,7 @@ class _SummaryPageState extends State<SummaryPage> {
                   userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
                   'Current Weight',
                   Icons.monitor_weight),
-              _buildAnimatedSummaryCard(
-                  'Set Diets!', 'Mark your meals today!', Icons.restaurant),
+              _buildDietSummaryCard(),
               const SizedBox(height: 20),
               const Text(
                 'Recent Workout',
@@ -533,6 +569,146 @@ class _SummaryPageState extends State<SummaryPage> {
             Icon(icon, color: Color.fromRGBO(223, 77, 15, 1.0), size: 40),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDietSummaryCard() {
+    return GestureDetector(
+      onTap: () {
+        if (_selectedDietPlan != null) {
+          // Navigate to selected diet detail page if we have a selected diet
+          Navigator.push(
+            context,
+            CustomPageRoute(
+              child: SelectedDietPage(
+                dietPlan: _selectedDietPlan!,
+              ),
+            ),
+          ).then((_) {
+            // Refresh diet data when returning
+            _loadSelectedDiet();
+          });
+        } else {
+          // Navigate to diet recommendations to select a diet
+          Navigator.push(
+            context,
+            CustomPageRoute(child: const DietRecommendationsPage()),
+          ).then((_) {
+            // Refresh diet data when returning
+            _loadSelectedDiet();
+          });
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(color: Color.fromRGBO(223, 77, 15, 1.0)),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(50),
+              blurRadius: 5,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: _loadingDiet
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: CircularProgressIndicator(
+                    color: Color(0xFFDF4D0F),
+                  ),
+                ),
+              )
+            : Row(
+                children: [
+                  // Diet information with "You are on:" text
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'You are on:',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _selectedDietPlan != null
+                              ? _selectedDietPlan!.name
+                              : 'Set Diet!',
+                          style: const TextStyle(
+                            color: Color(0xFFDF4D0F),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Diet image
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Color(0xFFDF4D0F),
+                        width: 2,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(28),
+                      child: _selectedDietPlan != null
+                          ? _selectedDietPlan!.imageUrl.startsWith('http')
+                              ? Image.network(
+                                  _selectedDietPlan!.imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey.shade800,
+                                      child: const Icon(
+                                        Icons.restaurant,
+                                        color: Color(0xFFDF4D0F),
+                                        size: 30,
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Image.asset(
+                                  _selectedDietPlan!.imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey.shade800,
+                                      child: const Icon(
+                                        Icons.restaurant,
+                                        color: Color(0xFFDF4D0F),
+                                        size: 30,
+                                      ),
+                                    );
+                                  },
+                                )
+                          : Container(
+                              color: Colors.grey.shade800,
+                              child: const Icon(
+                                Icons.restaurant,
+                                color: Color(0xFFDF4D0F),
+                                size: 30,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

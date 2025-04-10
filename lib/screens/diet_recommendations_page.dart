@@ -19,27 +19,39 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
   List<DietPlan> _dietPlans = [];
   String? _selectedDietPlanId;
   bool _isLoading = true;
+  bool _isApiError = false;
   int _selectedIndex = 0;
+  Stream<String?>? _selectedDietPlanStream;
 
   @override
   void initState() {
     super.initState();
     _loadDietRecommendations();
+    _selectedDietPlanStream = _dietService.selectedDietPlanStream();
   }
 
   Future<void> _loadDietRecommendations() async {
     try {
+      setState(() => _isLoading = true);
+      
+      // Get diet recommendations directly without API distinction
       final dietPlans = await _dietService.getDietRecommendations();
       final selectedDietPlanId = await _dietService.getSelectedDietPlan();
       
-      setState(() {
-        _dietPlans = dietPlans;
-        _selectedDietPlanId = selectedDietPlanId;
-        _isLoading = false;
-      });
+      if (dietPlans.isNotEmpty) {
+        setState(() {
+          _dietPlans = dietPlans;
+          _selectedDietPlanId = selectedDietPlanId;
+          _isLoading = false;
+          _isApiError = false;
+        });
+      } else {
+        throw Exception('No diet plans returned');
+      }
     } catch (e) {
       print('Error loading diet recommendations: $e');
       setState(() {
+        _isApiError = true;
         _isLoading = false;
       });
       
@@ -52,14 +64,29 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
 
   Future<void> _selectDietPlan(String dietPlanId) async {
     try {
-      await _dietService.saveSelectedDietPlan(dietPlanId);
-      setState(() {
-        _selectedDietPlanId = dietPlanId;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Diet plan selected successfully')),
+      final loadingSnackBar = SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              height: 20, 
+              width: 20, 
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              )
+            ),
+            SizedBox(width: 16),
+            Text('Saving your diet choice...'),
+          ],
+        ),
+        duration: Duration(seconds: 1),
       );
+      
+      ScaffoldMessenger.of(context).showSnackBar(loadingSnackBar);
+      
+      await _dietService.saveSelectedDietPlan(dietPlanId);
+      
+      // We don't need to update the UI here as the stream will handle it
     } catch (e) {
       print('Error selecting diet plan: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,85 +132,76 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          if (_isApiError)
+            IconButton(
+              icon: Icon(Icons.refresh, color: Color(0xFFDF4D0F)),
+              onPressed: _loadDietRecommendations,
+              tooltip: 'Retry API',
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFDF4D0F)))
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Summary section
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: const Color.fromRGBO(40, 40, 42, 1.0),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+          : StreamBuilder<String?>(
+              stream: _selectedDietPlanStream,
+              initialData: _selectedDietPlanId,
+              builder: (context, snapshot) {
+                final selectedDietPlanId = snapshot.data;
+                
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Summary section
+                        Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: const Color.fromRGBO(40, 40, 42, 1.0),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.arrow_back_ios,
-                                size: 16,
-                                color: Color(0xFFDF4D0F),
-                              ),
-                              Text(
-                                'Summary',
+                             
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Diet Recommendations',
                                 style: TextStyle(
                                   color: Color(0xFFDF4D0F),
-                                  fontSize: 16,
+                                    fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Recommendations are based on your goal',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Diet recommendations
+                              ..._dietPlans.map((dietPlan) => _buildDietOption(
+                                  dietPlan, 
+                                  isSelected: dietPlan.id == selectedDietPlanId,
+                                  onSelect: () => _selectDietPlan(dietPlan.id),
+                              )),
+                              
+                              // We don't need separate "Selected Diet" section since we now 
+                              // highlight the selected diet in the main list
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Diet Recommendations',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Recommendations are based on your goal',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          // Diet recommendations
-                          ..._dietPlans.map((dietPlan) => _buildDietOption(dietPlan)),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Selected Diet section
-                          if (_selectedDietPlanId != null) ...[
-                            const Text(
-                              'Selected Diet',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildSelectedDietPlan(),
-                          ],
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
@@ -194,14 +212,22 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
     );
   }
 
-  Widget _buildDietOption(DietPlan dietPlan) {
+  Widget _buildDietOption(
+    DietPlan dietPlan, {
+    required bool isSelected,
+    required VoidCallback onSelect,
+  }) {
     return GestureDetector(
       onTap: () {
         // Navigate to diet details page
         Navigator.push(
           context,
           CustomPageRoute(
-            child: DietDetailsPage(dietPlan: dietPlan),
+            child: DietDetailsPage(
+              dietPlan: dietPlan,
+              onSelect: onSelect,
+              isSelected: isSelected,
+            ),
           ),
         );
       },
@@ -209,8 +235,12 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFDF4D0F)),
+          border: Border.all(
+            color: isSelected ? Colors.green : const Color(0xFFDF4D0F),
+            width: isSelected ? 2 : 1,
+          ),
           borderRadius: BorderRadius.circular(12),
+          color: isSelected ? Colors.green.withOpacity(0.1) : Colors.transparent,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -223,13 +253,45 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          dietPlan.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              dietPlan.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (isSelected) 
+                              Container(
+                                margin: EdgeInsets.only(left: 8),
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 12,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Selected',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -253,99 +315,95 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                   ),
                   
                   // Diet image
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: Image.asset(
-                      dietPlan.imageUrl,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.grey.shade800,
-                          child: const Icon(
-                            Icons.restaurant,
-                            color: Color(0xFFDF4D0F),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSelectedDietPlan() {
-    final selectedDietPlan = _dietPlans.firstWhere(
-      (plan) => plan.id == _selectedDietPlanId,
-      orElse: () => _dietPlans.first,
-    );
-
-    return GestureDetector(
-      onTap: () {
-        // Navigate to diet details page
-        Navigator.push(
-          context,
-          CustomPageRoute(
-            child: DietDetailsPage(dietPlan: selectedDietPlan),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFDF4D0F)),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  // Diet name and view button
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          selectedDietPlan.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                  Stack(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: isSelected ? Colors.green.withOpacity(0.5) : Colors.grey.shade700,
+                            width: 1,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Diet image
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: Image.asset(
-                      selectedDietPlan.imageUrl,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.grey.shade800,
-                          child: const Icon(
-                            Icons.restaurant,
-                            color: Color(0xFFDF4D0F),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: dietPlan.imageUrl.startsWith('http')
+                            ? Image.network(
+                                dietPlan.imageUrl,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded /
+                                                loadingProgress.expectedTotalBytes!
+                                            : null,
+                                        color: const Color(0xFFDF4D0F),
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: Colors.grey.shade800,
+                                    child: const Icon(
+                                      Icons.restaurant,
+                                      color: Color(0xFFDF4D0F),
+                                      size: 24,
+                                    ),
+                                  );
+                                },
+                              )
+                            : Image.asset(
+                                dietPlan.imageUrl,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: Colors.grey.shade800,
+                                    child: const Icon(
+                                      Icons.restaurant,
+                                      color: Color(0xFFDF4D0F),
+                                      size: 24,
+                                    ),
+                                  );
+                                },
+                              ),
+                        ),
+                      ),
+                      if (isSelected)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1),
+                            ),
+                            child: Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 12,
+                            ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                    ],
                   ),
                 ],
               ),

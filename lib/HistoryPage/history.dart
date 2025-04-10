@@ -41,17 +41,19 @@ class _HistoryPageState extends State<HistoryPage> {
   int selectedTabIndex = 0;
   int _selectedIndex = 2;
   List<WorkoutHistory> _workoutHistory = [];
+  List<Map<String, dynamic>> _dietHistory = [];
   bool _isLoading = true;
   List<WorkoutHistory> _filteredWorkouts = [];
+  List<Map<String, dynamic>> _filteredDiets = [];
 
   @override
   void initState() {
     super.initState();
-    // Initialize with current month and year
     final now = DateTime.now();
     selectedMonth = months[now.month - 1];
     selectedYear = now.year;
     _loadWorkoutHistory();
+    _loadDietHistory();
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -69,6 +71,48 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  Future<void> _loadDietHistory() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('diet_history')
+            .orderBy('date', descending: true)
+            .get();
+
+        setState(() {
+          _dietHistory = snapshot.docs.map((doc) {
+            final data = doc.data();
+            final date = data['date'] as Timestamp?;
+            return {
+              'id': doc.id,
+              'dietPlanId': data['dietPlanId'],
+              'dietPlanName': data['dietPlanName'],
+              'date': date?.toDate() ?? DateTime.now(),
+              'caloriesPerDay': data['caloriesPerDay'],
+              'mealPlan': data['mealPlan'],
+              'description': data['description'],
+              'benefits': data['benefits'],
+              'foodGroups': data['foodGroups'],
+              'suitableFor': data['suitableFor'],
+            };
+          }).toList();
+          _filterDietsByMonth();
+        });
+      }
+    } catch (e) {
+      print('Error loading diet history: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load diet history: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _filterWorkoutsByMonth() {
     if (_workoutHistory.isEmpty) {
       _filteredWorkouts = [];
@@ -80,6 +124,20 @@ class _HistoryPageState extends State<HistoryPage> {
     _filteredWorkouts = _workoutHistory.where((workout) {
       return workout.date.month == monthIndex && 
              workout.date.year == selectedYear;
+    }).toList();
+  }
+
+  void _filterDietsByMonth() {
+    if (_dietHistory.isEmpty) {
+      _filteredDiets = [];
+      return;
+    }
+
+    final monthIndex = months.indexOf(selectedMonth) + 1;
+    
+    _filteredDiets = _dietHistory.where((diet) {
+      return diet['date'].month == monthIndex && 
+             diet['date'].year == selectedYear;
     }).toList();
   }
 
@@ -635,6 +693,136 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  Widget _buildDietHistoryList() {
+    if (_filteredDiets.isEmpty) {
+      return Center(
+        child: Text(
+          'No diet plans found for $selectedMonth $selectedYear',
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _filteredDiets.length,
+      itemBuilder: (context, index) {
+        final diet = _filteredDiets[index];
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(44, 44, 46, 1.0),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color.fromRGBO(223, 77, 15, 1.0),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      diet['dietPlanName'] ?? 'Unknown Diet',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(223, 77, 15, 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${diet['caloriesPerDay'] ?? 0} kcal/day',
+                      style: const TextStyle(
+                        color: Color.fromRGBO(223, 77, 15, 1.0),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (diet['description'] != null) ...[
+                Text(
+                  diet['description'],
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              Text(
+                'Meal Plan',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (diet['mealPlan'] != null)
+                ...(diet['mealPlan'] as Map<String, dynamic>).entries.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.key,
+                          style: const TextStyle(
+                            color: Color(0xFFDF4D0F),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...(entry.value as List).map((food) => Padding(
+                          padding: const EdgeInsets.only(left: 8, bottom: 2),
+                          child: Text(
+                            '• $food',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        )),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                }),
+              const SizedBox(height: 8),
+              Text(
+                DateFormat('MMM d, yyyy h:mm a').format(diet['date']),
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildActivityHistoryTable() {
     return Container(
       margin: const EdgeInsets.only(top: 24),
@@ -723,16 +911,18 @@ class _HistoryPageState extends State<HistoryPage> {
           Expanded(
             child: selectedTabIndex == 0
                 ? _buildWorkoutHistoryList()
-                : Center(
-                    child: Text(
-                      'No ${selectedTabIndex == 1 ? 'steps' : 'diet'} history available',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                : selectedTabIndex == 1
+                    ? Center(
+                        child: Text(
+                          'No steps history available',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : _buildDietHistoryList(),
           ),
         ],
       ),

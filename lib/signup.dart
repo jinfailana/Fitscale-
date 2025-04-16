@@ -30,7 +30,7 @@ class _SignupPageState extends State<SignupPage> {
 
   String? verificationCode;
   final String brevoApiKey =
-      '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';
+      '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';
 
   Future<bool> checkInternetConnection() async {
     try {
@@ -150,6 +150,9 @@ class _SignupPageState extends State<SignupPage> {
         'username': usernameController.text.trim(),
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'setupCompleted': false,
+        'currentSetupStep': 'registered',
       });
 
       if (!mounted) return;
@@ -243,6 +246,11 @@ class _SignupPageState extends State<SignupPage> {
                 'username': username,
                 'signInMethod': 'google',
                 'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+                'setupCompleted': false,
+                'currentSetupStep': 'registered',
+                'preferredWorkouts': <String>[],
+                'gymEquipment': <String>[],
               });
 
               // Show success modal

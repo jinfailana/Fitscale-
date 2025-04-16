@@ -6,6 +6,11 @@ import '../utils/recommendation_logic.dart' as workout_logic;
 import 'workout_details_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../navigation/custom_navbar.dart';
+import '../SummaryPage/summary_page.dart';
+import '../HistoryPage/history.dart';
+import '../utils/custom_page_route.dart';
+import '../SummaryPage/manage_acc.dart';
 
 class RecommendationsPage extends StatefulWidget {
   final UserModel user;
@@ -375,20 +380,202 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
       _selectedIndex = index;
     });
 
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/home');
-        break;
-      case 1:
-        // Already on this page
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(context, '/history');
-        break;
-      case 3:
-        Navigator.pushReplacementNamed(context, '/me');
-        break;
+    if (index == 0) {
+      Navigator.pushReplacement(
+        context,
+        CustomPageRoute(
+          child: const SummaryPage(),
+          transitionType: TransitionType.leftToRight,
+        ),
+      );
+    } else if (index == 2) {
+      Navigator.pushReplacement(
+        context,
+        CustomPageRoute(
+          child: const HistoryPage(),
+          transitionType: TransitionType.rightToLeft,
+        ),
+      );
+    } else if (index == 3) {
+      // Show profile modal - this is handled in the CustomNavBar
     }
+    // No need to handle index 1 (current page)
+  }
+
+  void _showProfileModal(BuildContext context) async {
+    // Pre-fetch user data before showing the modal
+    final user = FirebaseAuth.instance.currentUser;
+    String username = 'User';
+    String email = user?.email ?? '';
+    
+    // Fetch user data synchronously before showing the modal
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+            
+        if (doc.exists) {
+          username = doc['username'] ?? 'User';
+          email = user.email ?? '';
+        }
+      } catch (e) {
+        print('Error fetching user data: $e');
+      }
+    }
+    
+    // Now show the modal with the pre-fetched data
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(28, 28, 30, 1.0),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Spacer(),
+                    const Text(
+                      'Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(
+                          color: Color(0xFFDF4D0F),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // User profile card
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context); // Close the modal first
+                    Navigator.push(
+                      context,
+                      CustomPageRoute(child: const ManageAccPage()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(28, 28, 30, 1.0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: Row(
+                      children: [
+                        // Profile picture
+                        CircleAvatar(
+                          backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
+                          radius: 20,
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFFDF4D0F),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // User info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                username,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                email,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // My Device option
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Handle device settings
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(28, 28, 30, 1.0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDF4D0F)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.devices,
+                          color: Color(0xFFDF4D0F),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 16),
+                        const Text(
+                          'My Device',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _loadAndNavigateToRecommendations() async {
+    // Already on recommendations page, so no need to navigate
   }
 
   @override
@@ -397,39 +584,31 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      appBar: AppBar(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(0),
+        child: AppBar(
         backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.orange),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-            const Text(
-              'Summary',
-              style: TextStyle(
-                color: Colors.orange,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
         ),
       ),
       body: SafeArea(
         child: Padding(
+<<<<<<< HEAD
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+=======
+          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+>>>>>>> passwordvalidation
               const Text(
                 'RECOMMENDED WORKOUT',
                 style: TextStyle(
-                  color: Colors.white,
+                   color: Color(0xFFDF4D0F),
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -443,27 +622,70 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(44, 44, 46, 0.5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color.fromRGBO(60, 60, 62, 1.0),
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildTabButton('Recommended Workouts', 0),
-                  const SizedBox(width: 16),
+                    _buildTabButton('Recommended', 0),
                   _buildTabButton('My Workouts', 1),
-                  const SizedBox(width: 16),
-                  _buildTabButton('Other Workouts', 2),
+                    _buildTabButton('Other', 2),
                 ],
+                ),
               ),
               const SizedBox(height: 20),
               Expanded(
                 child: selectedTabIndex == 1 && myWorkouts.isEmpty
-                    ? const Center(
-                        child: Text(
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color.fromRGBO(223, 77, 15, 0.1),
+                                borderRadius: BorderRadius.circular(50),
+                                border: Border.all(
+                                  color: const Color.fromRGBO(223, 77, 15, 0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.fitness_center,
+                                color: const Color.fromRGBO(223, 77, 15, 0.7),
+                                size: 64,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            const Text(
                           'No Added Workouts Yet',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                                fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              child: const Text(
+                                'Add workouts from the Recommended tab to build your personal collection',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     : ListView.builder(
@@ -531,44 +753,102 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    if (selectedTabIndex ==
-                                        1) // Only show remove button in My Workouts
-                                      TextButton(
-                                        onPressed: () =>
-                                            removeFromMyWorkouts(plan),
-                                        child: const Text(
+                                    if (selectedTabIndex == 1) // Only show remove button in My Workouts
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                        child: TextButton(
+                                          onPressed: () => removeFromMyWorkouts(plan),
+                                          style: TextButton.styleFrom(
+                                            backgroundColor: Colors.red.withOpacity(0.1),
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                              side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                                            ),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.delete_outline, color: Colors.red, size: 16),
+                                              SizedBox(width: 4),
+                                              Text(
                                           'Remove',
                                           style: TextStyle(
                                             color: Colors.red,
-                                            fontSize: 16,
+                                                  fontSize: 14,
                                             fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
+<<<<<<< HEAD
                                     const SizedBox(width: 16),
                                     TextButton(
                           onPressed: () {
+=======
+                                    const SizedBox(width: 12),
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                      child: TextButton(
+                                      onPressed: () {
+>>>>>>> passwordvalidation
                                         Navigator.push(
                                           context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                WorkoutDetailsPage(
+                                            CustomPageRoute(
+                                              child: WorkoutDetailsPage(
                                               workout: plan,
-                                              onAddToWorkoutList:
-                                                  addToMyWorkouts,
+                                                onAddToWorkoutList: addToMyWorkouts,
+                                              ),
                                             ),
+                                          );
+                                        },
+                                        style: TextButton.styleFrom(
+                                          backgroundColor: const Color.fromRGBO(223, 77, 15, 0.1),
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                            side: const BorderSide(color: Color.fromRGBO(223, 77, 15, 0.3)),
                                           ),
+<<<<<<< HEAD
                                         );
                           },
                           child: const Text(
                             'More',
+=======
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.fitness_center, color: Color.fromRGBO(223, 77, 15, 1.0), size: 16),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Details',
+>>>>>>> passwordvalidation
                                         style: TextStyle(
-                                          color:
-                                              Color.fromRGBO(223, 77, 15, 1.0),
-                                          fontSize: 16,
+                                                color: Color.fromRGBO(223, 77, 15, 1.0),
+                                                fontSize: 14,
                                           fontWeight: FontWeight.bold,
+<<<<<<< HEAD
                           ),
                         ),
+=======
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+>>>>>>> passwordvalidation
                       ),
                     ],
                 ),
@@ -582,25 +862,11 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          unselectedItemColor: Colors.white54,
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: [
-            _buildNavItem(Icons.home, 'Home', 0),
-            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
-            _buildNavItem(Icons.history, 'History', 2),
-            _buildNavItem(Icons.person, 'Me', 3),
-          ],
-        ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        showProfileModal: _showProfileModal,
+        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
       ),
     );
   }
@@ -613,44 +879,40 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
           selectedTabIndex = index;
         });
       },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color.fromRGBO(223, 77, 15, 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected 
+              ? const Color.fromRGBO(223, 77, 15, 1.0)
+              : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: isSelected 
+            ? [
+                BoxShadow(
+                  color: const Color.fromRGBO(223, 77, 15, 0.3),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                )
+              ] 
+            : null,
+        ),
       child: Text(
         text,
         style: TextStyle(
           color: isSelected
-              ? const Color.fromRGBO(223, 77, 15, 1.0)
+              ? Colors.white
               : Colors.white70,
-          fontSize: 16,
+            fontSize: 14,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-    );
-  }
-
-  BottomNavigationBarItem _buildNavItem(
-      IconData icon, String label, int index) {
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: _selectedIndex == index
-              ? const Color.fromRGBO(223, 77, 15, 0.1)
-              : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(_selectedIndex == index ? 15 : 10),
-          border: Border.all(
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 2,
           ),
         ),
-        child: Icon(icon,
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.white54),
       ),
-      label: label,
     );
   }
 }

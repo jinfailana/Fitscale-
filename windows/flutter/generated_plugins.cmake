@@ -7,7 +7,11 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   firebase_auth
   firebase_core
+<<<<<<< HEAD
   permission_handler_windows
+=======
+  url_launcher_windows
+>>>>>>> passwordvalidation
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

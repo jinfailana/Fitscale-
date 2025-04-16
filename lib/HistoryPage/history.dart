@@ -6,6 +6,11 @@ import 'history_item.dart';
 import '../SummaryPage/summary_page.dart';
 import '../models/workout_history.dart';
 import '../services/workout_history_service.dart';
+import '../navigation/custom_navbar.dart';
+import '../screens/recommendations_page.dart';
+import '../models/user_model.dart';
+import '../utils/custom_page_route.dart';
+import '../SummaryPage/manage_acc.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -36,15 +41,19 @@ class _HistoryPageState extends State<HistoryPage> {
   int selectedTabIndex = 0;
   int _selectedIndex = 2;
   List<WorkoutHistory> _workoutHistory = [];
-  List<Map<String, dynamic>> _stepHistory = [];
+  List<Map<String, dynamic>> _dietHistory = [];
   bool _isLoading = true;
+  List<WorkoutHistory> _filteredWorkouts = [];
+  List<Map<String, dynamic>> _filteredDiets = [];
 
   @override
   void initState() {
     super.initState();
-    selectedMonth = months[DateTime.now().month - 1];
+    final now = DateTime.now();
+    selectedMonth = months[now.month - 1];
+    selectedYear = now.year;
     _loadWorkoutHistory();
-    _loadStepHistory();
+    _loadDietHistory();
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -54,6 +63,7 @@ class _HistoryPageState extends State<HistoryPage> {
       setState(() {
         _workoutHistory = history;
         _isLoading = false;
+        _filterWorkoutsByMonth();
       });
     } catch (e) {
       print('Error loading workout history: $e');
@@ -61,84 +71,383 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  Future<void> _loadStepHistory() async {
+  Future<void> _loadDietHistory() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final selectedMonthIndex = months.indexOf(selectedMonth) + 1;
-        final startDate = DateTime(selectedYear, selectedMonthIndex, 1);
-        final endDate = DateTime(selectedYear, selectedMonthIndex + 1, 0);
-
-        final querySnapshot = await FirebaseFirestore.instance
-            .collection('step_history')
-            .where('user_id', isEqualTo: user.uid)
-            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-            .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        final snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('diet_history')
             .orderBy('date', descending: true)
             .get();
 
         setState(() {
-          _stepHistory = querySnapshot.docs
-              .map((doc) => {
-                    ...doc.data() as Map<String, dynamic>,
-                    'id': doc.id,
-                  })
-              .toList();
+          _dietHistory = snapshot.docs.map((doc) {
+            final data = doc.data();
+            final date = data['date'] as Timestamp?;
+            return {
+              'id': doc.id,
+              'dietPlanId': data['dietPlanId'],
+              'dietPlanName': data['dietPlanName'],
+              'date': date?.toDate() ?? DateTime.now(),
+              'caloriesPerDay': data['caloriesPerDay'],
+              'mealPlan': data['mealPlan'],
+              'description': data['description'],
+              'benefits': data['benefits'],
+              'foodGroups': data['foodGroups'],
+              'suitableFor': data['suitableFor'],
+            };
+          }).toList();
+          _filterDietsByMonth();
         });
       }
     } catch (e) {
-      print('Error loading step history: $e');
+      print('Error loading diet history: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load diet history: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
+  void _filterWorkoutsByMonth() {
+    if (_workoutHistory.isEmpty) {
+      _filteredWorkouts = [];
+      return;
+    }
+
+    final monthIndex = months.indexOf(selectedMonth) + 1;
+
+    _filteredWorkouts = _workoutHistory.where((workout) {
+      return workout.date.month == monthIndex &&
+          workout.date.year == selectedYear;
+    }).toList();
+  }
+
+  void _filterDietsByMonth() {
+    if (_dietHistory.isEmpty) {
+      _filteredDiets = [];
+      return;
+    }
+
+    final monthIndex = months.indexOf(selectedMonth) + 1;
+
+    _filteredDiets = _dietHistory.where((diet) {
+      return diet['date'].month == monthIndex &&
+          diet['date'].year == selectedYear;
+    }).toList();
+  }
+
   void _onItemTapped(int index) {
-    if (index == _selectedIndex) return;
+    setState(() {
+      _selectedIndex = index;
+    });
 
     if (index == 0) {
       Navigator.pushReplacement(
         context,
-        CustomPageRoute(child: const SummaryPage()),
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const SummaryPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(-1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOut;
+            var tween =
+                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var offsetAnimation = animation.drive(tween);
+            return SlideTransition(
+              position: offsetAnimation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
       );
+    } else if (index == 1) {
+      // Navigate to RecommendationsPage through the loadAndNavigateToRecommendations function
+      // This is handled in the CustomNavBar
     } else if (index == 3) {
-      _showProfileModal(context);
+      // Show profile modal - this is handled in the CustomNavBar
     }
+    // No need to handle index 2 (current page)
   }
 
   void _showProfileModal(BuildContext context) {
+    // Fetch user data from Firestore
+    final user = FirebaseAuth.instance.currentUser;
+    String username = 'User';
+    String email = user?.email ?? '';
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return Container(
-          height: 200,
-          padding: const EdgeInsets.all(20),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Profile',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+        return StatefulBuilder(builder: (context, setState) {
+          // Fetch user data if available
+          if (user != null) {
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get()
+                .then((doc) {
+              if (doc.exists) {
+                setState(() {
+                  username = doc['username'] ?? 'User';
+                  email = user.email ?? '';
+                });
+              }
+            }).catchError((e) {
+              print('Error fetching user data: $e');
+            });
+          }
+
+          return Container(
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(28, 28, 30, 1.0),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
-              SizedBox(height: 20),
-              Text(
-                'Profile settings and options will go here',
-                style: TextStyle(color: Colors.white),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Spacer(),
+                      const Text(
+                        'Profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(
+                            color: Color(0xFFDF4D0F),
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // User profile card
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context); // Close the modal first
+                      Navigator.push(
+                        context,
+                        CustomPageRoute(child: const ManageAccPage()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color.fromRGBO(28, 28, 30, 1.0),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFDF4D0F)),
+                      ),
+                      child: Row(
+                        children: [
+                          // Profile picture
+                          CircleAvatar(
+                            backgroundColor:
+                                const Color.fromRGBO(223, 77, 15, 0.2),
+                            radius: 20,
+                            child: const Icon(
+                              Icons.person,
+                              color: Color(0xFFDF4D0F),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // User info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  username,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  email,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white54, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // My Device option
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Handle device settings
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color.fromRGBO(28, 28, 30, 1.0),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFDF4D0F)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.devices,
+                            color: Color(0xFFDF4D0F),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 16),
+                          const Text(
+                            'My Device',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white54, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
+            ),
+          );
+        });
       },
     );
   }
 
+  Future<void> _loadAndNavigateToRecommendations() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('No user logged in');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Please log in to view recommendations')),
+        );
+        return;
+      }
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        print('User document does not exist');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User profile not found')),
+        );
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+
+      // Validate required date fields
+      if (userData['createdAt'] == null || userData['updatedAt'] == null) {
+        print('Missing date fields in user data');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid user profile data')),
+        );
+        return;
+      }
+
+      final userModel = UserModel(
+        id: user.uid,
+        email: userData['email'] ?? '',
+        gender: userData['gender'],
+        goal: userData['goal'],
+        age: userData['age'],
+        weight: userData['weight'] != null
+            ? (userData['weight'] as num).toDouble()
+            : null,
+        height: userData['height'] != null
+            ? (userData['height'] as num).toDouble()
+            : null,
+        activityLevel: userData['activityLevel'],
+        workoutPlace: userData['workoutPlace'],
+        preferredWorkouts: userData['preferredWorkouts'] != null
+            ? List<String>.from(userData['preferredWorkouts'])
+            : null,
+        gymEquipment: userData['gymEquipment'] != null
+            ? List<String>.from(userData['gymEquipment'])
+            : null,
+        setupCompleted: userData['setupCompleted'] ?? false,
+        currentSetupStep: userData['currentSetupStep'] ?? 'registered',
+        createdAt: userData['createdAt'] is String
+            ? DateTime.parse(userData['createdAt'])
+            : (userData['createdAt'] as Timestamp).toDate(),
+        updatedAt: userData['updatedAt'] is String
+            ? DateTime.parse(userData['updatedAt'])
+            : (userData['updatedAt'] as Timestamp).toDate(),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        CustomPageRoute(
+          child: RecommendationsPage(user: userModel),
+          transitionType: TransitionType.bottomToTop,
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('Error loading recommendations: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to load recommendations: ${e.toString()}')),
+      );
+    }
+  }
+
+  // Add this method to handle year changes
+  void _applyYearChange(int newYear) {
+    setState(() {
+      selectedYear = newYear;
+      _filterWorkoutsByMonth();
+    });
+  }
+
   void _showMonthPicker() {
+    int tempYear =
+        selectedYear; // Temporary variable to track year changes in the modal
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
@@ -162,29 +471,55 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(223, 77, 15, 1.0),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      '2025',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  // Year selector
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios,
+                            color: Colors.white),
+                        onPressed: () {
+                          setModalState(() {
+                            tempYear--;
+                          });
+                        },
                       ),
-                    ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(223, 77, 15, 1.0),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$tempYear',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white),
+                        onPressed: () {
+                          setModalState(() {
+                            tempYear++;
+                          });
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   Expanded(
                     child: ListView.builder(
                       itemCount: months.length,
                       itemBuilder: (context, index) {
-                        final bool isSelected = months[index] == selectedMonth;
+                        final bool isSelected =
+                            months[index] == selectedMonth &&
+                                tempYear == selectedYear;
                         return ListTile(
                           title: Text(
                             months[index],
@@ -198,8 +533,11 @@ class _HistoryPageState extends State<HistoryPage> {
                             ),
                           ),
                           onTap: () {
+                            // Apply both month and year changes
                             setState(() {
                               selectedMonth = months[index];
+                              selectedYear = tempYear; // Apply the year change
+                              _filterWorkoutsByMonth();
                             });
                             Navigator.pop(context);
                           },
@@ -233,10 +571,22 @@ class _HistoryPageState extends State<HistoryPage> {
       );
     }
 
+    if (_filteredWorkouts.isEmpty) {
+      return Center(
+        child: Text(
+          'No workouts found for $selectedMonth $selectedYear',
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
-      itemCount: _workoutHistory.length,
+      itemCount: _filteredWorkouts.length,
       itemBuilder: (context, index) {
-        final history = _workoutHistory[index];
+        final history = _filteredWorkouts[index];
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(16),
@@ -351,26 +701,25 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildStepHistoryList() {
-    if (_stepHistory.isEmpty) {
-      return const Center(
+  Widget _buildDietHistoryList() {
+    if (_filteredDiets.isEmpty) {
+      return Center(
         child: Text(
-          'No steps history available',
-          style: TextStyle(color: Colors.grey, fontSize: 16),
+          'No diet plans found for $selectedMonth $selectedYear',
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
         ),
       );
     }
 
     return ListView.builder(
-      itemCount: _stepHistory.length,
+      itemCount: _filteredDiets.length,
       itemBuilder: (context, index) {
-        final history = _stepHistory[index];
-        final date = (history['date'] as Timestamp).toDate();
-        final steps = history['steps'] as int;
-        final isCompleted = history['completed'] as bool;
-
+        final diet = _filteredDiets[index];
         return Container(
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color.fromRGBO(44, 44, 46, 1.0),
@@ -380,48 +729,102 @@ class _HistoryPageState extends State<HistoryPage> {
               width: 1,
             ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(223, 77, 15, 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.directions_walk,
-                  color: Color.fromRGBO(223, 77, 15, 1.0),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Steps Taken',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      diet['dietPlanName'] ?? 'Unknown Diet',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      '$steps Steps',
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(223, 77, 15, 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${diet['caloriesPerDay'] ?? 0} kcal/day',
                       style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
+                        color: Color.fromRGBO(223, 77, 15, 1.0),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (diet['description'] != null) ...[
+                Text(
+                  diet['description'],
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              Text(
+                'Meal Plan',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 8),
+              if (diet['mealPlan'] != null)
+                ...(diet['mealPlan'] as Map<String, dynamic>)
+                    .entries
+                    .map((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.key,
+                          style: const TextStyle(
+                            color: Color(0xFFDF4D0F),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...(entry.value as List).map((food) => Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 8, bottom: 2),
+                              child: Text(
+                                '• $food',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                }),
+              const SizedBox(height: 8),
               Text(
-                DateFormat('MMM d, yyyy').format(date),
+                DateFormat('MMM d, yyyy h:mm a').format(diet['date']),
                 style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
+                  color: Colors.white54,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -494,22 +897,20 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(28, 28, 30, 0.7),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color.fromRGBO(60, 60, 62, 1.0),
+                width: 1,
+              ),
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildTabButton('Workout', 0),
-                      const SizedBox(width: 24),
-                      _buildTabButton('Steps', 1),
-                      const SizedBox(width: 24),
-                      _buildTabButton('Diet', 2),
-                    ],
-                  ),
-                ),
+                _buildTabButton('Workout', 0),
+                _buildTabButton('Diet', 1),
               ],
             ),
           ),
@@ -520,17 +921,7 @@ class _HistoryPageState extends State<HistoryPage> {
           Expanded(
             child: selectedTabIndex == 0
                 ? _buildWorkoutHistoryList()
-                : selectedTabIndex == 1
-                    ? _buildStepHistoryList()
-                    : Center(
-                        child: Text(
-                          'No ${selectedTabIndex == 2 ? 'diet' : ''} history available',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
+                : _buildDietHistoryList(),
           ),
         ],
       ),
@@ -541,21 +932,24 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-        elevation: 0,
-        automaticallyImplyLeading: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(0),
+        child: AppBar(
+          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+          elevation: 0,
+          automaticallyImplyLeading: false,
+        ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'History',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFFDF4D0F),
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -575,25 +969,11 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          selectedItemColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          unselectedItemColor: Colors.white54,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            _buildNavItem(Icons.home, 'Home', 0),
-            _buildNavItem(Icons.fitness_center, 'Workouts', 1),
-            _buildNavItem(Icons.history, 'History', 2),
-            _buildNavItem(Icons.person, 'Me', 3),
-          ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-        ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        showProfileModal: _showProfileModal,
+        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
       ),
     );
   }
@@ -604,58 +984,46 @@ class _HistoryPageState extends State<HistoryPage> {
       onTap: () {
         setState(() {
           selectedTabIndex = index;
+          // If we're on the workout tab, apply the month filter
+          if (index == 0) {
+            _filterWorkoutsByMonth();
+          }
         });
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isSelected
-                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                  : Colors.transparent,
-              width: 2,
-            ),
+          color: isSelected
+              ? const Color.fromRGBO(223, 77, 15, 0.2)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.transparent,
+            width: 1.5,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color.fromRGBO(223, 77, 15, 0.3),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  )
+                ]
+              : null,
         ),
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.grey,
-            fontSize: 16,
+            color: isSelected ? Colors.white : Colors.white70,
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),
-    );
-  }
-
-  BottomNavigationBarItem _buildNavItem(
-      IconData icon, String label, int index) {
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: _selectedIndex == index
-              ? const Color.fromRGBO(223, 77, 15, 0.1)
-              : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(_selectedIndex == index ? 15 : 10),
-          border: Border.all(
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Icon(icon,
-            color: _selectedIndex == index
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.white54),
-      ),
-      label: label,
     );
   }
 }

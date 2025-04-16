@@ -91,25 +91,7 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            color: Color.fromRGBO(223, 77, 15, 1.0),
-          ),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const SummaryPage()),
-            );
-          },
-        ),
-        title: const Text(
-          'Summary',
-          style: TextStyle(
-            color: Color.fromRGBO(223, 77, 15, 1.0),
-            fontSize: 16,
-          ),
-        ),
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -281,22 +263,6 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: TextButton(
-                      onPressed: () {
-                        // Handle "More" button tap
-                      },
-                      child: const Text(
-                        'More',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
                     ),
                   ),
                 ],

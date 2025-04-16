@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+<<<<<<< HEAD
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,6 +15,17 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../services/step_goal_service.dart';
 
+=======
+import 'package:intl/intl.dart';
+import 'dart:math' as math;
+import '../HistoryPage/history.dart';
+import 'summary_page.dart';
+import '../navigation/custom_navbar.dart';
+import '../utils/custom_page_route.dart';
+import '../screens/recommendations_page.dart';
+import '../models/user_model.dart';
+import 'manage_acc.dart';
+>>>>>>> passwordvalidation
 
 class StepsPage extends StatefulWidget {
   const StepsPage({super.key});
@@ -302,8 +314,294 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
           });
         }
       }
+<<<<<<< HEAD
     } catch (e) {
       print('No internet connection or error saving: $e');
+=======
+    });
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    
+    if (index == 1) {
+      // Navigate to RecommendationsPage through the loadAndNavigateToRecommendations function
+      _loadAndNavigateToRecommendations();
+    } else if (index == 2) {
+      // Navigate to HistoryPage
+      Navigator.pushReplacement(
+        context,
+        CustomPageRoute(
+          child: const HistoryPage(),
+          transitionType: TransitionType.rightToLeft,
+        ),
+      );
+    } else if (index == 3) {
+      // Show profile modal - this is handled in the CustomNavBar
+      _showProfileModal(context);
+    }
+    // No need to handle index 0 (current page)
+  }
+
+  void _showProfileModal(BuildContext context) {
+    // Fetch user data from Firestore
+    final user = FirebaseAuth.instance.currentUser;
+    String username = 'User';
+    String email = user?.email ?? '';
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Fetch user data if available
+            if (user != null) {
+              FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get()
+                  .then((doc) {
+                if (doc.exists) {
+    setState(() {
+                    username = doc['username'] ?? 'User';
+                    email = user.email ?? '';
+                  });
+                }
+              }).catchError((e) {
+                print('Error fetching user data: $e');
+              });
+            }
+            
+            return Container(
+        decoration: BoxDecoration(
+                color: const Color.fromRGBO(28, 28, 30, 1.0),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Spacer(),
+                        const Text(
+                          'Profile',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(
+                              color: Color(0xFFDF4D0F),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // User profile card
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context); // Close the modal first
+                        Navigator.push(
+        context,
+                          CustomPageRoute(child: const ManageAccPage()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(28, 28, 30, 1.0),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFDF4D0F)),
+                        ),
+                        child: Row(
+                          children: [
+                            // Profile picture
+                            CircleAvatar(
+                              backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
+                              radius: 20,
+                              child: const Icon(
+                                Icons.person,
+                                color: Color(0xFFDF4D0F),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // User info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    username,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    email,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // My Device option
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Handle device settings
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(28, 28, 30, 1.0),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFDF4D0F)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.devices,
+                              color: Color(0xFFDF4D0F),
+                              size: 24,
+                            ),
+                            const SizedBox(width: 16),
+                            const Text(
+                              'My Device',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Future<void> _loadAndNavigateToRecommendations() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('No user logged in');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Please log in to view recommendations')),
+        );
+        return;
+      }
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        print('User document does not exist');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User profile not found')),
+        );
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+
+      // Validate required date fields
+      if (userData['createdAt'] == null || userData['updatedAt'] == null) {
+        print('Missing date fields in user data');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid user profile data')),
+        );
+        return;
+      }
+
+      final userModel = UserModel(
+        id: user.uid,
+        email: userData['email'] ?? '',
+        gender: userData['gender'],
+        goal: userData['goal'],
+        age: userData['age'],
+        weight: userData['weight'] != null
+            ? (userData['weight'] as num).toDouble()
+            : null,
+        height: userData['height'] != null
+            ? (userData['height'] as num).toDouble()
+            : null,
+        activityLevel: userData['activityLevel'],
+        workoutPlace: userData['workoutPlace'],
+        preferredWorkouts: userData['preferredWorkouts'] != null
+            ? List<String>.from(userData['preferredWorkouts'])
+            : null,
+        gymEquipment: userData['gymEquipment'] != null
+            ? List<String>.from(userData['gymEquipment'])
+            : null,
+        setupCompleted: userData['setupCompleted'] ?? false,
+        currentSetupStep: userData['currentSetupStep'] ?? 'registered',
+        createdAt: userData['createdAt'] is String
+            ? DateTime.parse(userData['createdAt'])
+            : (userData['createdAt'] as Timestamp).toDate(),
+        updatedAt: userData['updatedAt'] is String
+            ? DateTime.parse(userData['updatedAt'])
+            : (userData['updatedAt'] as Timestamp).toDate(),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        CustomPageRoute(
+          child: RecommendationsPage(user: userModel),
+          transitionType: TransitionType.rightToLeft,
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('Error loading recommendations: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to load recommendations: ${e.toString()}')),
+      );
+>>>>>>> passwordvalidation
     }
   }
 
@@ -515,6 +813,12 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
             const SizedBox(height: 24),
           ],
         ),
+      ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        showProfileModal: _showProfileModal,
+        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
       ),
     );
   }

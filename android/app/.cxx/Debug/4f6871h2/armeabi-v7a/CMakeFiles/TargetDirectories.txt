@@ -1,0 +1,2 @@
+C:/New folder/Fitscale-/android/app/.cxx/Debug/4f6871h2/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/New folder/Fitscale-/android/app/.cxx/Debug/4f6871h2/armeabi-v7a/CMakeFiles/rebuild_cache.dir

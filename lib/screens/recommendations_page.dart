@@ -62,6 +62,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                             List<String>.from(e['musclesWorked'] ?? []),
                         instructions:
                             List<String>.from(e['instructions'] ?? []),
+                        gifUrl: e['gifUrl'] ?? '',
                       ))
                   .toList(),
             );
@@ -113,6 +114,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                     'iconCode': e.icon.codePoint,
                     'musclesWorked': e.musclesWorked,
                     'instructions': e.instructions,
+                    'gifUrl': e.gifUrl,
                   })
               .toList(),
         });
@@ -314,12 +316,14 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     allWorkouts.add(workout_logic.getCardioWorkout(
       intensity: "intermediate",
       hasGymAccess: true,
+      equipment: ["Treadmill", "Rowing Machine", "Exercise Bike"],
       duration: "45 min",
     ));
 
     allWorkouts.add(workout_logic.getCardioWorkout(
       intensity: "intermediate",
       hasGymAccess: false,
+      equipment: [],
       duration: "45 min",
     ));
 
@@ -407,7 +411,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     final user = FirebaseAuth.instance.currentUser;
     String username = 'User';
     String email = user?.email ?? '';
-    
+
     // Fetch user data synchronously before showing the modal
     if (user != null) {
       try {
@@ -415,7 +419,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
             .collection('users')
             .doc(user.uid)
             .get();
-            
+
         if (doc.exists) {
           username = doc['username'] ?? 'User';
           email = user.email ?? '';
@@ -424,7 +428,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         print('Error fetching user data: $e');
       }
     }
-    
+
     // Now show the modal with the pre-fetched data
     showModalBottomSheet(
       context: context,
@@ -492,7 +496,8 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                       children: [
                         // Profile picture
                         CircleAvatar(
-                          backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
+                          backgroundColor:
+                              const Color.fromRGBO(223, 77, 15, 0.2),
                           radius: 20,
                           child: const Icon(
                             Icons.person,
@@ -525,7 +530,8 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                             ],
                           ),
                         ),
-                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                        const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white54, size: 16),
                       ],
                     ),
                   ),
@@ -561,7 +567,8 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                           ),
                         ),
                         const Spacer(),
-                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                        const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white54, size: 16),
                       ],
                     ),
                   ),
@@ -587,33 +594,26 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(0),
         child: AppBar(
-        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-        elevation: 0,
-        automaticallyImplyLeading: false,
+          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+          elevation: 0,
+          automaticallyImplyLeading: false,
         ),
       ),
       body: SafeArea(
         child: Padding(
-<<<<<<< HEAD
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-=======
           padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
->>>>>>> passwordvalidation
               const Text(
                 'RECOMMENDED WORKOUT',
                 style: TextStyle(
-                   color: Color(0xFFDF4D0F),
+                  color: Color(0xFFDF4D0F),
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
-                      ),
-                      const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 8),
               const Text(
                 "Let's start your activities!",
                 style: TextStyle(
@@ -631,14 +631,15 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                     width: 1,
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
+                  children: [
                     _buildTabButton('Recommended', 0),
-                  _buildTabButton('My Workouts', 1),
+                    _buildTabButton('My Workouts', 1),
                     _buildTabButton('Other', 2),
-                ],
+                  ],
                 ),
               ),
               const SizedBox(height: 20),
@@ -666,16 +667,17 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                             ),
                             const SizedBox(height: 24),
                             const Text(
-                          'No Added Workouts Yet',
-                          style: TextStyle(
-                            color: Colors.white,
+                              'No Added Workouts Yet',
+                              style: TextStyle(
+                                color: Colors.white,
                                 fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
                               child: const Text(
                                 'Add workouts from the Recommended tab to build your personal collection',
                                 textAlign: TextAlign.center,
@@ -729,21 +731,21 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                      Text(
-                        plan.name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        plan.description,
-                        style: const TextStyle(
+                                          Text(
+                                            plan.name,
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          Text(
+                                            plan.description,
+                                            style: const TextStyle(
                                               fontSize: 14,
-                          color: Colors.white70,
-                        ),
-                      ),
+                                              color: Colors.white70,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -753,89 +755,91 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    if (selectedTabIndex == 1) // Only show remove button in My Workouts
+                                    if (selectedTabIndex == 1)
                                       AnimatedContainer(
-                                        duration: const Duration(milliseconds: 300),
+                                        duration:
+                                            const Duration(milliseconds: 300),
                                         curve: Curves.easeInOut,
                                         child: TextButton(
-                                          onPressed: () => removeFromMyWorkouts(plan),
+                                          onPressed: () =>
+                                              removeFromMyWorkouts(plan),
                                           style: TextButton.styleFrom(
-                                            backgroundColor: Colors.red.withOpacity(0.1),
-                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            backgroundColor:
+                                                Colors.red.withOpacity(0.1),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 8),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(10),
-                                              side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              side: BorderSide(
+                                                  color: Colors.red
+                                                      .withOpacity(0.3)),
                                             ),
                                           ),
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.delete_outline, color: Colors.red, size: 16),
+                                              Icon(Icons.delete_outline,
+                                                  color: Colors.red, size: 16),
                                               SizedBox(width: 4),
                                               Text(
-                                          'Remove',
-                                          style: TextStyle(
-                                            color: Colors.red,
+                                                'Remove',
+                                                style: TextStyle(
+                                                  color: Colors.red,
                                                   fontSize: 14,
-                                            fontWeight: FontWeight.bold,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
                                       ),
-<<<<<<< HEAD
-                                    const SizedBox(width: 16),
-                                    TextButton(
-                          onPressed: () {
-=======
                                     const SizedBox(width: 12),
                                     AnimatedContainer(
-                                      duration: const Duration(milliseconds: 300),
+                                      duration:
+                                          const Duration(milliseconds: 300),
                                       curve: Curves.easeInOut,
                                       child: TextButton(
-                                      onPressed: () {
->>>>>>> passwordvalidation
-                                        Navigator.push(
-                                          context,
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
                                             CustomPageRoute(
                                               child: WorkoutDetailsPage(
-                                              workout: plan,
-                                                onAddToWorkoutList: addToMyWorkouts,
+                                                workout: plan,
+                                                onAddToWorkoutList:
+                                                    addToMyWorkouts,
                                               ),
                                             ),
                                           );
                                         },
                                         style: TextButton.styleFrom(
-                                          backgroundColor: const Color.fromRGBO(223, 77, 15, 0.1),
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          backgroundColor: const Color.fromRGBO(
+                                              223, 77, 15, 0.1),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                            side: const BorderSide(color: Color.fromRGBO(223, 77, 15, 0.3)),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            side: const BorderSide(
+                                                color: Color.fromRGBO(
+                                                    223, 77, 15, 0.3)),
                                           ),
-<<<<<<< HEAD
-                                        );
-                          },
-                          child: const Text(
-                            'More',
-=======
                                         ),
                                         child: const Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.fitness_center, color: Color.fromRGBO(223, 77, 15, 1.0), size: 16),
+                                            Icon(Icons.fitness_center,
+                                                color: Color.fromRGBO(
+                                                    223, 77, 15, 1.0),
+                                                size: 16),
                                             SizedBox(width: 4),
                                             Text(
                                               'Details',
->>>>>>> passwordvalidation
-                                        style: TextStyle(
-                                                color: Color.fromRGBO(223, 77, 15, 1.0),
+                                              style: TextStyle(
+                                                color: Color.fromRGBO(
+                                                    223, 77, 15, 1.0),
                                                 fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-<<<<<<< HEAD
-                          ),
-                        ),
-=======
+                                                fontWeight: FontWeight.bold,
                                               ),
                                             ),
                                           ],
@@ -848,15 +852,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                             ),
                           );
                         },
->>>>>>> passwordvalidation
                       ),
-                    ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
               ),
             ],
           ),
@@ -884,32 +880,32 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color.fromRGBO(223, 77, 15, 0.2) : Colors.transparent,
+          color: isSelected
+              ? const Color.fromRGBO(223, 77, 15, 0.2)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected 
-              ? const Color.fromRGBO(223, 77, 15, 1.0)
-              : Colors.transparent,
+            color: isSelected
+                ? const Color.fromRGBO(223, 77, 15, 1.0)
+                : Colors.transparent,
             width: 1.5,
           ),
-          boxShadow: isSelected 
-            ? [
-                BoxShadow(
-                  color: const Color.fromRGBO(223, 77, 15, 0.3),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                )
-              ] 
-            : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color.fromRGBO(223, 77, 15, 0.3),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  )
+                ]
+              : null,
         ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isSelected
-              ? Colors.white
-              : Colors.white70,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white70,
             fontSize: 14,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),

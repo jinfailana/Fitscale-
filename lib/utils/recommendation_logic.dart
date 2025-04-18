@@ -46,6 +46,7 @@ List<WorkoutPlan> generateRecommendations(UserModel user) {
     recommendations.add(getCardioWorkout(
       intensity: intensity,
       hasGymAccess: hasGymAccess,
+      equipment: availableEquipment,
       duration: workoutDuration,
     ));
   }
@@ -1403,148 +1404,46 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
 WorkoutPlan getCardioWorkout({
   required String intensity,
   required bool hasGymAccess,
+  required List<String> equipment,
   required String duration,
 }) {
-  if (hasGymAccess) {
-    return WorkoutPlan(
-      name: "Cardio Blast Pro",
-      description: "Advanced cardio training for endurance and fat loss",
-      icon: Icons.directions_run,
-      exercises: [
-        Exercise(
-          name: "Treadmill Intervals",
-          sets: intensity == "beginner" ? "3" : "5",
-          reps: "1 minute run, 1 minute walk",
-          rest: "30 sec",
-          icon: Icons.directions_run,
-          musclesWorked: ["Legs", "Cardiovascular"],
-          instructions: [
-            "Run at high intensity (80-90% max effort) for 1 minute",
-            "Walk at moderate intensity for 1 minute recovery",
-            "Increase incline for greater challenge",
-            "Maintain proper running form throughout"
-          ],
-        ),
-        Exercise(
-          name: "Elliptical Sprints",
-          sets: "4",
-          reps: "2 minutes",
-          rest: "60 sec",
-          icon: Icons.accessibility,
-          musclesWorked: ["Legs", "Cardiovascular"],
-          instructions: [
-            "Increase resistance for sprint intervals",
-            "Push with both arms and legs for full-body engagement",
-            "Maintain consistent cadence during sprints",
-            "Focus on controlled breathing"
-          ],
-        ),
-        Exercise(
-          name: "Stair Climber",
-          sets: "3",
-          reps: "3 minutes",
-          rest: "60 sec",
-          icon: Icons.stairs,
-          musclesWorked: ["Legs", "Cardiovascular"],
-          instructions: [
-            "Maintain upright posture (avoid leaning on console)",
-            "Take full steps using entire foot",
-            "Alternate between double-steps and regular pace",
-            "Use minimal hand support for balance"
-          ],
-        ),
-        Exercise(
-          name: "Rowing Sprints",
-          sets: "4",
-          reps: "250 meters",
-          rest: "60 sec",
-          icon: Icons.rowing,
-          musclesWorked: ["Full Body", "Cardiovascular"],
-          instructions: [
-            "Focus on proper form: legs-core-arms, arms-core-legs",
-            "Drive with legs first, then pull with back and arms",
-            "Maintain consistent power throughout stroke",
-            "Aim for specific split time based on fitness level"
-          ],
-        ),
-        Exercise(
-          name: "Assault Bike Tabata",
-          sets: "4",
-          reps: "20 seconds all-out, 10 seconds rest",
-          rest: "60 sec between sets",
-          icon: Icons.directions_bike,
-          musclesWorked: ["Full Body", "Cardiovascular"],
-          instructions: [
-            "Give maximum effort during 20-second work periods",
-            "Use both arms and legs with powerful movements",
-            "Focus on quick transitions between rest and work",
-            "Maintain proper posture throughout"
-          ],
-        ),
-      ],
-    );
-  } else {
-    return WorkoutPlan(
-      name: "Home Cardio",
-      description: "Equipment-free cardio workout",
-      icon: Icons.home_work,
-      exercises: [
-        Exercise(
-          name: "High Knees",
-          sets: intensity == "beginner" ? "3" : "4",
-          reps: "45 seconds",
-          rest: "30 sec",
-          icon: Icons.directions_run,
-          musclesWorked: ["Legs", "Cardiovascular"],
-          instructions: [
-            "Stand with feet together",
-            "Lift one knee up to waist",
-            "Lower back down"
-          ],
-        ),
-        Exercise(
-          name: "Mountain Climbers",
-          sets: "4",
-          reps: "30 seconds",
-          rest: "30 sec",
-          icon: Icons.accessibility_new,
-          musclesWorked: ["Legs", "Cardiovascular"],
-          instructions: [
-            "Stand on hands and feet",
-            "Climb up and down",
-            "Maintain proper form"
-          ],
-        ),
-        Exercise(
-          name: "Jumping Jacks",
-          sets: "3",
-          reps: "1 minute",
-          rest: "30 sec",
-          icon: Icons.accessibility,
-          musclesWorked: ["Legs", "Cardiovascular"],
-          instructions: [
-            "Stand with feet together",
-            "Jump up to standing position",
-            "Return to squat position"
-          ],
-        ),
-        Exercise(
-          name: "Burpee Variations",
-          sets: "3",
-          reps: intensity == "beginner" ? "8" : "12",
-          rest: "45 sec",
-          icon: Icons.accessibility_new,
-          musclesWorked: ["Legs", "Cardiovascular"],
-          instructions: [
-            "Stand with feet together",
-            "Jump up to standing position",
-            "Lower body down",
-            "Jump back up to standing position"
-          ],
-        ),
-      ],
-    );
-  }
+  return WorkoutPlan(
+    name: "Cardio Training",
+    description: "Improve cardiovascular endurance and burn calories",
+    icon: Icons.directions_run,
+    exercises: [
+      Exercise(
+        name: equipment.contains("Treadmill") ? "Treadmill Run" : "Outdoor Run",
+        sets: "1",
+        reps: "30 min",
+        rest: "0 sec",
+        icon: Icons.directions_run,
+        musclesWorked: ["Legs", "Cardiovascular System"],
+        instructions: [
+          "Start with a light warm-up",
+          "Maintain a steady pace",
+          "Keep good posture",
+          "Land midfoot with each step"
+        ],
+        gifUrl: "",
+      ),
+      Exercise(
+        name: "Jump Rope",
+        sets: "3",
+        reps: "2 min",
+        rest: "30 sec",
+        icon: Icons.sports_handball,
+        musclesWorked: ["Calves", "Cardiovascular System"],
+        instructions: [
+          "Keep elbows close to body",
+          "Jump on balls of feet",
+          "Maintain rhythm",
+          "Land softly"
+        ],
+        gifUrl: "",
+      ),
+    ],
+  );
 }
 
 WorkoutPlan getStrengthWorkout({
@@ -1553,181 +1452,218 @@ WorkoutPlan getStrengthWorkout({
   required List<String> equipment,
   required String duration,
 }) {
-  if (hasGymAccess) {
+  return WorkoutPlan(
+    name: "Strength Training",
+    description: "Build muscle and increase strength",
+    icon: Icons.fitness_center,
+    exercises: [
+      Exercise(
+        name: equipment.contains("Barbell")
+            ? "Barbell Squats"
+            : "Bodyweight Squats",
+        sets: "3",
+        reps: "12",
+        rest: "60 sec",
+        icon: Icons.fitness_center,
+        musclesWorked: ["Legs", "Core"],
+        instructions: [
+          "Stand with feet shoulder-width apart",
+          "Keep your back straight",
+          "Lower your body until thighs are parallel to the ground",
+          "Push back up to starting position"
+        ],
+        gifUrl: "",
+      ),
+      Exercise(
+        name: equipment.contains("Dumbbells") ? "Dumbbell Press" : "Push-ups",
+        sets: "3",
+        reps: "12",
+        rest: "60 sec",
+        icon: Icons.fitness_center,
+        musclesWorked: ["Chest", "Shoulders", "Triceps"],
+        instructions: [
+          "Start in push-up position",
+          "Lower your body until chest nearly touches the ground",
+          "Push back up to starting position"
+        ],
+        gifUrl: "",
+      ),
+    ],
+  );
+}
+
+WorkoutPlan getFlexibilityWorkout({
+  required String intensity,
+  required bool hasGymAccess,
+  required List<String> equipment,
+  required String duration,
+}) {
+  return WorkoutPlan(
+    name: "Flexibility Training",
+    description: "Improve range of motion and reduce muscle tension",
+    icon: Icons.self_improvement,
+    exercises: [
+      Exercise(
+        name: "Dynamic Stretching",
+        sets: "1",
+        reps: "10 min",
+        rest: "0 sec",
+        icon: Icons.accessibility_new,
+        musclesWorked: ["Full Body"],
+        instructions: [
+          "Start with gentle movements",
+          "Gradually increase range of motion",
+          "Keep movements controlled",
+          "Breathe deeply"
+        ],
+        gifUrl: "",
+      ),
+      Exercise(
+        name: "Static Stretching",
+        sets: "3",
+        reps: "30 sec",
+        rest: "15 sec",
+        icon: Icons.self_improvement,
+        musclesWorked: ["Full Body"],
+        instructions: [
+          "Hold each stretch",
+          "Don't bounce",
+          "Breathe deeply",
+          "Feel gentle tension"
+        ],
+        gifUrl: "",
+      ),
+    ],
+  );
+}
+
+class WorkoutLogic {
+  List<WorkoutPlan> getRecommendations({
+    required String goal,
+    required String fitnessLevel,
+    required bool hasGymAccess,
+    required List<String> equipment,
+    required int duration,
+  }) {
+    List<WorkoutPlan> recommendations = [];
+
+    // Add strength workout
+    recommendations.add(getStrengthWorkout(
+      intensity: fitnessLevel,
+      hasGymAccess: hasGymAccess,
+      equipment: equipment,
+      duration: duration.toString(),
+    ));
+
+    // Add cardio workout
+    recommendations.add(getCardioWorkout(
+      intensity: fitnessLevel,
+      hasGymAccess: hasGymAccess,
+      equipment: equipment,
+      duration: duration.toString(),
+    ));
+
+    // Add flexibility workout
+    recommendations.add(getFlexibilityWorkout(
+      intensity: fitnessLevel,
+      hasGymAccess: hasGymAccess,
+      equipment: equipment,
+      duration: duration.toString(),
+    ));
+
+    return recommendations;
+  }
+
+  WorkoutPlan getCardioWorkout({
+    required String intensity,
+    required bool hasGymAccess,
+    required List<String> equipment,
+    required String duration,
+  }) {
     return WorkoutPlan(
-      name: "Complete Strength System",
-      description: "Comprehensive strength training for total body development",
-      icon: Icons.fitness_center,
+      name: "Cardio Training",
+      description: "Improve cardiovascular endurance and burn calories",
+      icon: Icons.directions_run,
       exercises: [
         Exercise(
-          name: equipment.contains("Barbell")
-              ? "Barbell Deadlifts"
-              : "Dumbbell Romanian Deadlifts",
-          sets: intensity == "beginner" ? "3" : "5",
-          reps: intensity == "beginner" ? "5-8" : "3-6",
-          rest: "120 sec",
-          icon: Icons.fitness_center,
-          musclesWorked: ["Back", "Glutes", "Hamstrings", "Forearms", "Traps"],
+          name:
+              equipment.contains("Treadmill") ? "Treadmill Run" : "Outdoor Run",
+          sets: "1",
+          reps: "30 min",
+          rest: "0 sec",
+          icon: Icons.directions_run,
+          musclesWorked: ["Legs", "Cardiovascular System"],
           instructions: [
-            "Stand with feet hip-width apart, bar over mid-foot",
-            "Hinge at hips with flat back, grasp bar with shoulder-width grip",
-            "Drive through heels, extending hips and knees",
-            "Keep bar close to body throughout movement",
-            "Lower with control, maintaining neutral spine"
+            "Start with a light warm-up",
+            "Maintain a steady pace",
+            "Keep good posture",
+            "Land midfoot with each step"
           ],
+          gifUrl: "",
         ),
         Exercise(
-          name: equipment.contains("Bench")
-              ? "Incline Bench Press"
-              : "Incline Dumbbell Press",
-          sets: "4",
-          reps: "8-10",
-          rest: "90 sec",
-          icon: Icons.fitness_center,
-          musclesWorked: ["Upper Chest", "Shoulders", "Triceps"],
-          instructions: [
-            "Set bench to 30-45 degree incline",
-            "Retract shoulder blades and maintain back arch",
-            "Lower weight with control to upper chest",
-            "Press upward and slightly backward to starting position",
-            "Keep elbows at 45-degree angle to torso"
-          ],
-        ),
-        Exercise(
-          name: equipment.contains("Pull-up Bar")
-              ? "Weighted Pull-ups"
-              : "Lat Pulldowns",
-          sets: "4",
-          reps: intensity == "beginner" ? "6-8" : "8-12",
-          rest: "90 sec",
-          icon: Icons.fitness_center,
-          musclesWorked: ["Back", "Biceps", "Forearms", "Core"],
-          instructions: [
-            "Grip bar slightly wider than shoulder width",
-            "Initiate movement by depressing shoulder blades",
-            "Pull body up until chin clears bar (or bar to upper chest)",
-            "Lower with control to full hang position",
-            "Maintain slight arch in lower back throughout"
-          ],
-        ),
-        Exercise(
-          name: equipment.contains("Squat Rack")
-              ? "Front Squats"
-              : "Goblet Squats",
-          sets: "4",
-          reps: "8-12",
-          rest: "90 sec",
-          icon: Icons.fitness_center,
-          musclesWorked: ["Quadriceps", "Glutes", "Core", "Upper Back"],
-          instructions: [
-            "Position weight at front rack position (or hold at chest)",
-            "Keep elbows high and torso upright",
-            "Descend until thighs are parallel to ground or lower",
-            "Drive through heels while maintaining upright position",
-            "Keep knees tracking over toes throughout movement"
-          ],
-        ),
-        Exercise(
-          name: equipment.contains("Cable Machine")
-              ? "Cable Face Pulls"
-              : "Dumbbell External Rotations",
+          name: "Jump Rope",
           sets: "3",
-          reps: "12-15",
-          rest: "60 sec",
-          icon: Icons.fitness_center,
-          musclesWorked: ["Rear Deltoids", "Rotator Cuff", "Mid Traps"],
+          reps: "2 min",
+          rest: "30 sec",
+          icon: Icons.sports_handball,
+          musclesWorked: ["Calves", "Cardiovascular System"],
           instructions: [
-            "Set cable at upper chest height with rope attachment",
-            "Pull rope toward face with elbows high and out",
-            "Focus on external rotation at end position",
-            "Squeeze shoulder blades together at peak contraction",
-            "Control the return to starting position"
+            "Keep elbows close to body",
+            "Jump on balls of feet",
+            "Maintain rhythm",
+            "Land softly"
           ],
-        ),
-      ],
-    );
-  } else {
-    return WorkoutPlan(
-      name: "Advanced Bodyweight Strength",
-      description: "Progressive calisthenics for strength development",
-      icon: Icons.accessibility_new,
-      exercises: [
-        Exercise(
-          name: "Deficit Push-ups",
-          sets: "4",
-          reps: intensity == "beginner" ? "8-10" : "12-15",
-          rest: "60 sec",
-          icon: Icons.accessibility_new,
-          musclesWorked: ["Chest", "Shoulders", "Triceps", "Core"],
-          instructions: [
-            "Place hands on elevated surface (books or blocks)",
-            "Lower chest below hand level for increased range of motion",
-            "Maintain rigid body alignment throughout movement",
-            "Push explosively back to starting position",
-            "Focus on full chest stretch at bottom position"
-          ],
-        ),
-        Exercise(
-          name: "Bulgarian Split Squats",
-          sets: "4",
-          reps: "10-12 each leg",
-          rest: "60 sec",
-          icon: Icons.accessibility,
-          musclesWorked: ["Quadriceps", "Glutes", "Hamstrings", "Core"],
-          instructions: [
-            "Place rear foot on elevated surface (couch, chair, etc.)",
-            "Position front foot far enough forward for vertical shin at bottom",
-            "Lower until front thigh is parallel to ground",
-            "Drive through front heel to return to starting position",
-            "Maintain upright torso throughout movement"
-          ],
-        ),
-        Exercise(
-          name: "Pull-up Variations",
-          sets: "4",
-          reps: intensity == "beginner" ? "5-8" : "8-12",
-          rest: "90 sec",
-          icon: Icons.accessibility_new,
-          musclesWorked: ["Back", "Biceps", "Forearms", "Core"],
-          instructions: [
-            "Use doorway pull-up bar or sturdy overhead surface",
-            "Vary grip width and orientation for different emphasis",
-            "Pull chest to bar with controlled movement",
-            "Lower to full hang between repetitions",
-            "For beginners: use chair assist or jumping variations"
-          ],
-        ),
-        Exercise(
-          name: "Pike Push-ups",
-          sets: "3",
-          reps: intensity == "beginner" ? "6-8" : "10-12",
-          rest: "60 sec",
-          icon: Icons.accessibility_new,
-          musclesWorked: ["Shoulders", "Triceps", "Upper Chest", "Core"],
-          instructions: [
-            "Form inverted V-shape with body, feet hip-width apart",
-            "Position hands slightly wider than shoulders",
-            "Lower head toward ground between hands",
-            "Push back to starting position with full arm extension",
-            "Elevate feet for increased difficulty (advanced)"
-          ],
-        ),
-        Exercise(
-          name: "Hollow Body Hold to V-up",
-          sets: "3",
-          reps: "30 sec hold + 10 V-ups",
-          rest: "60 sec",
-          icon: Icons.accessibility,
-          musclesWorked: ["Core", "Hip Flexors", "Lower Back"],
-          instructions: [
-            "Begin in hollow body position (lower back pressed to floor)",
-            "Hold position with arms and legs extended, shoulders off ground",
-            "After hold time, transition to V-up movement",
-            "Touch hands to feet at top position of V-up",
-            "Control descent back to hollow position for each rep"
-          ],
+          gifUrl: "",
         ),
       ],
     );
   }
+
+  WorkoutPlan getFlexibilityWorkout({
+    required String intensity,
+    required bool hasGymAccess,
+    required List<String> equipment,
+    required String duration,
+  }) {
+    return WorkoutPlan(
+      name: "Flexibility Training",
+      description: "Improve range of motion and reduce muscle tension",
+      icon: Icons.self_improvement,
+      exercises: [
+        Exercise(
+          name: "Dynamic Stretching",
+          sets: "1",
+          reps: "10 min",
+          rest: "0 sec",
+          icon: Icons.accessibility_new,
+          musclesWorked: ["Full Body"],
+          instructions: [
+            "Start with gentle movements",
+            "Gradually increase range of motion",
+            "Keep movements controlled",
+            "Breathe deeply"
+          ],
+          gifUrl: "",
+        ),
+        Exercise(
+          name: "Static Stretching",
+          sets: "3",
+          reps: "30 sec",
+          rest: "15 sec",
+          icon: Icons.self_improvement,
+          musclesWorked: ["Full Body"],
+          instructions: [
+            "Hold each stretch",
+            "Don't bounce",
+            "Breathe deeply",
+            "Feel gentle tension"
+          ],
+          gifUrl: "",
+        ),
+      ],
+    );
+  }
+
+  // ... rest of the class ...
 }

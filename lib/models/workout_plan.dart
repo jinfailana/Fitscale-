@@ -6,16 +6,12 @@ class WorkoutPlan {
   final String description;
   final IconData icon;
   final List<Exercise> exercises;
-  bool isInProgress;
-  DateTime? lastStarted;
 
   WorkoutPlan({
     required this.name,
     required this.description,
     required this.icon,
     required this.exercises,
-    this.isInProgress = false,
-    this.lastStarted,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,8 +20,6 @@ class WorkoutPlan {
       'description': description,
       'iconCode': icon.codePoint,
       'exercises': exercises.map((e) => e.toMap()).toList(),
-      'isInProgress': isInProgress,
-      'lastStarted': lastStarted?.toIso8601String(),
     };
   }
 
@@ -38,10 +32,6 @@ class WorkoutPlan {
               ?.map((e) => Exercise.fromMap(e))
               .toList() ??
           [],
-      isInProgress: map['isInProgress'] ?? false,
-      lastStarted: map['lastStarted'] != null
-          ? DateTime.parse(map['lastStarted'])
-          : null,
     );
   }
 
@@ -55,6 +45,9 @@ class WorkoutPlan {
   }
 
   bool get isCompleted => progressPercentage >= 100;
+
+  bool get isInProgress =>
+      exercises.any((exercise) => exercise.setsCompleted > 0) && !isCompleted;
 }
 
 class Exercise {
@@ -65,6 +58,7 @@ class Exercise {
   final IconData icon;
   final List<String> musclesWorked;
   final List<String> instructions;
+  String gifUrl;
   int setsCompleted;
   bool isCompleted;
   DateTime? lastCompleted;
@@ -77,6 +71,7 @@ class Exercise {
     required this.icon,
     required this.musclesWorked,
     required this.instructions,
+    this.gifUrl = '',
     this.setsCompleted = 0,
     this.isCompleted = false,
     this.lastCompleted,
@@ -91,6 +86,7 @@ class Exercise {
       'iconCode': icon.codePoint,
       'musclesWorked': musclesWorked,
       'instructions': instructions,
+      'gifUrl': gifUrl,
       'setsCompleted': setsCompleted,
       'isCompleted': isCompleted,
       'lastCompleted': lastCompleted?.toIso8601String(),
@@ -106,6 +102,7 @@ class Exercise {
       icon: IconData(map['iconCode'] ?? 0xe1d8, fontFamily: 'MaterialIcons'),
       musclesWorked: List<String>.from(map['musclesWorked'] ?? []),
       instructions: List<String>.from(map['instructions'] ?? []),
+      gifUrl: map['gifUrl'] ?? '',
       setsCompleted: map['setsCompleted'] ?? 0,
       isCompleted: map['isCompleted'] ?? false,
       lastCompleted: map['lastCompleted'] != null

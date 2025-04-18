@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
-import 'dart:async'; // Add this import for Timer
+import 'dart:async';
 import 'dart:math' show pi;
 import 'package:confetti/confetti.dart';
 import '../models/workout_plan.dart';
@@ -383,200 +383,60 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   }
 
   Future<void> _loadExerciseDetails() async {
-    if (!mounted) return;
+    setState(() => _isLoading = true);
+    final details =
+        await _exerciseService.getExerciseDetails(widget.exercise.name);
+    setState(() {
+      _exerciseDetails = details;
+      // Update the exercise's gifUrl if available from the API
+      if (details['gifUrl'] != null &&
+          details['gifUrl'].toString().isNotEmpty) {
+        widget.exercise.gifUrl = details['gifUrl'];
+      }
+      _isLoading = false;
+    });
+  }
 
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Try to normalize the exercise name by removing special characters and extra spaces
-      String normalizedName = widget.exercise.name
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^\w\s]'), '')
-          .trim()
-          .replaceAll(RegExp(r'\s+'), ' ');
-
-      final details = await _exerciseService.getExerciseDetails(normalizedName);
-
-      if (!mounted) return;
-
-      setState(() {
-        _exerciseDetails = details;
-        // Update the exercise's gifUrl if available from the API
-        if (details['gifUrl'] != null &&
-            details['gifUrl'].toString().isNotEmpty) {
-          widget.exercise.gifUrl = details['gifUrl'];
-        }
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error in _loadExerciseDetails: $e');
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Unable to load exercise details. Please check your internet connection and try again.',
-                  style: TextStyle(color: Colors.white),
+  Widget _buildExerciseImage() {
+    if (widget.exercise.gifUrl != null && widget.exercise.gifUrl!.isNotEmpty) {
+      return Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color.fromRGBO(44, 44, 46, 1.0),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            widget.exercise.gifUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: const Color.fromRGBO(223, 77, 15, 1.0),
                 ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Retry',
-            textColor: Colors.white,
-            onPressed: () {
-              _loadExerciseDetails();
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return const Center(
+                child: Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 48,
+                ),
+              );
             },
           ),
         ),
       );
     }
-  }
-
-  Widget _buildExerciseAnimation() {
-    if (_isLoading) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: const Color.fromRGBO(44, 44, 46, 1.0),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                color: Color.fromRGBO(223, 77, 15, 1.0),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Loading exercise details...',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final String? gifUrl =
-        _exerciseDetails?['gifUrl'] ?? widget.exercise.gifUrl;
-
-    if (gifUrl == null || gifUrl.isEmpty) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: const Color.fromRGBO(44, 44, 46, 1.0),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.sports_gymnastics,
-                color: Color.fromRGBO(223, 77, 15, 1.0),
-                size: 48,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'No animation available',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: const Color.fromRGBO(44, 44, 46, 1.0),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              gifUrl,
-              fit: BoxFit.contain,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
-                        color: const Color.fromRGBO(223, 77, 15, 1.0),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Loading animation...',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) {
-                print('Error loading animation: $error');
-                return Container(
-                  color: const Color.fromRGBO(44, 44, 46, 1.0),
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Color.fromRGBO(223, 77, 15, 1.0),
-                          size: 48,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Unable to load animation',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   Widget _buildInstructions() {
@@ -745,96 +605,6 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     }
   }
 
-  void _watchVideo() {
-    if (_exerciseDetails != null &&
-        _exerciseDetails!['gifUrl'] != null &&
-        _exerciseDetails!['gifUrl'].toString().isNotEmpty &&
-        _exerciseDetails!['gifUrl'].toString().startsWith('http')) {
-      showDialog(
-        context: context,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 300,
-                width: double.maxFinite,
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(44, 44, 46, 1.0),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    _exerciseDetails!['gifUrl'],
-                    fit: BoxFit.contain,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: const Color.fromRGBO(223, 77, 15, 1.0),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      print('Error loading GIF: $error');
-                      return Container(
-                        height: 200,
-                        color: const Color.fromRGBO(44, 44, 46, 1.0),
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Color.fromRGBO(223, 77, 15, 1.0),
-                                size: 48,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Failed to load exercise animation',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                ),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else {
-      // Show a message when no valid GIF URL is available
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No exercise animation available'),
-          backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
   void _showCompletionDialog() {
     // Reset and play the confetti controller
     _confettiController.stop();
@@ -980,32 +750,13 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           ),
         ),
         body: _isLoading
-            ? const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      color: Color.fromRGBO(223, 77, 15, 1.0),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading exercise details...',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              )
+            ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildExerciseAnimation(),
-                      const SizedBox(height: 20),
                       // Exercise Details
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -1060,6 +811,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                               ],
                             ),
                             const SizedBox(height: 16),
+                            _buildExerciseImage(),
+                            const SizedBox(height: 16),
                             const Text(
                               'Muscles Worked:',
                               style: TextStyle(
@@ -1095,34 +848,6 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                             ),
                             const SizedBox(height: 8),
                             _buildInstructions(),
-                            const SizedBox(height: 16),
-                            // Video Tutorial Button
-                            if (_exerciseDetails != null &&
-                                _exerciseDetails!['gifUrl'] != null)
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _watchVideo,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        const Color.fromRGBO(223, 77, 15, 1.0),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                  ),
-                                  icon: const Icon(Icons.play_circle_outline),
-                                  label: const Text(
-                                    'Watch Tutorial',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
                             const SizedBox(height: 32),
                             // Progress Tracking Section
                             Container(
@@ -1563,140 +1288,6 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                   ),
                 ),
               ),
-      ),
-    );
-  }
-
-  Widget _buildProgressGraph() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDF4D0F)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Workout Progress',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          FutureBuilder<List<WorkoutHistory>>(
-            future: _historyService.getWorkoutHistory(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'No workout data available',
-                    style: TextStyle(color: Colors.white54),
-                  ),
-                );
-              }
-
-              // Process the data for the graph
-              final workouts = snapshot.data!;
-              final completedWorkouts =
-                  workouts.where((w) => w.status == 'completed').length;
-              final totalWorkouts = workouts.length;
-              final progress =
-                  totalWorkouts > 0 ? completedWorkouts / totalWorkouts : 0.0;
-
-              return Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '$completedWorkouts/$totalWorkouts Workouts',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        '${(progress * 100).toStringAsFixed(1)}%',
-                        style: const TextStyle(
-                          color: Color(0xFFDF4D0F),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: Colors.grey[800],
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFFDF4D0F)),
-                      minHeight: 10,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildStatCard(
-                        'Total Time',
-                        '${workouts.fold<int>(0, (sum, w) => sum + w.duration)} min',
-                      ),
-                      _buildStatCard(
-                        'Sets Done',
-                        '${workouts.fold<int>(0, (sum, w) => sum + w.setsCompleted)}',
-                      ),
-                      _buildStatCard(
-                        'Exercises',
-                        '${workouts.length}',
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }

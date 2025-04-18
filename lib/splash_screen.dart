@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'intro_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final bool fromNotification;
+  const SplashScreen({super.key, this.fromNotification = false});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -20,6 +22,17 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       // Add a small delay to show the splash screen
       await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+
+      // If coming from notification, always go to intro screen
+      if (widget.fromNotification) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const IntroScreen()),
+        );
+        return;
+      }
 
       final User? currentUser = FirebaseAuth.instance.currentUser;
 
@@ -43,14 +56,20 @@ class _SplashScreenState extends State<SplashScreen> {
           Navigator.pushReplacementNamed(context, '/login');
         }
       } else {
-        // No user logged in, go to login page
-        Navigator.pushReplacementNamed(context, '/login');
+        // No user logged in, go to intro screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const IntroScreen()),
+        );
       }
     } catch (e) {
       print('Error in splash screen: $e');
-      // In case of any error, safely navigate to login
+      // In case of any error, safely navigate to intro screen
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const IntroScreen()),
+        );
       }
     }
   }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/diet_plan.dart';
 import '../services/diet_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'diet_recommendations_page.dart';
-import '../utils/custom_page_route.dart';
 
 class SelectedDietPage extends StatefulWidget {
   final DietPlan dietPlan;
@@ -31,21 +31,13 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Nutrition',
+          'Summary',
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFFDF4D0F),
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Color(0xFFDF4D0F)),
-            onPressed: () {
-              // Share functionality would go here
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -55,17 +47,40 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.arrow_back_ios,
-                    size: 16,
-                    color: Color(0xFFDF4D0F),
-                  ),
+                 
                   Text(
                     '${widget.dietPlan.name.toUpperCase()} DIET',
                     style: const TextStyle(
-                      color: Color(0xFFDF4D0F),
+                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Selected',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -78,6 +93,10 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
               margin: const EdgeInsets.symmetric(horizontal: 16.0),
               height: 200,
               width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFDF4D0F).withOpacity(0.3)),
+              ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: widget.dietPlan.imageUrl.startsWith('http')
@@ -112,7 +131,7 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
               ),
             ),
 
-            // Select Diet Button
+            // Change Diet Button
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: SizedBox(
@@ -122,8 +141,8 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
                     // Navigate to diet recommendations to change diet
                     Navigator.push(
                       context,
-                      CustomPageRoute(
-                        child: const DietRecommendationsPage(),
+                      MaterialPageRoute(
+                        builder: (context) => const DietRecommendationsPage(),
                       ),
                     );
                   },
@@ -217,8 +236,27 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: ElevatedButton(
-                onPressed: () {
-                  // Show more details
+                onPressed: () async {
+                  try {
+                    // Create FatSecret search URL based on diet type
+                    String dietType = widget.dietPlan.name.toLowerCase().replaceAll('-', ' ');
+                    String searchQuery = Uri.encodeComponent('$dietType diet plan');
+                    final Uri url = Uri.parse('https://www.fatsecret.com/calories-nutrition/search?q=$searchQuery');
+                    
+                    if (!await canLaunchUrl(url)) {
+                      throw Exception('Could not launch $url');
+                    }
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Could not open FatSecret website: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
@@ -241,13 +279,40 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
                     ),
                     SizedBox(width: 8),
                     Icon(
-                      Icons.arrow_forward,
+                      Icons.open_in_new,
                       color: Color(0xFFDF4D0F),
                       size: 16,
                     ),
                   ],
                 ),
               ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Calories per day
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildInfoSection(
+                'Calories per Day',
+                '${widget.dietPlan.caloriesPerDay} kcal',
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Food Groups
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildListSection('Food Groups', widget.dietPlan.foodGroups),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Meal Plan
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildMealPlanSection(),
             ),
             
             const SizedBox(height: 32),
@@ -288,6 +353,151 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInfoSection(String title, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFFDF4D0F),
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListSection(String title, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFFDF4D0F),
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '• ',
+                    style: TextStyle(
+                      color: Color(0xFFDF4D0F),
+                      fontSize: 16,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+      ],
+    );
+  }
+
+  Widget _buildMealPlanSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Sample Meal Plan',
+          style: TextStyle(
+            color: Color(0xFFDF4D0F),
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Breakfast
+        _buildMealTimeSection('Breakfast', widget.dietPlan.mealPlan['breakfast'] ?? []),
+        const SizedBox(height: 16),
+        
+        // Lunch
+        _buildMealTimeSection('Lunch', widget.dietPlan.mealPlan['lunch'] ?? []),
+        const SizedBox(height: 16),
+        
+        // Dinner
+        _buildMealTimeSection('Dinner', widget.dietPlan.mealPlan['dinner'] ?? []),
+        const SizedBox(height: 16),
+        
+        // Snacks
+        _buildMealTimeSection('Snacks', widget.dietPlan.mealPlan['snacks'] ?? []),
+      ],
+    );
+  }
+
+  Widget _buildMealTimeSection(String mealTime, List<String> meals) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDF4D0F).withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            mealTime,
+            style: const TextStyle(
+              color: Color(0xFFDF4D0F),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...meals.map((meal) => Padding(
+              padding: const EdgeInsets.only(bottom: 4, left: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '• ',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      meal,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+      ],
     );
   }
 } 

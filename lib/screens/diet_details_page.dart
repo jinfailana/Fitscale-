@@ -115,19 +115,11 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
         title: const Text(
           'Nutrition',
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFFDF4D0F),
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Color(0xFFDF4D0F)),
-            onPressed: () {
-              // Share functionality would go here
-            },
-          ),
-        ],
       ),
       body: StreamBuilder<String?>(
         stream: _selectedDietPlanStream,
@@ -144,15 +136,11 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.arrow_back_ios,
-                        size: 16,
-                        color: Color(0xFFDF4D0F),
-                      ),
+                      
                       Text(
                         '${widget.dietPlan.name.toUpperCase()} DIET',
                         style: const TextStyle(
-                          color: Color(0xFFDF4D0F),
+                          color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),

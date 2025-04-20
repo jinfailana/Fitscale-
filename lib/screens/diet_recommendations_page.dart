@@ -125,9 +125,9 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Nutrition Tracker',
+          'Summary',
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFFDF4D0F),
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -170,7 +170,7 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                               const Text(
                                 'Diet Recommendations',
                                 style: TextStyle(
-                                  color: Color(0xFFDF4D0F),
+                                  color: Colors.white,
                                     fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),

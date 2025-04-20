@@ -37,6 +37,7 @@ class _SummaryPageState extends State<SummaryPage> {
   String? _selectedDietPlanId;
   DietPlan? _selectedDietPlan;
   bool _loadingDiet = true;
+  final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
 
   @override
   void initState() {
@@ -342,9 +343,22 @@ class _SummaryPageState extends State<SummaryPage> {
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
         automaticallyImplyLeading: false,
-        title: Image.asset(
-          'assets/Fitscale_LOGO.png',
-          height: 80,
+        title: GestureDetector(
+          onTap: () {
+            // Update the selected index to home (0) and refresh UI
+            setState(() {
+              _selectedIndex = 0;
+            });
+            
+            // This will update the navbar highlight
+            if (_navbarKey.currentState != null) {
+              _navbarKey.currentState!.handleLogoClick(context);
+            }
+          },
+          child: Image.asset(
+            'assets/Fitscale_LOGO.png',
+            height: 80,
+          ),
         ),
         actions: [
           Padding(
@@ -494,6 +508,7 @@ class _SummaryPageState extends State<SummaryPage> {
         onItemTapped: _onItemTapped,
         showProfileModal: _showProfileModal,
         loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
+        key: _navbarKey,
       ),
     );
   }

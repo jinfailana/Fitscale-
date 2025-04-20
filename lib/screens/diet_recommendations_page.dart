@@ -157,9 +157,9 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                       children: [
                         // Summary section
                         Container(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.all(14.0),
                           decoration: BoxDecoration(
-                            color: const Color.fromRGBO(40, 40, 42, 1.0),
+                          
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(

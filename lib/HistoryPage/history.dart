@@ -38,13 +38,11 @@ class _HistoryPageState extends State<HistoryPage> {
 
   String selectedMonth = DateTime.now().month.toString();
   int selectedYear = 2025;
-  int selectedTabIndex = 0;
   int _selectedIndex = 2;
   List<WorkoutHistory> _workoutHistory = [];
-  List<Map<String, dynamic>> _dietHistory = [];
   bool _isLoading = true;
   List<WorkoutHistory> _filteredWorkouts = [];
-  List<Map<String, dynamic>> _filteredDiets = [];
+  final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
 
   @override
   void initState() {
@@ -53,12 +51,6 @@ class _HistoryPageState extends State<HistoryPage> {
     selectedMonth = months[now.month - 1];
     selectedYear = now.year;
     _loadWorkoutHistory();
-    _loadDietHistory();
-    
-    // Make sure to call this after the initial data is loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _filterDietsByMonth();
-    });
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -76,48 +68,6 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  Future<void> _loadDietHistory() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final snapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('diet_history')
-            .orderBy('date', descending: true)
-            .get();
-
-        setState(() {
-          _dietHistory = snapshot.docs.map((doc) {
-            final data = doc.data();
-            final date = data['date'] as Timestamp?;
-            return {
-              'id': doc.id,
-              'dietPlanId': data['dietPlanId'],
-              'dietPlanName': data['dietPlanName'],
-              'date': date?.toDate() ?? DateTime.now(),
-              'caloriesPerDay': data['caloriesPerDay'],
-              'mealPlan': data['mealPlan'],
-              'description': data['description'],
-              'benefits': data['benefits'],
-              'foodGroups': data['foodGroups'],
-              'suitableFor': data['suitableFor'],
-            };
-          }).toList();
-          _filterDietsByMonth();
-        });
-      }
-    } catch (e) {
-      print('Error loading diet history: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to load diet history: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   void _filterWorkoutsByMonth() {
     if (_workoutHistory.isEmpty) {
       _filteredWorkouts = [];
@@ -132,21 +82,6 @@ class _HistoryPageState extends State<HistoryPage> {
     }).toList();
   }
 
-  void _filterDietsByMonth() {
-    if (_dietHistory.isEmpty) {
-      _filteredDiets = [];
-      return;
-    }
-
-    final monthIndex = months.indexOf(selectedMonth) + 1;
-
-    _filteredDiets = _dietHistory.where((diet) {
-      final dietDate = diet['date'] as DateTime;
-      return dietDate.month == monthIndex &&
-             dietDate.year == selectedYear;
-    }).toList();
-  }
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -155,29 +90,17 @@ class _HistoryPageState extends State<HistoryPage> {
     if (index == 0) {
       Navigator.pushReplacement(
         context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const SummaryPage(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(-1.0, 0.0);
-            const end = Offset.zero;
-            const curve = Curves.easeInOut;
-            var tween =
-                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-            var offsetAnimation = animation.drive(tween);
-            return SlideTransition(
-              position: offsetAnimation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 300),
+        CustomPageRoute(
+          child: const SummaryPage(),
+          transitionType: TransitionType.leftToRight,
         ),
       );
     } else if (index == 1) {
       // Navigate to RecommendationsPage through the loadAndNavigateToRecommendations function
-      // This is handled in the CustomNavBar
+      _loadAndNavigateToRecommendations();
     } else if (index == 3) {
-      // Show profile modal - this is handled in the CustomNavBar
+      // Show profile modal
+      _showProfileModal(context);
     }
     // No need to handle index 2 (current page)
   }
@@ -429,7 +352,7 @@ class _HistoryPageState extends State<HistoryPage> {
         context,
         CustomPageRoute(
           child: RecommendationsPage(user: userModel),
-          transitionType: TransitionType.bottomToTop,
+          transitionType: TransitionType.leftToRight,
         ),
       );
     } catch (e, stackTrace) {
@@ -544,7 +467,6 @@ class _HistoryPageState extends State<HistoryPage> {
                               selectedMonth = months[index];
                               selectedYear = tempYear; // Apply the year change
                               _filterWorkoutsByMonth();
-                              _filterDietsByMonth(); // Also filter diet history
                             });
                             Navigator.pop(context);
                           },
@@ -708,90 +630,6 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildDietHistoryList() {
-    if (_filteredDiets.isEmpty) {
-      return Center(
-        child: Text(
-          'No diet plans found for $selectedMonth $selectedYear',
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 16,
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _filteredDiets.length,
-      itemBuilder: (context, index) {
-        final diet = _filteredDiets[index];
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color.fromRGBO(44, 44, 46, 1.0),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color.fromRGBO(223, 77, 15, 1.0),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      diet['dietPlanName'] ?? 'Unknown Diet',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(223, 77, 15, 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${diet['caloriesPerDay'] ?? 0} kcal/day',
-                      style: const TextStyle(
-                        color: Color.fromRGBO(223, 77, 15, 1.0),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    DateFormat('MMM d, yyyy').format(diet['date']),
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildActivityHistoryTable() {
     return Container(
       margin: const EdgeInsets.only(top: 24),
@@ -864,11 +702,17 @@ class _HistoryPageState extends State<HistoryPage> {
                 width: 1,
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildTabButton('Workout', 0),
-                _buildTabButton('Diet', 1),
+                Text(
+                  'Workout History',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -877,9 +721,7 @@ class _HistoryPageState extends State<HistoryPage> {
             color: Color.fromRGBO(28, 28, 30, 1.0),
           ),
           Expanded(
-            child: selectedTabIndex == 0
-                ? _buildWorkoutHistoryList()
-                : _buildDietHistoryList(),
+            child: _buildWorkoutHistoryList(),
           ),
         ],
       ),
@@ -904,20 +746,59 @@ class _HistoryPageState extends State<HistoryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'History',
-                style: TextStyle(
-                  color: Color(0xFFDF4D0F),
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Text(
-                'Track your activities',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'History',
+                        style: TextStyle(
+                          color: Color(0xFFDF4D0F),
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'Track your activities',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // Navigate to Home page and update selected index
+                      setState(() {
+                        _selectedIndex = 0;
+                      });
+                      
+                      // Use the navbar's handler for consistent behavior
+                      if (_navbarKey.currentState != null) {
+                        _navbarKey.currentState!.handleLogoClick(context);
+                      } else {
+                        // Fallback if key isn't available
+                        Navigator.pushReplacement(
+                          context,
+                          CustomPageRoute(
+                            child: const SummaryPage(),
+                            transitionType: TransitionType.leftToRight,
+                          ),
+                        );
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Image.asset(
+                        'assets/Fitscale_LOGO.png',
+                        height: 50,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -932,55 +813,7 @@ class _HistoryPageState extends State<HistoryPage> {
         onItemTapped: _onItemTapped,
         showProfileModal: _showProfileModal,
         loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
-      ),
-    );
-  }
-
-  Widget _buildTabButton(String text, int index) {
-    bool isSelected = selectedTabIndex == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedTabIndex = index;
-          // If we're on the workout tab, apply the month filter
-          if (index == 0) {
-            _filterWorkoutsByMonth();
-          }
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color.fromRGBO(223, 77, 15, 0.2)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: 1.5,
-          ),
-          boxShadow: isSelected
-              ? [
-                  const BoxShadow(
-                    color: Color.fromRGBO(223, 77, 15, 0.3),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  )
-                ]
-              : null,
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white70,
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
+        key: _navbarKey,
       ),
     );
   }

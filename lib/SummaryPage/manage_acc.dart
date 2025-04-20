@@ -14,7 +14,9 @@ import '../models/user_model.dart';
 import '../firstlogin.dart';
 
 class ManageAccPage extends StatefulWidget {
-  const ManageAccPage({super.key});
+  final VoidCallback? onClose;
+  
+  const ManageAccPage({super.key, this.onClose});
 
   @override
   State<ManageAccPage> createState() => _ManageAccPageState();
@@ -453,13 +455,19 @@ class _ManageAccPageState extends State<ManageAccPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFFDF4D0F)),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () {
+            if (widget.onClose != null) {
+              widget.onClose!();
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
         ),
         title: const Text(
           'Account',

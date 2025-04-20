@@ -12,10 +12,10 @@ class AllSetPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.person,
               size: 100,
-              color: const Color.fromRGBO(223, 77, 15, 1.0),
+              color: Color.fromRGBO(223, 77, 15, 1.0),
             ),
             const SizedBox(height: 16),
             const Text(

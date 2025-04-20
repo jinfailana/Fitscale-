@@ -15,10 +15,10 @@ class ExerciseDetailsPage extends StatefulWidget {
   final WorkoutPlan workout;
 
   const ExerciseDetailsPage({
-    Key? key,
+    super.key,
     required this.exercise,
     required this.workout,
-  }) : super(key: key);
+  });
 
   @override
   State<ExerciseDetailsPage> createState() => _ExerciseDetailsPageState();
@@ -398,7 +398,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   }
 
   Widget _buildExerciseImage() {
-    if (widget.exercise.gifUrl != null && widget.exercise.gifUrl!.isNotEmpty) {
+    if (widget.exercise.gifUrl.isNotEmpty) {
       return Container(
         height: 200,
         width: double.infinity,
@@ -409,7 +409,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.network(
-            widget.exercise.gifUrl!,
+            widget.exercise.gifUrl,
             fit: BoxFit.cover,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
@@ -998,15 +998,15 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                                           width: 1,
                                         ),
                                       ),
-                                      child: Row(
+                                      child: const Row(
                                         children: [
-                                          const Icon(
+                                          Icon(
                                             Icons.check_circle,
                                             color: Colors.green,
                                             size: 24,
                                           ),
-                                          const SizedBox(width: 8),
-                                          const Text(
+                                          SizedBox(width: 8),
+                                          Text(
                                             'Exercise Completed!',
                                             style: TextStyle(
                                               color: Colors.green,

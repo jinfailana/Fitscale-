@@ -9,10 +9,10 @@ class WorkoutDetailsPage extends StatefulWidget {
   final Function(WorkoutPlan) onAddToWorkoutList;
 
   const WorkoutDetailsPage({
-    Key? key,
+    super.key,
     required this.workout,
     required this.onAddToWorkoutList,
-  }) : super(key: key);
+  });
 
   @override
   State<WorkoutDetailsPage> createState() => _WorkoutDetailsPageState();
@@ -274,11 +274,11 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                         ),
                                         // Add opacity to indicate non-clickable state
                                         gradient: !_isInMyWorkouts
-                                            ? LinearGradient(
+                                            ? const LinearGradient(
                                                 colors: [
-                                                  const Color.fromRGBO(
+                                                  Color.fromRGBO(
                                                       44, 44, 46, 0.7),
-                                                  const Color.fromRGBO(
+                                                  Color.fromRGBO(
                                                       44, 44, 46, 0.7),
                                                 ],
                                               )
@@ -387,7 +387,7 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                       ),
                                     ),
                                   ))
-                              .toList(),
+                              ,
                         ],
                       ),
                     ),

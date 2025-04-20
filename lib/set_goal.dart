@@ -80,7 +80,7 @@ class _SetGoalPageState extends State<SetGoalPage> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => BirthYearPage(),
+                                builder: (context) => const BirthYearPage(),
                               ),
                             );
                           } catch (e) {
@@ -104,7 +104,7 @@ class _SetGoalPageState extends State<SetGoalPage> {
                     shadowColor: Colors.black.withAlpha(128),
                   ),
                   child: _isLoading
-                      ? CircularProgressIndicator(color: Colors.white)
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
                           'Next',
                           style: TextStyle(

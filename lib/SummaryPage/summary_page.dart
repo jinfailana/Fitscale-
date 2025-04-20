@@ -226,9 +226,9 @@ class _SummaryPageState extends State<SummaryPage> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-          decoration: BoxDecoration(
-            color: const Color.fromRGBO(28, 28, 30, 1.0),
-            borderRadius: const BorderRadius.only(
+          decoration: const BoxDecoration(
+            color: Color.fromRGBO(28, 28, 30, 1.0),
+            borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -243,9 +243,9 @@ class _SummaryPageState extends State<SummaryPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Spacer(),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 75.0),
-                      child: const Text(
+                    const Padding(
+                      padding: EdgeInsets.only(right: 75.0),
+                      child: Text(
                         'Profile',
                         style: TextStyle(
                           color: Colors.white,
@@ -295,7 +295,7 @@ class _SummaryPageState extends State<SummaryPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Color.fromRGBO(223, 77, 15, 1.0)),
+          border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -303,7 +303,7 @@ class _SummaryPageState extends State<SummaryPage> {
           children: [
             Row(
               children: [
-                Icon(icon, color: Color.fromRGBO(223, 77, 15, 1.0)),
+                Icon(icon, color: const Color.fromRGBO(223, 77, 15, 1.0)),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,8 +357,8 @@ class _SummaryPageState extends State<SummaryPage> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+          const Padding(
+            padding: EdgeInsets.only(right: 16.0),
             child: Icon(Icons.person, color: Color.fromRGBO(223, 77, 15, 1.0)),
           ),
         ],
@@ -532,7 +532,7 @@ class _SummaryPageState extends State<SummaryPage> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          border: Border.all(color: Color.fromRGBO(223, 77, 15, 1.0)),
+          border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
@@ -566,7 +566,7 @@ class _SummaryPageState extends State<SummaryPage> {
                 ),
               ],
             ),
-            Icon(icon, color: Color.fromRGBO(223, 77, 15, 1.0), size: 40),
+            Icon(icon, color: const Color.fromRGBO(223, 77, 15, 1.0), size: 40),
           ],
         ),
       ),
@@ -606,7 +606,7 @@ class _SummaryPageState extends State<SummaryPage> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          border: Border.all(color: Color.fromRGBO(223, 77, 15, 1.0)),
+          border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
@@ -661,7 +661,7 @@ class _SummaryPageState extends State<SummaryPage> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(
-                        color: Color(0xFFDF4D0F),
+                        color: const Color(0xFFDF4D0F),
                         width: 2,
                       ),
                     ),

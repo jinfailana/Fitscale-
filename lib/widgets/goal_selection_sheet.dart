@@ -4,9 +4,9 @@ class GoalSelectionSheet extends StatefulWidget {
   final List<Map<String, dynamic>> recommendedGoals;
   
   const GoalSelectionSheet({
-    Key? key,
+    super.key,
     required this.recommendedGoals,
-  }) : super(key: key);
+  });
 
   @override
   State<GoalSelectionSheet> createState() => _GoalSelectionSheetState();

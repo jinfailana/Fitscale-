@@ -77,11 +77,11 @@ class _LoginPageState extends State<LoginPage> {
 
       if (setupCompleted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => SummaryPage()),
+          MaterialPageRoute(builder: (context) => const SummaryPage()),
         );
       } else {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => SelectGenderPage()),
+          MaterialPageRoute(builder: (context) => const SelectGenderPage()),
         );
       }
     } catch (e) {
@@ -107,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No internet connection. Please check your network and try again.'),
-          backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
+          backgroundColor: Color.fromRGBO(51, 50, 50, 1.0),
           duration: Duration(seconds: 3),
         ),
       );
@@ -149,11 +149,11 @@ class _LoginPageState extends State<LoginPage> {
 
         if (setupCompleted) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => SummaryPage()),
+            MaterialPageRoute(builder: (context) => const SummaryPage()),
           );
         } else {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => SelectGenderPage()),
+            MaterialPageRoute(builder: (context) => const SelectGenderPage()),
           );
         }
       }
@@ -175,7 +175,7 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
       body: Center(
         child: _isLoading
-            ? CircularProgressIndicator()
+            ? const CircularProgressIndicator()
             : SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
                 child: Stack(
@@ -464,7 +464,7 @@ class FirstLoginCheck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AuthService _authService = AuthService();
+    final AuthService authService = AuthService();
 
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
@@ -484,7 +484,7 @@ class FirstLoginCheck extends StatelessWidget {
         print('User logged in: ${user.uid}');
 
         return FutureBuilder<bool>(
-          future: _authService.hasCompletedSetup(user.uid),
+          future: authService.hasCompletedSetup(user.uid),
           builder: (context, setupSnapshot) {
             if (setupSnapshot.connectionState == ConnectionState.waiting) {
               return const LoadingScreen();

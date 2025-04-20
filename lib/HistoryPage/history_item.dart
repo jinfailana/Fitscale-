@@ -8,11 +8,11 @@ class HistoryItem extends StatelessWidget {
 
   // Constructor
   const HistoryItem({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     required this.date,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +40,10 @@ class StepsItem extends StatelessWidget {
 
   // Constructor
   const StepsItem({
-    Key? key,
+    super.key,
     required this.steps,
     required this.date,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -51,10 +51,10 @@ class StepsItem extends StatelessWidget {
       // ... container styling ...
       child: Row(
         children: [
-          Icon(Icons.directions_walk),  // Steps icon
+          const Icon(Icons.directions_walk),  // Steps icon
           Column(
             children: [
-              Text('Steps Taken'),
+              const Text('Steps Taken'),
               Text('$steps Steps'),     // Shows step count
               Text(date),               // Shows date
             ],
@@ -72,10 +72,10 @@ class DietItem extends StatelessWidget {
 
   // Constructor
   const DietItem({
-    Key? key,
+    super.key,
     required this.title,
     required this.date,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +86,7 @@ class DietItem extends StatelessWidget {
           Column(
             children: [
               Text(title),              // Shows diet type
-              Row(
+              const Row(
                 children: [
                   Text('View Diet'),    // View diet button
                   Icon(Icons.restaurant_menu),

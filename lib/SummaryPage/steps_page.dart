@@ -367,9 +367,9 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
           }
 
           return Container(
-            decoration: BoxDecoration(
-              color: const Color.fromRGBO(28, 28, 30, 1.0),
-              borderRadius: const BorderRadius.only(
+            decoration: const BoxDecoration(
+              color: Color.fromRGBO(28, 28, 30, 1.0),
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
               ),
@@ -427,11 +427,11 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
                       child: Row(
                         children: [
                           // Profile picture
-                          CircleAvatar(
+                          const CircleAvatar(
                             backgroundColor:
-                                const Color.fromRGBO(223, 77, 15, 0.2),
+                                Color.fromRGBO(223, 77, 15, 0.2),
                             radius: 20,
-                            child: const Icon(
+                            child: Icon(
                               Icons.person,
                               color: Color(0xFFDF4D0F),
                               size: 24,
@@ -482,15 +482,15 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFDF4D0F)),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.devices,
                             color: Color(0xFFDF4D0F),
                             size: 24,
                           ),
-                          const SizedBox(width: 16),
-                          const Text(
+                          SizedBox(width: 16),
+                          Text(
                             'My Device',
                             style: TextStyle(
                               color: Colors.white,
@@ -498,8 +498,8 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const Spacer(),
-                          const Icon(Icons.arrow_forward_ios,
+                          Spacer(),
+                          Icon(Icons.arrow_forward_ios,
                               color: Colors.white54, size: 16),
                         ],
                       ),
@@ -667,22 +667,19 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(51, 50, 50, 1),
+      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            color: Color.fromRGBO(223, 77, 15, 1.0),
-          ),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFDF4D0F)),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Summary',
           style: TextStyle(
-            color: Color.fromRGBO(223, 77, 15, 1.0),
-            fontSize: 16,
+            color: Color(0xFFDF4D0F),
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -810,12 +807,6 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
             const SizedBox(height: 24),
           ],
         ),
-      ),
-      bottomNavigationBar: CustomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
-        showProfileModal: _showProfileModal,
-        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
       ),
     );
   }

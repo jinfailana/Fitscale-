@@ -228,7 +228,7 @@ class DietService {
                           mealPlan['lunch']!.add(formattedFoodName);
                         } else if (mealPlan['dinner']!.length < 2) {
                           mealPlan['dinner']!.add(formattedFoodName);
-                        } else if (mealPlan['snacks']!.length < 1) {
+                        } else if (mealPlan['snacks']!.isEmpty) {
                           mealPlan['snacks']!.add(formattedFoodName);
                         }
                       }
@@ -242,7 +242,7 @@ class DietService {
                       mealPlan['lunch']!.add(foodName);
                     } else if (mealPlan['dinner']!.length < 2) {
                       mealPlan['dinner']!.add(foodName);
-                    } else if (mealPlan['snacks']!.length < 1) {
+                    } else if (mealPlan['snacks']!.isEmpty) {
                       mealPlan['snacks']!.add(foodName);
                     }
                   }

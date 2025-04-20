@@ -90,7 +90,7 @@ class _BirthYearPageState extends State<BirthYearPage> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>SetHeightPage(),
+                                builder: (context) =>const SetHeightPage(),
                               ),
                             );
                           } catch (e) {
@@ -114,7 +114,7 @@ class _BirthYearPageState extends State<BirthYearPage> {
                     shadowColor: Colors.black.withAlpha(128),
                   ),
                   child: _isLoading
-                      ? CircularProgressIndicator(color: Colors.white)
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
                           'Next',
                           style: TextStyle(

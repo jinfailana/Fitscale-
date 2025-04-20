@@ -15,12 +15,12 @@ class CustomNavBar extends StatefulWidget {
   final Function() loadAndNavigateToRecommendations;
 
   const CustomNavBar({
-    Key? key,
+    super.key,
     required this.selectedIndex,
     required this.onItemTapped,
     required this.showProfileModal,
     required this.loadAndNavigateToRecommendations,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomNavBar> createState() => _CustomNavBarState();
@@ -117,9 +117,9 @@ class _CustomNavBarState extends State<CustomNavBar> {
           
           // Return a loading container
           return Container(
-            decoration: BoxDecoration(
-              color: const Color.fromRGBO(28, 28, 30, 1.0),
-              borderRadius: const BorderRadius.only(
+            decoration: const BoxDecoration(
+              color: Color.fromRGBO(28, 28, 30, 1.0),
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
               ),
@@ -145,9 +145,9 @@ class _CustomNavBarState extends State<CustomNavBar> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-          decoration: BoxDecoration(
-            color: const Color.fromRGBO(28, 28, 30, 1.0),
-            borderRadius: const BorderRadius.only(
+          decoration: const BoxDecoration(
+            color: Color.fromRGBO(28, 28, 30, 1.0),
+            borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -205,10 +205,10 @@ class _CustomNavBarState extends State<CustomNavBar> {
                     child: Row(
                       children: [
                         // Profile picture
-                        CircleAvatar(
-                          backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
+                        const CircleAvatar(
+                          backgroundColor: Color.fromRGBO(223, 77, 15, 0.2),
                           radius: 20,
-                          child: const Icon(
+                          child: Icon(
                             Icons.person,
                             color: Color(0xFFDF4D0F),
                             size: 24,
@@ -258,15 +258,15 @@ class _CustomNavBarState extends State<CustomNavBar> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFFDF4D0F)),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.devices,
                           color: Color(0xFFDF4D0F),
                           size: 24,
                         ),
-                        const SizedBox(width: 16),
-                        const Text(
+                        SizedBox(width: 16),
+                        Text(
                           'My Device',
                           style: TextStyle(
                             color: Colors.white,
@@ -274,8 +274,8 @@ class _CustomNavBarState extends State<CustomNavBar> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Spacer(),
-                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                        Spacer(),
+                        Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
                       ],
                     ),
                   ),

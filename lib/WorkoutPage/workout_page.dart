@@ -3,7 +3,7 @@ import '../SummaryPage/summary_page.dart';
 import '../HistoryPage/history.dart';
 
 class WorkoutPage extends StatefulWidget {
-  const WorkoutPage({Key? key}) : super(key: key);
+  const WorkoutPage({super.key});
 
   @override
   _WorkoutPageState createState() => _WorkoutPageState();
@@ -116,18 +116,18 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
             ),
             const SizedBox(height: 20),
             // Tab Bar
-            Container(
+            SizedBox(
               height: 40,
               child: TabBar(
                 controller: _tabController,
-                indicator: UnderlineTabIndicator(
+                indicator: const UnderlineTabIndicator(
                   borderSide: BorderSide(
                     width: 3.0,
                     color: Color.fromRGBO(223, 77, 15, 1.0),
                   ),
                   insets: EdgeInsets.symmetric(horizontal: 16.0),
                 ),
-                labelColor: Color.fromRGBO(223, 77, 15, 1.0),
+                labelColor: const Color.fromRGBO(223, 77, 15, 1.0),
                 unselectedLabelColor: Colors.grey,
                 tabs: const [
                   Tab(text: 'Recommended Workouts'),
@@ -165,7 +165,7 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
                     ),
                   ),
                   // My Workouts Tab
-                  Center(
+                  const Center(
                     child: Text(
                       'No custom workouts yet.\nCreate your own workout routine!',
                       textAlign: TextAlign.center,

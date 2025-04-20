@@ -8,7 +8,7 @@ import '../navigation/custom_navbar.dart';
 import 'diet_details_page.dart';
 
 class DietRecommendationsPage extends StatefulWidget {
-  const DietRecommendationsPage({Key? key}) : super(key: key);
+  const DietRecommendationsPage({super.key});
 
   @override
   State<DietRecommendationsPage> createState() => _DietRecommendationsPageState();
@@ -64,7 +64,7 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
 
   Future<void> _selectDietPlan(String dietPlanId) async {
     try {
-      final loadingSnackBar = SnackBar(
+      const loadingSnackBar = SnackBar(
         content: Row(
           children: [
             SizedBox(
@@ -135,7 +135,7 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
         actions: [
           if (_isApiError)
             IconButton(
-              icon: Icon(Icons.refresh, color: Color(0xFFDF4D0F)),
+              icon: const Icon(Icons.refresh, color: Color(0xFFDF4D0F)),
               onPressed: _loadDietRecommendations,
               tooltip: 'Retry API',
             ),
@@ -203,12 +203,6 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                 );
               },
             ),
-      bottomNavigationBar: CustomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
-        showProfileModal: _showProfileModal,
-        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
-      ),
     );
   }
 
@@ -265,13 +259,13 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                             ),
                             if (isSelected) 
                               Container(
-                                margin: EdgeInsets.only(left: 8),
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                margin: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.green,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: Row(
+                                child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
@@ -294,7 +288,7 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Row(
+                        const Row(
                           children: [
                             Text(
                               'View Diet',
@@ -390,13 +384,13 @@ class _DietRecommendationsPageState extends State<DietRecommendationsPage> {
                           right: 0,
                           top: 0,
                           child: Container(
-                            padding: EdgeInsets.all(2),
+                            padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
                               color: Colors.green,
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 1),
                             ),
-                            child: Icon(
+                            child: const Icon(
                               Icons.check,
                               color: Colors.white,
                               size: 12,

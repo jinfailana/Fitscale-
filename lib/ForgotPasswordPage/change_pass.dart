@@ -11,7 +11,7 @@ class ChangePasswordPage extends StatelessWidget {
       backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
       body: Column(
         children: [
-          SizedBox(height: 30), // 30% down
+          const SizedBox(height: 30), // 30% down
           AppBar(
             backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
             elevation: 0,
@@ -94,9 +94,9 @@ class ChangePasswordPage extends StatelessWidget {
                       onPressed: () {
                         // Handle change password logic
                       },
-                      child: Row(
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Text(
                             'PROCEED',
                             style: TextStyle(

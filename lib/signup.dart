@@ -352,7 +352,7 @@ class _SignupPageState extends State<SignupPage> {
       backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
       body: Center(
         child: _isLoading
-            ? CircularProgressIndicator()
+            ? const CircularProgressIndicator()
             : SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
                 child: Stack(

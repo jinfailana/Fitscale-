@@ -26,7 +26,6 @@ import 'auth_check.dart';
 import 'intro_screen.dart';
 import 'models/user_model.dart'; // Import your UserModel
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
 
 class AuthenticationWrapper extends StatelessWidget {
   const AuthenticationWrapper({super.key});
@@ -50,84 +49,46 @@ class AuthenticationWrapper extends StatelessWidget {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(const MyApp());
-}
-
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  final _navigatorKey = GlobalKey<NavigatorState>();
-  
-  @override
-  void initState() {
-    super.initState();
-    _setupNavigationChannel();
-  }
-
-  void _setupNavigationChannel() {
-    const channel = BasicMessageChannel<String>('com.fitscale.app/navigation', StringCodec());
-    channel.setMessageHandler((String? message) async {
-      if (message == 'navigate_to_splash') {
-        _navigatorKey.currentState?.pushReplacement(
-          MaterialPageRoute(builder: (context) => const SplashScreen()),
-        );
-      }
-      return '';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
-      title: 'FitScale',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromRGBO(223, 77, 15, 1.0)),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
-      routes: {
-        '/intro': (context) => const IntroScreen(),
-        '/splash': (context) => const SplashScreen(),
-        '/signup': (context) => const SignupPage(),
-        '/login': (context) => const LoginPage(),
-        '/select_gender': (context) => const SelectGenderPage(),
-        '/set_goal': (context) => const SetGoalPage(),
-        '/birth_year': (context) => const BirthYearPage(),
-        '/set_height': (context) => const SetHeightPage(),
-        '/set_weight': (context) => const SetWeightPage(),
-        '/set_weight_mannually': (context) => const SetWeightManuallyPage(),
-        '/pref_workout': (context) => PrefWorkoutPage(),
-        '/work_place': (context) => const WorkPlacePage(),
-        '/gym_equipment': (context) => const GymEquipmentPage(),
-        '/all_set': (context) => const AllSetPage(),
-        '/summary': (context) => const SummaryPage(),
-        '/steps': (context) => const StepsPage(),
-        '/measure_weight': (context) => const MeasureWeightPage(),
-        '/workouts': (context) => RecommendationsPage(
-              user: UserModel(
-                id: 'user_id', // Replace with actual user data
-                email: 'user@example.com', // Replace with actual user data
-                gender: 'Male', // Replace with actual user data
-                goal: 'Build Muscle', // Replace with actual user data
-                age: 25, // Replace with actual user data
-                weight: 70.0, // Replace with actual user data
-                height: 175.0, // Replace with actual user data
-                activityLevel:
-                    'Moderately Active', // Replace with actual user data
-                workoutPlace: 'Gym', // Replace with actual user data
-                setupCompleted: true,
-                currentSetupStep: 'completed',
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
+  runApp(MaterialApp(
+    home: const SplashScreen(),
+    debugShowCheckedModeBanner: false,
+    title: 'FitScale',
+    theme: ThemeData.dark(),
+    routes: {
+      '/signup': (context) => const SignupPage(),
+      '/login': (context) => const LoginPage(),
+      '/select_gender': (context) => const SelectGenderPage(),
+      '/set_goal': (context) => const SetGoalPage(),
+      '/birth_year': (context) => const BirthYearPage(),
+      '/set_height': (context) => const SetHeightPage(),
+      '/set_weight': (context) => const SetWeightPage(),
+      '/set_weight_mannually': (context) => const SetWeightManuallyPage(),
+      '/pref_workout': (context) => PrefWorkoutPage(),
+      '/work_place': (context) => const WorkPlacePage(),
+      '/gym_equipment': (context) => const GymEquipmentPage(),
+      '/all_set': (context) => const AllSetPage(),
+      '/summary': (context) => const SummaryPage(),
+      '/steps': (context) => const StepsPage(),
+      '/measure_weight': (context) => const MeasureWeightPage(),
+      '/workouts': (context) => RecommendationsPage(
+            user: UserModel(
+              id: 'user_id', // Replace with actual user data
+              email: 'user@example.com', // Replace with actual user data
+              gender: 'Male', // Replace with actual user data
+              goal: 'Build Muscle', // Replace with actual user data
+              age: 25, // Replace with actual user data
+              weight: 70.0, // Replace with actual user data
+              height: 175.0, // Replace with actual user data
+              activityLevel:
+                  'Moderately Active', // Replace with actual user data
+              workoutPlace: 'Gym', // Replace with actual user data
+              setupCompleted: true,
+              currentSetupStep: 'completed',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
             ),
-      },
-    );
-  }
+          ),
+      '/intro': (context) => const IntroScreen(),
+    },
+  ));
 }

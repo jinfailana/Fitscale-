@@ -56,8 +56,8 @@ class UserModel {
     String? prefWorkout,
   }) {
     return UserModel(
-      id: this.id,
-      email: this.email,
+      id: id,
+      email: email,
       gender: gender ?? this.gender,
       goal: goal ?? this.goal,
       age: age ?? this.age,
@@ -69,7 +69,7 @@ class UserModel {
       gymEquipment: gymEquipment ?? this.gymEquipment,
       setupCompleted: setupCompleted ?? this.setupCompleted,
       currentSetupStep: currentSetupStep ?? this.currentSetupStep,
-      createdAt: this.createdAt,
+      createdAt: createdAt,
       updatedAt: DateTime.now(),
       expertiseLevel: expertiseLevel ?? this.expertiseLevel,
       hasEquipment: hasEquipment ?? this.hasEquipment,

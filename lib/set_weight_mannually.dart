@@ -53,10 +53,10 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
             child: Column(
               children: [
                 const Spacer(flex: 2),
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Weight',
                       style: TextStyle(
                         color: Color.fromRGBO(223, 77, 15, 1.0),
@@ -64,8 +64,8 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       'Complete this to calculate your BMI and recommend your workouts and types of diets',
                       style: TextStyle(
                         color: Colors.white54,

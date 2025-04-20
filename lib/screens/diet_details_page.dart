@@ -11,11 +11,11 @@ class DietDetailsPage extends StatefulWidget {
   final VoidCallback onSelect;
 
   const DietDetailsPage({
-    Key? key, 
+    super.key, 
     required this.dietPlan, 
     this.isSelected = false,
     required this.onSelect,
-  }) : super(key: key);
+  });
 
   @override
   State<DietDetailsPage> createState() => _DietDetailsPageState();
@@ -112,9 +112,9 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
           icon: const Icon(Icons.arrow_back_ios, color: Color(0xFFDF4D0F)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
+        title: const Text(
           'Nutrition',
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -122,7 +122,7 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.share, color: Color(0xFFDF4D0F)),
+            icon: const Icon(Icons.share, color: Color(0xFFDF4D0F)),
             onPressed: () {
               // Share functionality would go here
             },
@@ -144,14 +144,14 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.arrow_back_ios,
                         size: 16,
                         color: Color(0xFFDF4D0F),
                       ),
                       Text(
                         '${widget.dietPlan.name.toUpperCase()} DIET',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xFFDF4D0F),
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -159,13 +159,13 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                       ),
                       if (isSelected) 
                         Container(
-                          margin: EdgeInsets.only(left: 8),
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.green,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
@@ -324,8 +324,8 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                 ),
                 
                 // Motivational text
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
                   child: Text(
                     'Pump up protein and cut back on carbs to get faster results.',
                     style: TextStyle(
@@ -343,7 +343,7 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'How it Works',
                         style: TextStyle(
                           color: Colors.white,
@@ -354,7 +354,7 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                       const SizedBox(height: 12),
                       Text(
                         widget.dietPlan.description,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
                           height: 1.5,
@@ -372,7 +372,7 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Highlights',
                         style: TextStyle(
                           color: Colors.white,
@@ -419,12 +419,12 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
-                      side: BorderSide(color: Color(0xFFDF4D0F)),
+                      side: const BorderSide(color: Color(0xFFDF4D0F)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -489,22 +489,22 @@ class _DietDetailsPageState extends State<DietDetailsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            margin: EdgeInsets.only(top: 2),
-            decoration: BoxDecoration(
+            margin: const EdgeInsets.only(top: 2),
+            decoration: const BoxDecoration(
               color: Colors.green,
               shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: const Icon(
               Icons.check,
               color: Colors.white,
               size: 16,
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 height: 1.5,

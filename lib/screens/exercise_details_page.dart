@@ -15,10 +15,10 @@ class ExerciseDetailsPage extends StatefulWidget {
   final WorkoutPlan workout;
 
   const ExerciseDetailsPage({
-    Key? key,
+    super.key,
     required this.exercise,
     required this.workout,
-  }) : super(key: key);
+  });
 
   @override
   State<ExerciseDetailsPage> createState() => _ExerciseDetailsPageState();
@@ -420,11 +420,11 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
+          content: const Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.white),
-              const SizedBox(width: 8),
-              const Expanded(
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
                 child: Text(
                   'Unable to load exercise details. Please check your internet connection and try again.',
                   style: TextStyle(color: Colors.white),
@@ -1273,15 +1273,15 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                                           width: 1,
                                         ),
                                       ),
-                                      child: Row(
+                                      child: const Row(
                                         children: [
-                                          const Icon(
+                                          Icon(
                                             Icons.check_circle,
                                             color: Colors.green,
                                             size: 24,
                                           ),
-                                          const SizedBox(width: 8),
-                                          const Text(
+                                          SizedBox(width: 8),
+                                          Text(
                                             'Exercise Completed!',
                                             style: TextStyle(
                                               color: Colors.green,

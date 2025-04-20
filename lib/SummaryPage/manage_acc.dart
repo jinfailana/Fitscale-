@@ -199,8 +199,8 @@ class _ManageAccPageState extends State<ManageAccPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
                 child: Text(
                   'Recommended Workout Progress',
                   style: TextStyle(
@@ -221,11 +221,11 @@ class _ManageAccPageState extends State<ManageAccPage> {
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: true,
-                        getDrawingHorizontalLine: (value) => FlLine(
+                        getDrawingHorizontalLine: (value) => const FlLine(
                           color: Colors.white12,
                           strokeWidth: 1,
                         ),
-                        getDrawingVerticalLine: (value) => FlLine(
+                        getDrawingVerticalLine: (value) => const FlLine(
                           color: Colors.white12,
                           strokeWidth: 1,
                         ),
@@ -622,11 +622,11 @@ class _ManageAccPageState extends State<ManageAccPage> {
                               gridData: FlGridData(
                                 show: true,
                                 drawVerticalLine: true,
-                                getDrawingHorizontalLine: (value) => FlLine(
+                                getDrawingHorizontalLine: (value) => const FlLine(
                                   color: Colors.white10,
                                   strokeWidth: 1,
                                 ),
-                                getDrawingVerticalLine: (value) => FlLine(
+                                getDrawingVerticalLine: (value) => const FlLine(
                                   color: Colors.white10,
                                   strokeWidth: 1,
                                 ),
@@ -763,8 +763,8 @@ class _ManageAccPageState extends State<ManageAccPage> {
                                           TextSpan(
                                             text:
                                                 '${touchedSpot.y.toInt()}% progress',
-                                            style: TextStyle(
-                                              color: const Color(0xFFDF4D0F),
+                                            style: const TextStyle(
+                                              color: Color(0xFFDF4D0F),
                                               fontWeight: FontWeight.normal,
                                             ),
                                           ),
@@ -1137,12 +1137,12 @@ class _ManageAccPageState extends State<ManageAccPage> {
     final confirmNewPasswordController = TextEditingController();
 
     // Add state variables to track password visibility
-    bool _isCurrentPasswordVisible = false;
-    bool _isNewPasswordVisible = false;
-    bool _isConfirmPasswordVisible = false;
+    bool isCurrentPasswordVisible = false;
+    bool isNewPasswordVisible = false;
+    bool isConfirmPasswordVisible = false;
 
     // Create a form key for validation
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -1162,7 +1162,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Form(
-                  key: _formKey,
+                  key: formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1184,7 +1184,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                         child: TextFormField(
                           controller: currentPasswordController,
                           style: const TextStyle(color: Colors.white),
-                          obscureText: !_isCurrentPasswordVisible,
+                          obscureText: !isCurrentPasswordVisible,
                           decoration: InputDecoration(
                             hintText: 'Current Password',
                             hintStyle: const TextStyle(color: Colors.grey),
@@ -1193,22 +1193,22 @@ class _ManageAccPageState extends State<ManageAccPage> {
                             border: InputBorder.none,
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isCurrentPasswordVisible
+                                isCurrentPasswordVisible
                                     ? Icons.visibility
                                     : Icons.visibility_off,
                                 color: Colors.grey,
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _isCurrentPasswordVisible =
-                                      !_isCurrentPasswordVisible;
+                                  isCurrentPasswordVisible =
+                                      !isCurrentPasswordVisible;
                                 });
                               },
                             ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return Text(
+                              return const Text(
                                 'Required',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
@@ -1228,7 +1228,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                         child: TextFormField(
                           controller: newPasswordController,
                           style: const TextStyle(color: Colors.white),
-                          obscureText: !_isNewPasswordVisible,
+                          obscureText: !isNewPasswordVisible,
                           decoration: InputDecoration(
                             hintText: 'New Password',
                             hintStyle: const TextStyle(color: Colors.grey),
@@ -1237,53 +1237,53 @@ class _ManageAccPageState extends State<ManageAccPage> {
                             border: InputBorder.none,
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isNewPasswordVisible
+                                isNewPasswordVisible
                                     ? Icons.visibility
                                     : Icons.visibility_off,
                                 color: Colors.grey,
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _isNewPasswordVisible =
-                                      !_isNewPasswordVisible;
+                                  isNewPasswordVisible =
+                                      !isNewPasswordVisible;
                                 });
                               },
                             ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return Text(
+                              return const Text(
                                 'Password is required',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
                               ).data;
                             } else if (value.length < 8) {
-                              return Text(
+                              return const Text(
                                 'Must be at least 8 characters',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
                               ).data;
                             } else if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                              return Text(
+                              return const Text(
                                 'Must contain uppercase',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
                               ).data;
                             } else if (!RegExp(r'[a-z]').hasMatch(value)) {
-                              return Text(
+                              return const Text(
                                 'Must contain lowercase',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
                               ).data;
                             } else if (!RegExp(r'[0-9]').hasMatch(value)) {
-                              return Text(
+                              return const Text(
                                 'Must contain number',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
                               ).data;
                             } else if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]')
                                 .hasMatch(value)) {
-                              return Text(
+                              return const Text(
                                 'Must contain special character',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
@@ -1303,7 +1303,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                         child: TextFormField(
                           controller: confirmNewPasswordController,
                           style: const TextStyle(color: Colors.white),
-                          obscureText: !_isConfirmPasswordVisible,
+                          obscureText: !isConfirmPasswordVisible,
                           decoration: InputDecoration(
                             hintText: 'Confirm Password',
                             hintStyle: const TextStyle(color: Colors.grey),
@@ -1312,28 +1312,28 @@ class _ManageAccPageState extends State<ManageAccPage> {
                             border: InputBorder.none,
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isConfirmPasswordVisible
+                                isConfirmPasswordVisible
                                     ? Icons.visibility
                                     : Icons.visibility_off,
                                 color: Colors.grey,
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _isConfirmPasswordVisible =
-                                      !_isConfirmPasswordVisible;
+                                  isConfirmPasswordVisible =
+                                      !isConfirmPasswordVisible;
                                 });
                               },
                             ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return Text(
+                              return const Text(
                                 'Required',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
                               ).data;
                             } else if (value != newPasswordController.text) {
-                              return Text(
+                              return const Text(
                                 'Passwords don\'t match',
                                 style:
                                     TextStyle(fontSize: 5.0, color: Colors.red),
@@ -1375,7 +1375,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                             child: GestureDetector(
                               onTap: () async {
                                 // Validate the form
-                                if (!_formKey.currentState!.validate()) {
+                                if (!formKey.currentState!.validate()) {
                                   return;
                                 }
 
@@ -1673,9 +1673,9 @@ class _ManageAccPageState extends State<ManageAccPage> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-          decoration: BoxDecoration(
-            color: const Color.fromRGBO(28, 28, 30, 1.0),
-            borderRadius: const BorderRadius.only(
+          decoration: const BoxDecoration(
+            color: Color.fromRGBO(28, 28, 30, 1.0),
+            borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -1690,9 +1690,9 @@ class _ManageAccPageState extends State<ManageAccPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Spacer(),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 75.0),
-                      child: const Text(
+                    const Padding(
+                      padding: EdgeInsets.only(right: 75.0),
+                      child: Text(
                         'Profile',
                         style: TextStyle(
                           color: Colors.white,

@@ -9,6 +9,8 @@ import 'screens/loading_screen.dart';
 class AuthCheck extends StatelessWidget {
   final AuthService _authService = AuthService();
 
+  AuthCheck({super.key});
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(

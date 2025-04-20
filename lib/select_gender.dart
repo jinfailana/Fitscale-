@@ -103,7 +103,7 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => SetGoalPage(),
+                                    builder: (context) => const SetGoalPage(),
                                   ),
                                 );
                               } catch (e) {
@@ -129,7 +129,7 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
                         shadowColor: Colors.black.withAlpha(50),
                       ),
                       child: _isLoading
-                          ? CircularProgressIndicator(color: Colors.white)
+                          ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
                               'Next',
                               style: TextStyle(

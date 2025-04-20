@@ -8,9 +8,9 @@ class SelectedDietPage extends StatefulWidget {
   final DietPlan dietPlan;
 
   const SelectedDietPage({
-    Key? key,
+    super.key,
     required this.dietPlan,
-  }) : super(key: key);
+  });
 
   @override
   State<SelectedDietPage> createState() => _SelectedDietPageState();
@@ -30,9 +30,9 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
           icon: const Icon(Icons.arrow_back_ios, color: Color(0xFFDF4D0F)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
+        title: const Text(
           'Nutrition',
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -40,7 +40,7 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.share, color: Color(0xFFDF4D0F)),
+            icon: const Icon(Icons.share, color: Color(0xFFDF4D0F)),
             onPressed: () {
               // Share functionality would go here
             },
@@ -55,14 +55,14 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.arrow_back_ios,
                     size: 16,
                     color: Color(0xFFDF4D0F),
                   ),
                   Text(
                     '${widget.dietPlan.name.toUpperCase()} DIET',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFFDF4D0F),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -123,7 +123,7 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
                     Navigator.push(
                       context,
                       CustomPageRoute(
-                        child: DietRecommendationsPage(),
+                        child: const DietRecommendationsPage(),
                       ),
                     );
                   },
@@ -134,9 +134,9 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Text(
+                  child: const Text(
                     'Change Diet',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -147,8 +147,8 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
             ),
             
             // Motivational text
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 'Pump up protein and cut back on carbs to get faster results.',
                 style: TextStyle(
@@ -166,7 +166,7 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'How it Works',
                     style: TextStyle(
                       color: Colors.white,
@@ -177,7 +177,7 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
                   const SizedBox(height: 12),
                   Text(
                     widget.dietPlan.description,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
                       height: 1.5,
@@ -195,7 +195,7 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Highlights',
                     style: TextStyle(
                       color: Colors.white,
@@ -223,12 +223,12 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  side: BorderSide(color: Color(0xFFDF4D0F)),
+                  side: const BorderSide(color: Color(0xFFDF4D0F)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -264,22 +264,22 @@ class _SelectedDietPageState extends State<SelectedDietPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            margin: EdgeInsets.only(top: 2),
-            decoration: BoxDecoration(
+            margin: const EdgeInsets.only(top: 2),
+            decoration: const BoxDecoration(
               color: Colors.green,
               shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: const Icon(
               Icons.check,
               color: Colors.white,
               size: 16,
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 height: 1.5,

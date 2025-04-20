@@ -14,7 +14,7 @@ import 'summary_page.dart';
 import 'manage_acc.dart';
 
 class MeasureWeightPage extends StatefulWidget {
-  const MeasureWeightPage({Key? key}) : super(key: key);
+  const MeasureWeightPage({super.key});
 
   @override
   _MeasureWeightPageState createState() => _MeasureWeightPageState();
@@ -374,9 +374,9 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
             }
             
             return Container(
-              decoration: BoxDecoration(
-                color: const Color.fromRGBO(28, 28, 30, 1.0),
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Color.fromRGBO(28, 28, 30, 1.0),
+                borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
                 ),
@@ -434,10 +434,10 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                         child: Row(
                           children: [
                             // Profile picture
-                            CircleAvatar(
-                              backgroundColor: const Color.fromRGBO(223, 77, 15, 0.2),
+                            const CircleAvatar(
+                              backgroundColor: Color.fromRGBO(223, 77, 15, 0.2),
                               radius: 20,
-                              child: const Icon(
+                              child: Icon(
                                 Icons.person,
                                 color: Color(0xFFDF4D0F),
                                 size: 24,
@@ -487,15 +487,15 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFFDF4D0F)),
                         ),
-                        child: Row(
+                        child: const Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.devices,
                               color: Color(0xFFDF4D0F),
                               size: 24,
                             ),
-                            const SizedBox(width: 16),
-                            const Text(
+                            SizedBox(width: 16),
+                            Text(
                               'My Device',
                               style: TextStyle(
                                 color: Colors.white,
@@ -503,8 +503,8 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const Spacer(),
-                            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                            Spacer(),
+                            Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
                           ],
                         ),
                       ),
@@ -605,20 +605,22 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
       appBar: AppBar(
+        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFDF4D0F)),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Summary',
-          style: TextStyle(color: Color.fromRGBO(223, 77, 15, 1.0), fontSize: 18),
-        ),
-        backgroundColor: const Color.fromRGBO(45, 45, 45, 1.0),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(223, 77, 15, 1.0)),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          style: TextStyle(
+            color: Color(0xFFDF4D0F),
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
-      backgroundColor: const Color.fromRGBO(45, 45, 45, 1.0),
       body: isLoading
           ? const Center(
               child: CircularProgressIndicator(
@@ -630,12 +632,12 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 14.0),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 14.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Weight',
                           style: TextStyle(
                             color: Colors.white,
@@ -643,8 +645,8 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        const Text(
+                        SizedBox(height: 10),
+                        Text(
                           'See your changes',
                           style: TextStyle(
                             color: Colors.white54,
@@ -739,9 +741,9 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                           verticalInside: BorderSide(color: Color.fromRGBO(223, 77, 15, 1.0), width: 1),
                         ),
                         children: [
-                          TableRow(
-                            decoration: const BoxDecoration(color: Color.fromRGBO(223, 77, 15, 0.1)),
-                            children: const [
+                          const TableRow(
+                            decoration: BoxDecoration(color: Color.fromRGBO(223, 77, 15, 0.1)),
+                            children: [
                               Padding(
                                 padding: EdgeInsets.all(8.0),
                                 child: Center(
@@ -786,8 +788,8 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                                     ),
                                   ],
                                 )
-                              : TableRow(
-                                  children: const [
+                              : const TableRow(
+                                  children: [
                                     Padding(
                                       padding: EdgeInsets.all(8.0),
                                       child: Center(
@@ -810,12 +812,6 @@ class _MeasureWeightPageState extends State<MeasureWeightPage> {
                 ],
               ),
             ),
-      bottomNavigationBar: CustomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
-        showProfileModal: _showProfileModal,
-        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
-      ),
     );
   }
 }

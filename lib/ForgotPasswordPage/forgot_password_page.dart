@@ -132,9 +132,9 @@ class ForgotPasswordPage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () => _resetPassword(context),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Text(
                       'PROCEED',
                       style: TextStyle(

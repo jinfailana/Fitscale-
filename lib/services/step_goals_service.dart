@@ -124,7 +124,7 @@ class StepGoalsService {
       });
     } catch (e) {
       print('Error saving user goal: $e');
-      throw e;
+      rethrow;
     }
   }
 

@@ -389,7 +389,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         context,
         CustomPageRoute(
           child: const SummaryPage(),
-          transitionType: TransitionType.leftToRight,
+          transitionType: TransitionType.fade,
         ),
       );
     } else if (index == 2) {
@@ -397,7 +397,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         context,
         CustomPageRoute(
           child: const HistoryPage(),
-          transitionType: TransitionType.rightToLeft,
+          transitionType: TransitionType.fade,
         ),
       );
     } else if (index == 3) {

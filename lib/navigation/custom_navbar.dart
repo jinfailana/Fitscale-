@@ -35,20 +35,27 @@ class CustomNavBarState extends State<CustomNavBar> {
   String _cachedEmail = '';
   bool _isDataLoaded = false;
   bool _isInManageAccount = false;
+  bool _isProfileModalOpen = false;
+  // Track the actual selected tab before profile was tapped
+  int _lastRealSelectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     // Pre-fetch user data when the navbar is created
     _prefetchUserData();
+    // Initialize the last real selected index with the current one
+    _lastRealSelectedIndex = widget.selectedIndex;
   }
 
   @override
   void didUpdateWidget(CustomNavBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Update the previous selected index whenever the widget updates
-    if (!_isInManageAccount) {
+    if (!_isInManageAccount && !_isProfileModalOpen) {
       _previousSelectedIndex = widget.selectedIndex;
+      // Also update the last real selected index when not in a modal/account screen
+      _lastRealSelectedIndex = widget.selectedIndex;
     }
   }
 
@@ -76,25 +83,31 @@ class CustomNavBarState extends State<CustomNavBar> {
 
   BottomNavigationBarItem _buildNavItem(
       IconData icon, String label, int index) {
+    // Determine which index to use for highlighting
+    int displayIndex = widget.selectedIndex;
+    if (_isInManageAccount || _isProfileModalOpen) {
+      displayIndex = _lastRealSelectedIndex;
+    }
+    
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
-          color: (_isInManageAccount ? _previousSelectedIndex == index : widget.selectedIndex == index)
+          color: (displayIndex == index)
               ? const Color.fromRGBO(223, 77, 15, 0.1)
               : Colors.transparent,
           borderRadius:
-              BorderRadius.circular((_isInManageAccount ? _previousSelectedIndex == index : widget.selectedIndex == index) ? 15 : 10),
+              BorderRadius.circular((displayIndex == index) ? 15 : 10),
           border: Border.all(
-            color: (_isInManageAccount ? _previousSelectedIndex == index : widget.selectedIndex == index)
+            color: (displayIndex == index)
                 ? const Color.fromRGBO(223, 77, 15, 1.0)
                 : Colors.transparent,
             width: 2,
           ),
         ),
         child: Icon(icon,
-            color: (_isInManageAccount ? _previousSelectedIndex == index : widget.selectedIndex == index)
+            color: (displayIndex == index)
                 ? const Color.fromRGBO(223, 77, 15, 1.0)
                 : Colors.white54),
       ),
@@ -133,6 +146,14 @@ class CustomNavBarState extends State<CustomNavBar> {
 
   // Show profile modal with immediate display of user data
   void _handleProfileTap(BuildContext context) {
+    // Save the actual selected tab before opening the profile
+    _lastRealSelectedIndex = widget.selectedIndex;
+    
+    // Set the modal open flag
+    setState(() {
+      _isProfileModalOpen = true;
+    });
+    
     // If we have cached data, show it immediately
     if (_isDataLoaded) {
       _showCachedProfileModal(context);
@@ -167,15 +188,19 @@ class CustomNavBarState extends State<CustomNavBar> {
             ),
           );
         },
-      );
+      ).then((_) {
+        // Reset the modal open flag when the modal is closed
+        setState(() {
+          _isProfileModalOpen = false;
+          // Important: Restore the selectedIndex to what it was before the modal
+          widget.onItemTapped(_lastRealSelectedIndex);
+        });
+      });
     }
   }
 
   // Show profile modal with cached data
   void _showCachedProfileModal(BuildContext context) {
-    // Store the current selected index
-    _previousSelectedIndex = widget.selectedIndex;
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -251,6 +276,8 @@ class CustomNavBarState extends State<CustomNavBar> {
                           // Reset the flag when returning
                           setState(() {
                             _isInManageAccount = false;
+                            // Restore the selected index
+                            widget.onItemTapped(_lastRealSelectedIndex);
                           });
                         });
                       },
@@ -346,7 +373,14 @@ class CustomNavBarState extends State<CustomNavBar> {
           },
         );
       },
-    );
+    ).then((_) {
+      // Reset the modal open flag when the modal is closed
+      setState(() {
+        _isProfileModalOpen = false;
+        // Important: Restore the selectedIndex to what it was before the modal
+        widget.onItemTapped(_lastRealSelectedIndex);
+      });
+    });
   }
 
   // Expose this method publicly so it can be called via a key
@@ -368,6 +402,12 @@ class CustomNavBarState extends State<CustomNavBar> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine which index to display for the bottom nav bar
+    int displayIndex = widget.selectedIndex;
+    if (_isInManageAccount || _isProfileModalOpen) {
+      displayIndex = _lastRealSelectedIndex;
+    }
+    
     return Theme(
       data: Theme.of(context).copyWith(
         splashColor: Colors.transparent,
@@ -384,11 +424,16 @@ class CustomNavBarState extends State<CustomNavBar> {
           _buildNavItem(Icons.history, 'History', 2),
           _buildNavItem(Icons.person, 'Me', 3),
         ],
-        currentIndex: _isInManageAccount ? _previousSelectedIndex : widget.selectedIndex,
+        currentIndex: displayIndex,
         onTap: (index) {
           // Skip navigation if already on the selected tab
           if (index == widget.selectedIndex && index != 3) {
             return;
+          }
+          
+          // Save the last real selected index if we're not tapping profile
+          if (index != 3) {
+            _lastRealSelectedIndex = index;
           }
           
           // First call the parent's onItemTapped to update the state
@@ -407,68 +452,9 @@ class CustomNavBarState extends State<CustomNavBar> {
           } else if (index == 3) {
             // Use our new method for immediate display of user data
             _handleProfileTap(context);
-          } else if (index == 1 && widget.selectedIndex != 1) {
-            // Use the provided function to load and navigate to recommendations
-            // When coming from History, use leftToRight transition
-            if (widget.selectedIndex == 2) {
-              // We're going from History to Workouts (left to right)
-              final user = FirebaseAuth.instance.currentUser;
-              if (user != null) {
-                FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .get()
-                    .then((doc) {
-                  if (doc.exists) {
-                    try {
-                      final userData = doc.data() as Map<String, dynamic>;
-                      final userModel = UserModel(
-                        id: user.uid,
-                        email: userData['email'] ?? '',
-                        gender: userData['gender'],
-                        goal: userData['goal'],
-                        age: userData['age'],
-                        weight: userData['weight'] != null
-                            ? (userData['weight'] as num).toDouble()
-                            : null,
-                        height: userData['height'] != null
-                            ? (userData['height'] as num).toDouble()
-                            : null,
-                        activityLevel: userData['activityLevel'],
-                        workoutPlace: userData['workoutPlace'],
-                        preferredWorkouts: userData['preferredWorkouts'] != null
-                            ? List<String>.from(userData['preferredWorkouts'])
-                            : null,
-                        gymEquipment: userData['gymEquipment'] != null
-                            ? List<String>.from(userData['gymEquipment'])
-                            : null,
-                        setupCompleted: userData['setupCompleted'] ?? false,
-                        currentSetupStep: userData['currentSetupStep'] ?? 'registered',
-                        createdAt: userData['createdAt'] is String
-                            ? DateTime.parse(userData['createdAt'])
-                            : (userData['createdAt'] as Timestamp).toDate(),
-                        updatedAt: userData['updatedAt'] is String
-                            ? DateTime.parse(userData['updatedAt'])
-                            : (userData['updatedAt'] as Timestamp).toDate(),
-                      );
-                      
-                      Navigator.pushReplacement(
-                        context,
-                        CustomPageRoute(
-                          child: RecommendationsPage(user: userModel),
-                          transitionType: TransitionType.fade,
-                        ),
-                      );
-                    } catch (e) {
-                      print('Error navigating to recommendations: $e');
-                    }
-                  }
-                });
-              }
-            } else {
-              // For other tabs, use the standard recommendation navigation
-              widget.loadAndNavigateToRecommendations();
-            }
+          } else if (index == 1) {
+            // Always navigate to Workouts when tab is clicked, regardless of current page
+            widget.loadAndNavigateToRecommendations();
           } else if (index == 0 && widget.selectedIndex != 0) {
             Navigator.pushReplacement(
               context,

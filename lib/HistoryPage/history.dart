@@ -98,7 +98,7 @@ class _HistoryPageState extends State<HistoryPage> {
     } else if (index == 1) {
       // Navigate to RecommendationsPage through the loadAndNavigateToRecommendations function
       _loadAndNavigateToRecommendations();
-    } else if (index == 3) {
+    } else if (index == 1) {
       // Show profile modal
       _showProfileModal(context);
     }

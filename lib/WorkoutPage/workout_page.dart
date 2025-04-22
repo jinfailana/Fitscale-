@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../SummaryPage/summary_page.dart';
 import '../HistoryPage/history.dart';
+import '../utils/custom_page_route.dart';
 
 class WorkoutPage extends StatefulWidget {
   const WorkoutPage({super.key});
@@ -70,13 +71,19 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
       // Navigate to Summary page
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const SummaryPage()),
+        CustomPageRoute(
+          child: const SummaryPage(),
+          transitionType: TransitionType.fade,
+        ),
       );
     } else if (index == 2) {
       // Navigate to History page
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HistoryPage()),
+        CustomPageRoute(
+          child: const HistoryPage(),
+          transitionType: TransitionType.fade,
+        ),
       );
     } else if (index == 3) {
       // Navigate to Profile/Me page

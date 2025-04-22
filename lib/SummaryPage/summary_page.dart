@@ -209,6 +209,7 @@ class _SummaryPageState extends State<SummaryPage> {
         context,
         CustomPageRoute(
           child: RecommendationsPage(user: userModel),
+          transitionType: TransitionType.fade,
         ),
       );
     } catch (e, stackTrace) {
@@ -290,7 +291,10 @@ class _SummaryPageState extends State<SummaryPage> {
         Navigator.pop(context); // Close the modal first
         Navigator.push(
           context,
-          CustomPageRoute(child: const ManageAccPage()),
+          CustomPageRoute(
+            child: const ManageAccPage(),
+            transitionType: TransitionType.fade,
+          ),
         );
       },
       child: Container(
@@ -521,13 +525,19 @@ class _SummaryPageState extends State<SummaryPage> {
         if (title == 'Set Step Goal') {
           Navigator.push(
             context,
-            CustomPageRoute(child: const StepsPage()),
+            CustomPageRoute(
+              child: const StepsPage(),
+              transitionType: TransitionType.fade,
+            ),
           );
         } else if (title.contains('kg')) {
           // Navigate to MeasureWeightPage when weight card is tapped
           Navigator.push(
             context,
-            CustomPageRoute(child: const MeasureWeightPage()),
+            CustomPageRoute(
+              child: const MeasureWeightPage(),
+              transitionType: TransitionType.fade,
+            ),
           ).then((_) {
             // Refresh data when returning from MeasureWeightPage
             _fetchUserData();
@@ -536,7 +546,10 @@ class _SummaryPageState extends State<SummaryPage> {
           // Navigate to DietRecommendationsPage when diet card is tapped
           Navigator.push(
             context,
-            CustomPageRoute(child: const DietRecommendationsPage()),
+            CustomPageRoute(
+              child: const DietRecommendationsPage(),
+              transitionType: TransitionType.fade,
+            ),
           );
         }
         // Add more conditions for other cards if needed
@@ -599,6 +612,7 @@ class _SummaryPageState extends State<SummaryPage> {
               child: SelectedDietPage(
                 dietPlan: _selectedDietPlan!,
               ),
+              transitionType: TransitionType.fade,
             ),
           ).then((_) {
             // Refresh diet data when returning
@@ -608,7 +622,10 @@ class _SummaryPageState extends State<SummaryPage> {
           // Navigate to diet recommendations to select a diet
           Navigator.push(
             context,
-            CustomPageRoute(child: const DietRecommendationsPage()),
+            CustomPageRoute(
+              child: const DietRecommendationsPage(),
+              transitionType: TransitionType.fade,
+            ),
           ).then((_) {
             // Refresh diet data when returning
             _loadSelectedDiet();

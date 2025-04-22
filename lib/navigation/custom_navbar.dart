@@ -121,7 +121,7 @@ class CustomNavBarState extends State<CustomNavBar> {
             Navigator.of(context).pop();
           },
         ),
-        transitionType: TransitionType.bottomToTop,
+        transitionType: TransitionType.fade,
       ),
     ).then((_) {
       // Reset the flag when returning from ManageAccPage
@@ -245,7 +245,7 @@ class CustomNavBarState extends State<CustomNavBar> {
                                 Navigator.of(context).pop();
                               },
                             ),
-                            transitionType: TransitionType.bottomToTop,
+                            transitionType: TransitionType.fade,
                           ),
                         ).then((_) {
                           // Reset the flag when returning
@@ -401,11 +401,7 @@ class CustomNavBarState extends State<CustomNavBar> {
               context,
               CustomPageRoute(
                 child: const HistoryPage(),
-                // If coming from Home (0) or Workouts (1), slide from right
-                // If coming from Profile (3), slide from left
-                transitionType: widget.selectedIndex < 2 
-                    ? TransitionType.rightToLeft 
-                    : TransitionType.leftToRight,
+                transitionType: TransitionType.fade,
               ),
             );
           } else if (index == 3) {
@@ -460,7 +456,7 @@ class CustomNavBarState extends State<CustomNavBar> {
                         context,
                         CustomPageRoute(
                           child: RecommendationsPage(user: userModel),
-                          transitionType: TransitionType.leftToRight,
+                          transitionType: TransitionType.fade,
                         ),
                       );
                     } catch (e) {
@@ -478,7 +474,7 @@ class CustomNavBarState extends State<CustomNavBar> {
               context,
               CustomPageRoute(
                 child: const SummaryPage(),
-                transitionType: TransitionType.leftToRight,
+                transitionType: TransitionType.fade,
               ),
             );
           }

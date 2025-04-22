@@ -92,7 +92,7 @@ class _HistoryPageState extends State<HistoryPage> {
         context,
         CustomPageRoute(
           child: const SummaryPage(),
-          transitionType: TransitionType.leftToRight,
+          transitionType: TransitionType.fade,
         ),
       );
     } else if (index == 1) {
@@ -352,7 +352,7 @@ class _HistoryPageState extends State<HistoryPage> {
         context,
         CustomPageRoute(
           child: RecommendationsPage(user: userModel),
-          transitionType: TransitionType.leftToRight,
+          transitionType: TransitionType.fade,
         ),
       );
     } catch (e, stackTrace) {
@@ -785,7 +785,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           context,
                           CustomPageRoute(
                             child: const SummaryPage(),
-                            transitionType: TransitionType.leftToRight,
+                            transitionType: TransitionType.fade,
                           ),
                         );
                       }

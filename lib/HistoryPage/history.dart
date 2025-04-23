@@ -20,7 +20,7 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  final WorkoutHistoryService _historyService = WorkoutHistoryService();
+  late final WorkoutHistoryService _historyService;
   final List<String> months = [
     'January',
     'February',
@@ -42,7 +42,8 @@ class _HistoryPageState extends State<HistoryPage> {
   List<WorkoutHistory> _workoutHistory = [];
   bool _isLoading = true;
   List<WorkoutHistory> _filteredWorkouts = [];
-  final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
+  final GlobalKey<CustomNavBarState> _navbarKey =
+      GlobalKey<CustomNavBarState>();
 
   @override
   void initState() {
@@ -50,7 +51,11 @@ class _HistoryPageState extends State<HistoryPage> {
     final now = DateTime.now();
     selectedMonth = months[now.month - 1];
     selectedYear = now.year;
-    _loadWorkoutHistory();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _historyService = WorkoutHistoryService(userId: user.uid);
+      _loadWorkoutHistory();
+    }
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -196,8 +201,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         children: [
                           // Profile picture
                           const CircleAvatar(
-                            backgroundColor:
-                                Color.fromRGBO(223, 77, 15, 0.2),
+                            backgroundColor: Color.fromRGBO(223, 77, 15, 0.2),
                             radius: 20,
                             child: Icon(
                               Icons.person,
@@ -775,7 +779,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       setState(() {
                         _selectedIndex = 0;
                       });
-                      
+
                       // Use the navbar's handler for consistent behavior
                       if (_navbarKey.currentState != null) {
                         _navbarKey.currentState!.handleLogoClick(context);
@@ -818,4 +822,3 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 }
-

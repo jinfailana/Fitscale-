@@ -150,6 +150,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Walk at moderate intensity for 2 minutes",
               "Repeat for the duration"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Treadmill running image
           ),
           Exercise(
             name: equipment.contains("Dumbbells")
@@ -165,6 +167,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Maintain proper form throughout",
               "Rest between sets as needed"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Dumbbell workout image
           ),
           Exercise(
             name: "Rowing Machine",
@@ -178,6 +182,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Pull handle towards chest while extending legs",
               "Return to starting position with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Rowing machine image
           ),
           Exercise(
             name: "Battle Ropes",
@@ -191,6 +197,74 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Swings to create tension",
               "Return to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Battle ropes image
+          ),
+          Exercise(
+            name: equipment.contains("Kettlebells")
+                ? "Kettlebell Swings"
+                : "Jump Squats",
+            sets: "4",
+            reps: intensity == "beginner" ? "12" : "20",
+            rest: "30 sec",
+            icon: Icons.fitness_center,
+            musclesWorked: ["Quadriceps", "Glutes", "Core"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Keep your back straight",
+              "Lower your body until thighs are parallel to the ground",
+              "Push back up to starting position"
+            ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Kettlebell swings image
+          ),
+          Exercise(
+            name: "Box Jumps",
+            sets: "3",
+            reps: intensity == "beginner" ? "8" : "12",
+            rest: "45 sec",
+            icon: Icons.height,
+            musclesWorked: ["Quadriceps", "Glutes"],
+            instructions: [
+              "Stand with feet shoulder-width apart",
+              "Jump up to a box",
+              "Land softly on the box"
+            ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599058917765-a780eda07a3e?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Box jumps image
+          ),
+          Exercise(
+            name: equipment.contains("Cable Machine")
+                ? "Cable Woodchops"
+                : "Russian Twists",
+            sets: "3",
+            reps: "15 each side",
+            rest: "30 sec",
+            icon: Icons.rotate_right,
+            musclesWorked: ["Back", "Biceps"],
+            instructions: [
+              "Sit on cable machine with feet on platform",
+              "Pull handles towards lower chest",
+              "Keep back straight",
+              "Return to starting position"
+            ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Cable machine exercise image
+          ),
+          Exercise(
+            name: "Stair Master",
+            sets: "3",
+            reps: "3 minutes",
+            rest: "60 sec",
+            icon: Icons.stairs,
+            musclesWorked: ["Legs", "Cardiovascular"],
+            instructions: [
+              "Walk or run up and down stairs",
+              "Maintain proper form",
+              "Repeat for the duration"
+            ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1535743686920-55e4145369b9?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Stair climbing image
           ),
         ],
       ),
@@ -214,6 +288,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Lower your body until thighs are parallel to the ground",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Kettlebell swings image
           ),
           Exercise(
             name: "Box Jumps",
@@ -227,6 +303,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Jump up to a box",
               "Land softly on the box"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599058917765-a780eda07a3e?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Box jumps image
           ),
           Exercise(
             name: equipment.contains("Cable Machine")
@@ -243,6 +321,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Keep back straight",
               "Return to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Cable machine exercise image
           ),
           Exercise(
             name: "Stair Master",
@@ -256,6 +336,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Maintain proper form",
               "Repeat for the duration"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1535743686920-55e4145369b9?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Stair climbing image
           ),
         ],
       ),
@@ -276,6 +358,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Pedal and push/pull handles as fast as possible",
               "Maintain maximum effort for full duration"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1520877880798-5ee004e3f11e?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Assault bike image
           ),
           Exercise(
             name: equipment.contains("Kettlebells")
@@ -292,6 +376,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Press weight overhead",
               "Return to starting position with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Kettlebell/dumbbell clean and press image
           ),
           Exercise(
             name: "Sled Push/Pull",
@@ -306,6 +392,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Pull sled backward using rope or handles",
               "Complete full distance without stopping"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1532029837206-abbe2b7620e3?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Sled push/pull image
           ),
           Exercise(
             name: "Medicine Ball Slams",
@@ -320,6 +408,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Catch ball on bounce or pick up and repeat",
               "Maintain explosive power throughout"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1595078475328-1ab05d0a6a0e?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Medicine ball exercises image
           ),
         ],
       ),
@@ -343,6 +433,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Jump up to standing position",
               "Return to squat position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1576678927484-cc907957088c?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Burpees image
           ),
           Exercise(
             name: "Mountain Climbers",
@@ -356,6 +448,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Climb up and down",
               "Maintain proper form"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Mountain climbers image
           ),
           Exercise(
             name: "High Knees",
@@ -369,6 +463,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Lift knees up to waist",
               "Lower back down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // High knees image
           ),
           Exercise(
             name: "Jumping Jacks",
@@ -382,6 +478,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Jump up to standing position",
               "Return to squat position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Jumping jacks image
           ),
         ],
       ),
@@ -402,6 +500,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Jump up to standing position",
               "Land softly on the ground"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Jump squats image
           ),
           Exercise(
             name: "Plank to Downward Dog",
@@ -415,6 +515,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Extend legs into downward dog",
               "Return to plank position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Plank exercise image
           ),
           Exercise(
             name: "Lateral Jumps",
@@ -428,6 +530,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Jump to one side",
               "Land softly on the ground"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Lateral jumps image
           ),
           Exercise(
             name: "Star Jumps",
@@ -441,6 +545,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Jump up to standing position",
               "Land softly on the ground"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Star jumps image
           ),
         ],
       ),
@@ -461,6 +567,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Skate in place",
               "Repeat for the duration"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Speed skaters image
           ),
           Exercise(
             name: "Squat Pulse",
@@ -474,6 +582,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Squat down to a chair",
               "Return to standing position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Squat exercise image
           ),
           Exercise(
             name: "Mountain Climbers Sprint",
@@ -487,6 +597,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Climb up and down",
               "Repeat for the duration"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Mountain climbers sprint image
           ),
           Exercise(
             name: "Plank Hold",
@@ -499,6 +611,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Start in plank position",
               "Hold for the specified time"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Plank hold image
           ),
         ],
       ),
@@ -525,6 +639,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Land softly and immediately lower into next lunge",
               "Maintain balance and control throughout"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Jumping lunges image
           ),
           Exercise(
             name: "Plank Jacks",
@@ -539,6 +655,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Maintain rigid plank position throughout",
               "Keep pace consistent and controlled"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Plank exercise image
           ),
           Exercise(
             name: "Bear Crawl Push-ups",
@@ -553,6 +671,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Keep core engaged and back flat",
               "Move deliberately with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Bear crawl push-ups image
           ),
           Exercise(
             name: "Skater Hops",
@@ -567,6 +687,8 @@ List<WorkoutPlan> getWeightLossWorkouts({
               "Touch floor with hand if needed for balance",
               "Maintain continuous lateral movement"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Skater hops image
           ),
         ],
       ),
@@ -615,6 +737,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lower your body until thighs are parallel to the ground",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Squats image
           ),
           Exercise(
             name: equipment.contains("Bench") ? "Bench Press" : "Push-ups",
@@ -629,6 +753,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lower bar to chest",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571388208497-71bedc66e932?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Bench press image
           ),
           Exercise(
             name: equipment.contains("Cable Machine")
@@ -645,6 +771,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Keep back straight",
               "Return to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Cable rows image
           ),
         ],
       ),
@@ -667,6 +795,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Press weights overhead",
               "Lower back to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Dumbbell press image
           ),
           Exercise(
             name: equipment.contains("Pull-up Bar")
@@ -682,6 +812,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Pull body up until chin clears bar",
               "Lower back down with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Pull-ups image
           ),
           Exercise(
             name: equipment.contains("Dumbbells")
@@ -697,6 +829,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Raise arms to shoulder level",
               "Lower back down with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Lateral raises image
           ),
         ],
       ),
@@ -720,6 +854,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Squeeze shoulder blades together at top",
               "Lower weight with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Barbell/dumbbell rows image
           ),
           Exercise(
             name: equipment.contains("Cable Machine")
@@ -736,6 +872,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Bring weights/handles together in arcing motion",
               "Focus on chest contraction at peak"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571388208497-71bedc66e932?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Chest flyes image
           ),
           Exercise(
             name: equipment.contains("Leg Press") ? "Leg Press" : "Hack Squat",
@@ -750,6 +888,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Press through heels to starting position",
               "Avoid locking knees at top"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Leg press image
           ),
           Exercise(
             name: "Face Pulls",
@@ -764,6 +904,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Focus on external rotation at end position",
               "Control movement throughout range"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Face pulls image
           ),
         ],
       ),
@@ -788,6 +930,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lower body down to the ground",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Diamond push-ups image
           ),
           Exercise(
             name: "Bulgarian Split Squats",
@@ -801,6 +945,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lower body down until thighs are parallel to the ground",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Bulgarian split squats image
           ),
           Exercise(
             name: "Pike Push-ups",
@@ -814,6 +960,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lift one leg up",
               "Lower back down with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Pike push-ups image
           ),
           Exercise(
             name: "Inverted Rows",
@@ -827,6 +975,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Pull body up until chin clears bar",
               "Lower back down with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Inverted rows image
           ),
         ],
       ),
@@ -847,6 +997,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lower body down",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Decline push-ups image
           ),
           Exercise(
             name: "Pistol Squats",
@@ -860,6 +1012,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lower body down until thighs are parallel to the ground",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Pistol squats image
           ),
           Exercise(
             name: "Handstand Wall Push-ups",
@@ -873,6 +1027,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lift body up",
               "Push back down with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Handstand push-ups image
           ),
           Exercise(
             name: "L-Sit Holds",
@@ -886,6 +1042,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lift one leg up",
               "Hold for the specified time"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // L-sit image
           ),
         ],
       ),
@@ -906,6 +1064,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lift one leg up",
               "Lower body down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Planche leans image
           ),
           Exercise(
             name: "Dragon Flags",
@@ -919,6 +1079,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lift one arm and one leg up",
               "Lower back down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Dragon flags image
           ),
           Exercise(
             name: "Hollow Body Holds",
@@ -932,6 +1094,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lift one arm and one leg up",
               "Lower back down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Hollow body holds image
           ),
           Exercise(
             name: "Russian Twists",
@@ -945,6 +1109,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lift one arm and one leg up",
               "Twist body"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Russian twists image
           ),
         ],
       ),
@@ -966,6 +1132,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Lower body toward hand on ground",
               "Push back up and alternate sides"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Archer push-ups image
           ),
           Exercise(
             name: "Weighted Chin-ups",
@@ -980,6 +1148,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Pull chin over bar with controlled movement",
               "Lower with full extension at bottom"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Weighted chin-ups image
           ),
           Exercise(
             name: "Single-Leg Romanian Deadlifts",
@@ -994,6 +1164,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Keep back flat and core engaged",
               "Return to standing by squeezing glute"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Single-leg RDL image
           ),
           Exercise(
             name: "Pseudo Planche Push-ups",
@@ -1008,6 +1180,8 @@ List<WorkoutPlan> getMuscleGainWorkouts({
               "Perform push-up maintaining forward lean",
               "Keep body rigid throughout movement"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">", // Pseudo planche push-ups image
           ),
         ],
       ),
@@ -1040,6 +1214,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Pull handle towards chest while extending legs",
               "Return to starting position with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: equipment.contains("Dumbbells")
@@ -1055,6 +1231,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Maintain proper form throughout",
               "Rest between sets as needed"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: equipment.contains("Cable Machine")
@@ -1070,6 +1248,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Pull handles towards chest",
               "Return to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Stability Ball Core",
@@ -1083,6 +1263,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Keep core engaged",
               "Hold position for specified time"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
         ],
       ),
@@ -1105,6 +1287,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Swing kettlebell to shoulder",
               "Return to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Medicine Ball Slams",
@@ -1118,6 +1302,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Slam medicine ball to chest",
               "Return to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "TRX Rows",
@@ -1131,6 +1317,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Pull body up until chin clears bar",
               "Lower back down with control"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Plank Variations",
@@ -1143,6 +1331,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Start in plank position",
               "Hold for the specified time"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
         ],
       ),
@@ -1164,6 +1354,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Rotate through core to move bar side to side",
               "Keep lower body stable throughout"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Farmer's Carries",
@@ -1178,6 +1370,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Keep shoulders down and core tight",
               "Complete distance without setting weights down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: equipment.contains("Battle Ropes")
@@ -1194,6 +1388,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Keep lower body stable and core engaged",
               "Maintain consistent intensity throughout set"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Sled Drag",
@@ -1208,6 +1404,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Take short, powerful steps",
               "Maintain tension throughout movement"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
         ],
       ),
@@ -1231,6 +1429,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Jump up to standing position",
               "Return to squat position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Push-ups",
@@ -1245,6 +1445,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Lower body down",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Bodyweight Squats",
@@ -1258,6 +1460,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Lower body down until thighs are parallel to the ground",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Plank Hold",
@@ -1271,6 +1475,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Lift one arm and one leg up",
               "Lower back down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
         ],
       ),
@@ -1291,6 +1497,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Lift one arm and one leg up",
               "Lower body down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Walking Lunges",
@@ -1305,6 +1513,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Lower body down until thighs are parallel to the ground",
               "Push back up to starting position"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Bird Dogs",
@@ -1318,6 +1528,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Lift one arm and one leg up",
               "Lower body down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Superman Holds",
@@ -1331,6 +1543,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Lift one arm and one leg up",
               "Lower body down"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
         ],
       ),
@@ -1352,6 +1566,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Focus on breath and movement coordination",
               "Maintain control and proper form throughout"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Animal Flow",
@@ -1366,6 +1582,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Move deliberately with control",
               "Focus on full range of motion"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Turkish Get-up",
@@ -1380,6 +1598,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Reverse movement to return to floor",
               "Focus on stability and control throughout"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
           Exercise(
             name: "Yoga Flow",
@@ -1394,6 +1614,8 @@ List<WorkoutPlan> getGeneralFitnessWorkouts({
               "Hold each position for 3-5 breaths",
               "Focus on alignment and stability"
             ],
+            imageHtml:
+                "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
           ),
         ],
       ),
@@ -1425,7 +1647,8 @@ WorkoutPlan getCardioWorkout({
           "Keep good posture",
           "Land midfoot with each step"
         ],
-        gifUrl: "",
+        imageHtml:
+            "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
       ),
       Exercise(
         name: "Jump Rope",
@@ -1440,7 +1663,8 @@ WorkoutPlan getCardioWorkout({
           "Maintain rhythm",
           "Land softly"
         ],
-        gifUrl: "",
+        imageHtml:
+            "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
       ),
     ],
   );
@@ -1472,7 +1696,8 @@ WorkoutPlan getStrengthWorkout({
           "Lower your body until thighs are parallel to the ground",
           "Push back up to starting position"
         ],
-        gifUrl: "",
+        imageHtml:
+            "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
       ),
       Exercise(
         name: equipment.contains("Dumbbells") ? "Dumbbell Press" : "Push-ups",
@@ -1486,7 +1711,8 @@ WorkoutPlan getStrengthWorkout({
           "Lower your body until chest nearly touches the ground",
           "Push back up to starting position"
         ],
-        gifUrl: "",
+        imageHtml:
+            "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
       ),
     ],
   );
@@ -1516,7 +1742,8 @@ WorkoutPlan getFlexibilityWorkout({
           "Keep movements controlled",
           "Breathe deeply"
         ],
-        gifUrl: "",
+        imageHtml:
+            "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
       ),
       Exercise(
         name: "Static Stretching",
@@ -1531,7 +1758,8 @@ WorkoutPlan getFlexibilityWorkout({
           "Breathe deeply",
           "Feel gentle tension"
         ],
-        gifUrl: "",
+        imageHtml:
+            "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
       ),
     ],
   );
@@ -1599,7 +1827,8 @@ class WorkoutLogic {
             "Keep good posture",
             "Land midfoot with each step"
           ],
-          gifUrl: "",
+          imageHtml:
+              "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
         ),
         Exercise(
           name: "Jump Rope",
@@ -1614,7 +1843,8 @@ class WorkoutLogic {
             "Maintain rhythm",
             "Land softly"
           ],
-          gifUrl: "",
+          imageHtml:
+              "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
         ),
       ],
     );
@@ -1644,7 +1874,8 @@ class WorkoutLogic {
             "Keep movements controlled",
             "Breathe deeply"
           ],
-          gifUrl: "",
+          imageHtml:
+              "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
         ),
         Exercise(
           name: "Static Stretching",
@@ -1659,7 +1890,8 @@ class WorkoutLogic {
             "Breathe deeply",
             "Feel gentle tension"
           ],
-          gifUrl: "",
+          imageHtml:
+              "<img src=\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
         ),
       ],
     );

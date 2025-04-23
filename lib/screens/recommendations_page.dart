@@ -11,6 +11,7 @@ import '../SummaryPage/summary_page.dart';
 import '../HistoryPage/history.dart';
 import '../utils/custom_page_route.dart';
 import '../SummaryPage/manage_acc.dart';
+import '../services/workout_history_service.dart';
 
 class RecommendationsPage extends StatefulWidget {
   final UserModel user;
@@ -21,7 +22,12 @@ class RecommendationsPage extends StatefulWidget {
   _RecommendationsPageState createState() => _RecommendationsPageState();
 }
 
-class _RecommendationsPageState extends State<RecommendationsPage> {
+class _RecommendationsPageState extends State<RecommendationsPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late final WorkoutHistoryService _historyService;
+  Map<String, bool> _workoutExistence = {};
+  bool _isLoading = true;
   int selectedTabIndex = 0;
   int _selectedIndex = 1;
   List<WorkoutPlan> myWorkouts = [];
@@ -29,7 +35,13 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
   @override
   void initState() {
     super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _historyService = WorkoutHistoryService(userId: user.uid);
+    }
+    _tabController = TabController(length: 2, vsync: this);
     _fetchMyWorkouts();
+    _loadWorkoutExistence();
   }
 
   Future<void> _fetchMyWorkouts() async {
@@ -42,204 +54,134 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
             .collection('workouts')
             .get();
 
-        setState(() {
-          myWorkouts = workoutsCollection.docs.map((doc) {
-            final data = doc.data();
-            return WorkoutPlan(
-              name: data['name'] ?? '',
-              description: data['description'] ?? '',
-              icon: IconData(data['iconCode'] ?? 0xe1d8,
+        final List<WorkoutPlan> fetchedWorkouts = [];
+        for (var doc in workoutsCollection.docs) {
+          final data = doc.data();
+
+          // Handle exercises as a Map instead of a List
+          final exercisesMap = data['exercises'] as Map<String, dynamic>;
+          final exercises = exercisesMap.values.map((e) {
+            return Exercise(
+              name: e['name'] as String,
+              sets: (e['sets'] ?? '0').toString(),
+              reps: (e['reps'] ?? '0').toString(),
+              rest: e['rest'] as String? ?? '30s',
+              icon: IconData(
+                  e['iconCode'] as int? ?? Icons.fitness_center.codePoint,
                   fontFamily: 'MaterialIcons'),
-              exercises: (data['exercises'] as List<dynamic>? ?? [])
-                  .map((e) => Exercise(
-                        name: e['name'] ?? '',
-                        sets: e['sets'] ?? '',
-                        reps: e['reps'] ?? '',
-                        rest: e['rest'] ?? '',
-                        icon: IconData(e['iconCode'] ?? 0xe1d8,
-                            fontFamily: 'MaterialIcons'),
-                        musclesWorked:
-                            List<String>.from(e['musclesWorked'] ?? []),
-                        instructions:
-                            List<String>.from(e['instructions'] ?? []),
-                        gifUrl: e['gifUrl'] ?? '',
-                      ))
-                  .toList(),
+              musclesWorked: List<String>.from(e['musclesWorked'] ?? []),
+              instructions: List<String>.from(e['instructions'] ?? []),
+              imageHtml: e['imageHtml'] as String? ?? '',
+              setsCompleted: e['setsCompleted'] as int? ?? 0,
+              isCompleted: e['isCompleted'] as bool? ?? false,
+              lastCompleted: e['lastCompleted'] != null
+                  ? DateTime.parse(e['lastCompleted'] as String)
+                  : null,
             );
           }).toList();
+
+          final workout = WorkoutPlan(
+            name: data['name'] as String? ?? '',
+            description: data['description'] as String? ?? '',
+            icon: IconData(
+                data['icon'] as int? ?? Icons.fitness_center.codePoint,
+                fontFamily: 'MaterialIcons'),
+            exercises: exercises,
+          );
+
+          // Only add workouts that are marked as in My Workouts
+          if (data['isInMyWorkouts'] as bool? ?? false) {
+            fetchedWorkouts.add(workout);
+            _workoutExistence[workout.name] = true;
+          }
+        }
+
+        setState(() {
+          myWorkouts = fetchedWorkouts;
+          _isLoading = false;
         });
       }
     } catch (e) {
       print('Error fetching workouts: $e');
+      print('Stack trace: ${StackTrace.current}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error loading workouts'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> addToMyWorkouts(WorkoutPlan workout) async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        // Check if workout already exists
-        final existingWorkouts = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('workouts')
-            .where('name', isEqualTo: workout.name)
-            .get();
+  Future<void> _loadWorkoutExistence() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-        if (existingWorkouts.docs.isNotEmpty) {
+    try {
+      for (var workout in myWorkouts) {
+        _workoutExistence[workout.name] =
+            await _historyService.isWorkoutInUserList(workout.name);
+      }
+    } catch (e) {
+      print('Error loading workout existence: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleAddWorkout(WorkoutPlan workout) async {
+    try {
+      // Check if workout exists before attempting to add
+      if (await _historyService.isWorkoutInUserList(workout.name)) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('This Workout is Already in My Workouts'),
-              backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+              content: Text('Workout already in your list'),
+              backgroundColor: Colors.red,
             ),
           );
-          return;
         }
+        return;
+      }
 
-        // Add to Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('workouts')
-            .add({
-          'name': workout.name,
-          'description': workout.description,
-          'iconCode': workout.icon.codePoint,
-          'exercises': workout.exercises
-              .map((e) => {
-                    'name': e.name,
-                    'sets': e.sets,
-                    'reps': e.reps,
-                    'rest': e.rest,
-                    'iconCode': e.icon.codePoint,
-                    'musclesWorked': e.musclesWorked,
-                    'instructions': e.instructions,
-                    'gifUrl': e.gifUrl,
-                  })
-              .toList(),
-        });
+      await _historyService.addWorkoutToUserList(workout);
 
-        // Update local state
-        setState(() {
-          if (!myWorkouts.contains(workout)) {
-            myWorkouts.add(workout);
-          }
-        });
+      setState(() {
+        _workoutExistence[workout.name] = true;
+        myWorkouts.add(workout);
+        // Switch to My Workouts tab
+        selectedTabIndex = 1;
+      });
 
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Workout Added Successfully'),
-            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+            content: Text('Workout added to your list'),
+            backgroundColor: Colors.green,
           ),
         );
       }
+
+      // Refresh the workout lists
+      await _fetchMyWorkouts();
+      await _loadWorkoutExistence();
     } catch (e) {
-      print('Error adding workout: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to add workout'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> removeFromMyWorkouts(WorkoutPlan workout) async {
-    // Show confirmation dialog
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color.fromRGBO(44, 44, 46, 1.0),
-          title: const Text(
-            'Remove Workout',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to remove this workout? All progress tracking data will also be deleted.',
-            style: TextStyle(
-              color: Colors.white70,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  color: Colors.white70,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text(
-                'Remove',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirm != true) {
-      return; // User cancelled the removal
-    }
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        // Find and remove from Firestore
-        final workoutsCollection = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('workouts')
-            .where('name', isEqualTo: workout.name)
-            .get();
-
-        for (var doc in workoutsCollection.docs) {
-          await doc.reference.delete();
-        }
-
-        // Delete workout history for this workout
-        final historyCollection = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('workout_history')
-            .where('workoutName', isEqualTo: workout.name)
-            .get();
-
-        for (var doc in historyCollection.docs) {
-          await doc.reference.delete();
-        }
-
-        // Update local state
-        setState(() {
-          myWorkouts.removeWhere((w) => w.name == workout.name);
-        });
-
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Workout and progress history removed successfully'),
-            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      print('Error removing workout: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error removing workout'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -351,28 +293,24 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
 
   List<WorkoutPlan> _getCurrentWorkouts() {
     switch (selectedTabIndex) {
-      case 0:
-        // Get current recommendations and filter out workouts that are already in My Workouts
+      case 0: // Recommended tab
+        // Get current recommendations and filter out workouts that are in My Workouts
         List<WorkoutPlan> recommendations =
             workout_logic.generateRecommendations(widget.user);
         return recommendations.where((workout) {
-          return !myWorkouts.any((myWorkout) => myWorkout.name == workout.name);
+          bool isInMyWorkouts = _workoutExistence[workout.name] ?? false;
+          return !isInMyWorkouts;
         }).toList();
-      case 1:
+      case 1: // My Workouts tab
         return myWorkouts;
-      case 2:
-        // Get all possible workouts
+      case 2: // Other tab
         List<WorkoutPlan> allWorkouts = _getAllPossibleWorkouts();
-        // Get current recommendations
-        List<WorkoutPlan> recommendations =
-            workout_logic.generateRecommendations(widget.user);
-
-        // Filter out workouts that are already in recommendations or My Workouts
         return allWorkouts.where((workout) {
-          return !recommendations.any((recommended) =>
-                  recommended.name == workout.name &&
-                  recommended.description == workout.description) &&
-              !myWorkouts.any((myWorkout) => myWorkout.name == workout.name);
+          bool isInMyWorkouts = _workoutExistence[workout.name] ?? false;
+          bool isInRecommended = workout_logic
+              .generateRecommendations(widget.user)
+              .any((rec) => rec.name == workout.name);
+          return !isInMyWorkouts && !isInRecommended;
         }).toList();
       default:
         return [];
@@ -496,8 +434,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                       children: [
                         // Profile picture
                         const CircleAvatar(
-                          backgroundColor:
-                              Color.fromRGBO(223, 77, 15, 0.2),
+                          backgroundColor: Color.fromRGBO(223, 77, 15, 0.2),
                           radius: 20,
                           child: Icon(
                             Icons.person,
@@ -587,7 +524,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    List<WorkoutPlan> currentWorkouts = _getCurrentWorkouts();
+    final currentWorkouts = _getCurrentWorkouts();
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
@@ -644,215 +581,238 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: selectedTabIndex == 1 && myWorkouts.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color.fromRGBO(223, 77, 15, 0.1),
-                                borderRadius: BorderRadius.circular(50),
-                                border: Border.all(
-                                  color: const Color.fromRGBO(223, 77, 15, 0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.fitness_center,
-                                color: Color.fromRGBO(223, 77, 15, 0.7),
-                                size: 64,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'No Added Workouts Yet',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 12),
-                              child: const Text(
-                                'Add workouts from the Recommended tab to build your personal collection',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ],
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color.fromRGBO(223, 77, 15, 1.0),
                         ),
                       )
-                    : ListView.builder(
-                        itemCount: currentWorkouts.length,
-                        itemBuilder: (context, index) {
-                          final plan = currentWorkouts[index];
-                          return Container(
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color.fromRGBO(44, 44, 46, 1.0),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color.fromRGBO(223, 77, 15, 1.0),
-                                width: 1,
-                              ),
-                            ),
+                    : selectedTabIndex == 1 && myWorkouts.isEmpty
+                        ? Center(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 50,
-                                      height: 50,
-                                      decoration: BoxDecoration(
-                                        color: const Color.fromRGBO(
-                                            223, 77, 15, 0.2),
-                                        borderRadius: BorderRadius.circular(25),
-                                      ),
-                                      child: Icon(
-                                        plan.icon,
-                                        color: const Color.fromRGBO(
-                                            223, 77, 15, 1.0),
-                                        size: 30,
-                                      ),
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        const Color.fromRGBO(223, 77, 15, 0.1),
+                                    borderRadius: BorderRadius.circular(50),
+                                    border: Border.all(
+                                      color: const Color.fromRGBO(
+                                          223, 77, 15, 0.3),
+                                      width: 1,
                                     ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            plan.name,
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          Text(
-                                            plan.description,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.white70,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.fitness_center,
+                                    color: Color.fromRGBO(223, 77, 15, 0.7),
+                                    size: 64,
+                                  ),
                                 ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
+                                const SizedBox(height: 24),
+                                const Text(
+                                  'No Added Workouts Yet',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24, vertical: 12),
+                                  child: const Text(
+                                    'Add workouts from the Recommended tab to build your personal collection',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: currentWorkouts.length,
+                            itemBuilder: (context, index) {
+                              final plan = currentWorkouts[index];
+                              final isInMyWorkouts =
+                                  _workoutExistence[plan.name] ?? false;
+
+                              return Container(
+                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color.fromRGBO(44, 44, 46, 1.0),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color:
+                                        const Color.fromRGBO(223, 77, 15, 1.0),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (selectedTabIndex == 1)
-                                      AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 300),
-                                        curve: Curves.easeInOut,
-                                        child: TextButton(
-                                          onPressed: () =>
-                                              removeFromMyWorkouts(plan),
-                                          style: TextButton.styleFrom(
-                                            backgroundColor:
-                                                Colors.red.withOpacity(0.1),
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 8),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              side: BorderSide(
-                                                  color: Colors.red
-                                                      .withOpacity(0.3)),
-                                            ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 50,
+                                          height: 50,
+                                          decoration: BoxDecoration(
+                                            color: const Color.fromRGBO(
+                                                223, 77, 15, 0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(25),
                                           ),
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
+                                          child: Icon(
+                                            plan.icon,
+                                            color: const Color.fromRGBO(
+                                                223, 77, 15, 1.0),
+                                            size: 30,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              Icon(Icons.delete_outline,
-                                                  color: Colors.red, size: 16),
-                                              SizedBox(width: 4),
                                               Text(
-                                                'Remove',
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                  fontSize: 14,
+                                                plan.name,
+                                                style: const TextStyle(
+                                                  fontSize: 20,
                                                   fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              Text(
+                                                plan.description,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.white70,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ),
-                                    const SizedBox(width: 12),
-                                    AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                      child: TextButton(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            CustomPageRoute(
-                                              child: WorkoutDetailsPage(
-                                                workout: plan,
-                                                onAddToWorkoutList:
-                                                    addToMyWorkouts,
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        if (selectedTabIndex == 1)
+                                          AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 300),
+                                            curve: Curves.easeInOut,
+                                            child: TextButton(
+                                              onPressed: () =>
+                                                  _handleAddWorkout(plan),
+                                              style: TextButton.styleFrom(
+                                                backgroundColor:
+                                                    Colors.red.withOpacity(0.1),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 8),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  side: BorderSide(
+                                                      color: Colors.red
+                                                          .withOpacity(0.3)),
+                                                ),
+                                              ),
+                                              child: const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.delete_outline,
+                                                      color: Colors.red,
+                                                      size: 16),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    'Remove',
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          );
-                                        },
-                                        style: TextButton.styleFrom(
-                                          backgroundColor: const Color.fromRGBO(
-                                              223, 77, 15, 0.1),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 8),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            side: const BorderSide(
-                                                color: Color.fromRGBO(
-                                                    223, 77, 15, 0.3)),
+                                          ),
+                                        const SizedBox(width: 12),
+                                        AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                          child: TextButton(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      WorkoutDetailsPage(
+                                                    workout: plan,
+                                                    isFromMyWorkouts:
+                                                        isInMyWorkouts,
+                                                    onAddToWorkoutList:
+                                                        _handleAddWorkout,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            style: TextButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color.fromRGBO(
+                                                      223, 77, 15, 0.1),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 8),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                side: const BorderSide(
+                                                    color: Color.fromRGBO(
+                                                        223, 77, 15, 0.3)),
+                                              ),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.fitness_center,
+                                                    color: Color.fromRGBO(
+                                                        223, 77, 15, 1.0),
+                                                    size: 16),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Details',
+                                                  style: TextStyle(
+                                                    color: Color.fromRGBO(
+                                                        223, 77, 15, 1.0),
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.fitness_center,
-                                                color: Color.fromRGBO(
-                                                    223, 77, 15, 1.0),
-                                                size: 16),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Details',
-                                              style: TextStyle(
-                                                color: Color.fromRGBO(
-                                                    223, 77, 15, 1.0),
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                              );
+                            },
+                          ),
               ),
             ],
           ),
@@ -910,5 +870,11 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 }

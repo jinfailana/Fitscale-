@@ -15,7 +15,7 @@ import '../firstlogin.dart';
 
 class ManageAccPage extends StatefulWidget {
   final VoidCallback? onClose;
-  
+
   const ManageAccPage({super.key, this.onClose});
 
   @override
@@ -25,12 +25,16 @@ class ManageAccPage extends StatefulWidget {
 class _ManageAccPageState extends State<ManageAccPage> {
   String username = '';
   String signInMethod = '';
-  final WorkoutHistoryService _historyService = WorkoutHistoryService();
+  late final WorkoutHistoryService _historyService;
   int _selectedIndex = 3; // Set to 3 for the "Me" tab
 
   @override
   void initState() {
     super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _historyService = WorkoutHistoryService(userId: user.uid);
+    }
     _fetchUserData();
   }
 
@@ -630,7 +634,8 @@ class _ManageAccPageState extends State<ManageAccPage> {
                               gridData: FlGridData(
                                 show: true,
                                 drawVerticalLine: true,
-                                getDrawingHorizontalLine: (value) => const FlLine(
+                                getDrawingHorizontalLine: (value) =>
+                                    const FlLine(
                                   color: Colors.white10,
                                   strokeWidth: 1,
                                 ),
@@ -1252,8 +1257,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                               ),
                               onPressed: () {
                                 setState(() {
-                                  isNewPasswordVisible =
-                                      !isNewPasswordVisible;
+                                  isNewPasswordVisible = !isNewPasswordVisible;
                                 });
                               },
                             ),

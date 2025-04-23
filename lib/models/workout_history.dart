@@ -12,6 +12,12 @@ class WorkoutHistory {
   final int duration; // in minutes
   final List<String> musclesWorked;
   final String notes;
+  final double weight; // Weight used for the exercise (if applicable)
+  final double caloriesBurned; // Estimated calories burned
+  final Map<String, dynamic>
+      exerciseDetails; // Detailed tracking of each set (reps, weight, etc.)
+  final String difficulty; // User-rated difficulty of the workout
+  final int restBetweenSets; // Rest time between sets in seconds
 
   WorkoutHistory({
     required this.id,
@@ -24,7 +30,12 @@ class WorkoutHistory {
     required this.status,
     required this.duration,
     required this.musclesWorked,
-    this.notes = '',
+    required this.notes,
+    this.weight = 0.0,
+    this.caloriesBurned = 0.0,
+    this.exerciseDetails = const {},
+    this.difficulty = 'medium',
+    this.restBetweenSets = 60,
   });
 
   Map<String, dynamic> toMap() {
@@ -32,7 +43,7 @@ class WorkoutHistory {
       'id': id,
       'workoutName': workoutName,
       'exerciseName': exerciseName,
-      'date': Timestamp.fromDate(date),
+      'date': date.toIso8601String(),
       'setsCompleted': setsCompleted,
       'totalSets': totalSets,
       'repsPerSet': repsPerSet,
@@ -40,6 +51,11 @@ class WorkoutHistory {
       'duration': duration,
       'musclesWorked': musclesWorked,
       'notes': notes,
+      'weight': weight,
+      'caloriesBurned': caloriesBurned,
+      'exerciseDetails': exerciseDetails,
+      'difficulty': difficulty,
+      'restBetweenSets': restBetweenSets,
     };
   }
 
@@ -48,7 +64,7 @@ class WorkoutHistory {
       id: map['id'] ?? '',
       workoutName: map['workoutName'] ?? '',
       exerciseName: map['exerciseName'] ?? '',
-      date: (map['date'] as Timestamp).toDate(),
+      date: DateTime.tryParse(map['date']) ?? DateTime.now(),
       setsCompleted: map['setsCompleted'] ?? 0,
       totalSets: map['totalSets'] ?? 0,
       repsPerSet: map['repsPerSet'] ?? 0,
@@ -56,9 +72,43 @@ class WorkoutHistory {
       duration: map['duration'] ?? 0,
       musclesWorked: List<String>.from(map['musclesWorked'] ?? []),
       notes: map['notes'] ?? '',
+      weight: (map['weight'] ?? 0.0).toDouble(),
+      caloriesBurned: (map['caloriesBurned'] ?? 0.0).toDouble(),
+      exerciseDetails: Map<String, dynamic>.from(map['exerciseDetails'] ?? {}),
+      difficulty: map['difficulty'] ?? 'medium',
+      restBetweenSets: map['restBetweenSets'] ?? 60,
     );
+  }
+
+  @override
+  String toString() {
+    return 'WorkoutHistory(id: $id, workoutName: $workoutName, exerciseName: $exerciseName, date: $date, setsCompleted: $setsCompleted, totalSets: $totalSets, repsPerSet: $repsPerSet, status: $status, duration: $duration, musclesWorked: $musclesWorked, notes: $notes, weight: $weight, caloriesBurned: $caloriesBurned, difficulty: $difficulty)';
   }
 
   double get progressPercentage => (setsCompleted / totalSets) * 100;
   bool get isCompleted => status == 'completed';
+
+  // New helper methods
+  double get volumePerSet => weight * repsPerSet;
+  double get totalVolume => volumePerSet * setsCompleted;
+
+  // Calculate estimated one rep max using Brzycki formula
+  double get estimatedOneRepMax {
+    if (weight <= 0 || repsPerSet <= 0) return 0;
+    return weight * (36 / (37 - repsPerSet));
+  }
+
+  // Get a color based on the difficulty rating
+  String get difficultyColor {
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        return '#4CAF50'; // Green
+      case 'medium':
+        return '#FFC107'; // Amber
+      case 'hard':
+        return '#F44336'; // Red
+      default:
+        return '#9E9E9E'; // Grey
+    }
+  }
 }

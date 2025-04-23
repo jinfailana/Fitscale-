@@ -32,16 +32,21 @@ class _SummaryPageState extends State<SummaryPage> {
   double userWeight = 0.0;
   List<WorkoutHistory> _recentWorkouts = [];
   bool _isLoading = true;
-  final WorkoutHistoryService _historyService = WorkoutHistoryService();
+  late final WorkoutHistoryService _historyService;
   final DietService _dietService = DietService();
   String? _selectedDietPlanId;
   DietPlan? _selectedDietPlan;
   bool _loadingDiet = true;
-  final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
+  final GlobalKey<CustomNavBarState> _navbarKey =
+      GlobalKey<CustomNavBarState>();
 
   @override
   void initState() {
     super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _historyService = WorkoutHistoryService(userId: user.uid);
+    }
     _fetchUserData();
     _loadRecentWorkouts();
     _loadSelectedDiet();
@@ -104,11 +109,11 @@ class _SummaryPageState extends State<SummaryPage> {
   Future<void> _loadSelectedDiet() async {
     try {
       setState(() => _loadingDiet = true);
-      
+
       // Get the selected diet plan ID
       final selectedDietPlanId = await _dietService.getSelectedDietPlan();
       _selectedDietPlanId = selectedDietPlanId;
-      
+
       // If user has a selected diet, get the diet plan details
       if (selectedDietPlanId != null) {
         final dietPlans = await _dietService.getDietRecommendations();
@@ -116,7 +121,7 @@ class _SummaryPageState extends State<SummaryPage> {
           (plan) => plan.id == selectedDietPlanId,
           orElse: () => dietPlans.first,
         );
-        
+
         setState(() {
           _selectedDietPlan = selectedPlan;
           _loadingDiet = false;
@@ -353,7 +358,7 @@ class _SummaryPageState extends State<SummaryPage> {
             setState(() {
               _selectedIndex = 0;
             });
-            
+
             // This will update the navbar highlight
             if (_navbarKey.currentState != null) {
               _navbarKey.currentState!.handleLogoClick(context);
@@ -454,13 +459,11 @@ class _SummaryPageState extends State<SummaryPage> {
                                       decoration: BoxDecoration(
                                         color: const Color.fromRGBO(
                                             223, 77, 15, 0.2),
-                                        borderRadius:
-                                            BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: const Icon(
                                         Icons.fitness_center,
-                                        color: Color.fromRGBO(
-                                            223, 77, 15, 1.0),
+                                        color: Color.fromRGBO(223, 77, 15, 1.0),
                                         size: 24,
                                       ),
                                     ),
@@ -685,7 +688,7 @@ class _SummaryPageState extends State<SummaryPage> {
                       ],
                     ),
                   ),
-                  
+
                   // Diet image
                   Container(
                     width: 60,

@@ -142,10 +142,16 @@ class _RecommendationsPageState extends State<RecommendationsPage>
       // Check if workout exists before attempting to add
       if (await _historyService.isWorkoutInUserList(workout.name)) {
         if (mounted) {
+          // Instead of showing error, navigate to My Workouts tab
+          setState(() {
+            selectedTabIndex = 1; // Switch to My Workouts tab
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Workout already in your list'),
-              backgroundColor: Colors.red,
+              content: Text(
+                  'Workout is already in your list. Switched to My Workouts tab.'),
+              backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+              duration: Duration(seconds: 2),
             ),
           );
         }
@@ -157,8 +163,7 @@ class _RecommendationsPageState extends State<RecommendationsPage>
       setState(() {
         _workoutExistence[workout.name] = true;
         myWorkouts.add(workout);
-        // Switch to My Workouts tab
-        selectedTabIndex = 1;
+        selectedTabIndex = 1; // Switch to My Workouts tab
       });
 
       if (mounted) {
@@ -166,6 +171,7 @@ class _RecommendationsPageState extends State<RecommendationsPage>
           const SnackBar(
             content: Text('Workout added to your list'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -174,11 +180,205 @@ class _RecommendationsPageState extends State<RecommendationsPage>
       await _fetchMyWorkouts();
       await _loadWorkoutExistence();
     } catch (e) {
+      print('Error adding workout: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
+          const SnackBar(
+            content: Text('Failed to add workout. Please try again.'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool?> _showRemoveConfirmationDialog(WorkoutPlan workout) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(
+              color: Color.fromRGBO(223, 77, 15, 1.0),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Warning Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.warning_rounded,
+                    color: Colors.red,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Title
+                const Text(
+                  'Remove Workout?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Subtitle
+                Text(
+                  'This will remove "${workout.name}" from your workouts and reset all progress. This action cannot be undone.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Cancel Button
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: const BorderSide(
+                              color: Colors.white24,
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Remove Button
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: Colors.red.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: Colors.red.withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Remove',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleRemoveWorkout(WorkoutPlan workout) async {
+    // Show confirmation dialog first
+    final bool? shouldRemove = await _showRemoveConfirmationDialog(workout);
+    if (shouldRemove != true) return;
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Reset all exercise data and remove from workouts collection
+      final workoutRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('workouts')
+          .doc(workout.name);
+
+      // Create a map of exercises with reset progress
+      final resetExercisesMap = {
+        for (var exercise in workout.exercises)
+          exercise.name: {
+            'name': exercise.name,
+            'sets': exercise.sets,
+            'reps': exercise.reps,
+            'rest': exercise.rest,
+            'musclesWorked': exercise.musclesWorked,
+            'instructions': exercise.instructions,
+            'imageHtml': exercise.imageHtml,
+            'iconCode': exercise.icon.codePoint,
+            'setsCompleted': 0,
+            'isCompleted': false,
+            'lastCompleted': null,
+          }
+      };
+
+      // Update the document with reset data and isInMyWorkouts flag
+      await workoutRef.set({
+        'name': workout.name,
+        'description': workout.description,
+        'icon': workout.icon.codePoint,
+        'exercises': resetExercisesMap,
+        'isInMyWorkouts': false,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      });
+
+      // Update local state
+      setState(() {
+        _workoutExistence[workout.name] = false;
+        myWorkouts.removeWhere((w) => w.name == workout.name);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Workout removed from your list'),
+            backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // Refresh the workout lists
+      await _fetchMyWorkouts();
+      await _loadWorkoutExistence();
+    } catch (e) {
+      print('Error removing workout: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to remove workout. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -712,7 +912,7 @@ class _RecommendationsPageState extends State<RecommendationsPage>
                                             curve: Curves.easeInOut,
                                             child: TextButton(
                                               onPressed: () =>
-                                                  _handleAddWorkout(plan),
+                                                  _handleRemoveWorkout(plan),
                                               style: TextButton.styleFrom(
                                                 backgroundColor:
                                                     Colors.red.withOpacity(0.1),

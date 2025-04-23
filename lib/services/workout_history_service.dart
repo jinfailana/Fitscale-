@@ -121,6 +121,12 @@ class WorkoutHistoryService {
       final exerciseId =
           '${workout.name}_${exercise.name}_${now.millisecondsSinceEpoch}';
 
+      // Parse sets and reps safely
+      final totalSets =
+          int.tryParse(exercise.sets.replaceAll(RegExp(r'[^0-9]'), '')) ?? 3;
+      final repsPerSet =
+          int.tryParse(exercise.reps.replaceAll(RegExp(r'[^0-9]'), '')) ?? 12;
+
       // Create workout history entry
       final workoutHistory = WorkoutHistory(
         id: exerciseId,
@@ -128,14 +134,18 @@ class WorkoutHistoryService {
         exerciseName: exercise.name,
         date: now,
         setsCompleted: completedSets,
-        totalSets: int.parse(exercise.sets),
-        repsPerSet: int.parse(exercise.reps),
-        status: completedSets >= int.parse(exercise.sets)
-            ? 'completed'
-            : 'in_progress',
+        totalSets: totalSets,
+        repsPerSet: repsPerSet,
+        status: completedSets >= totalSets ? 'completed' : 'in_progress',
         duration: 0, // You can add actual duration if tracked
         musclesWorked: exercise.musclesWorked,
         notes: notes,
+        // Add default values for new fields
+        weight: 0.0,
+        caloriesBurned: 0.0,
+        exerciseDetails: {},
+        difficulty: 'medium',
+        restBetweenSets: 60,
       );
 
       // Save to workout_history collection
@@ -146,14 +156,14 @@ class WorkoutHistoryService {
           .doc(exerciseId)
           .set(workoutHistory.toMap());
 
-      // Create exercise history document
+      // Create exercise history document with safe parsing
       final exerciseHistoryData = {
         'exerciseId': exerciseId,
         'exerciseName': exercise.name,
         'workoutTitle': workout.name,
         'setsCompleted': completedSets,
-        'totalSets': exercise.sets,
-        'reps': exercise.reps,
+        'totalSets': totalSets,
+        'reps': repsPerSet,
         'musclesWorked': exercise.musclesWorked,
         'notes': notes,
         'timestamp': now.toIso8601String(),
@@ -162,18 +172,16 @@ class WorkoutHistoryService {
         'month': now.month,
         'year': now.year,
         'userId': user.uid,
-        'volume': completedSets * (int.tryParse(exercise.reps) ?? 0),
-        'status': completedSets >= int.parse(exercise.sets)
-            ? 'completed'
-            : 'in_progress',
+        'volume': completedSets * repsPerSet,
+        'status': completedSets >= totalSets ? 'completed' : 'in_progress',
       };
 
-      // Save to exerciseHistory collection
+      // Save to exerciseHistory collection with proper path structure
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('exerciseHistory')
-          .doc(exerciseId)
+          .doc('${workout.name}_${now.millisecondsSinceEpoch}')
           .set(exerciseHistoryData);
 
       // Update recent workouts
@@ -190,7 +198,7 @@ class WorkoutHistoryService {
           'exerciseId': exerciseId,
           'exerciseName': exercise.name,
           'setsCompleted': completedSets,
-          'totalSets': exercise.sets,
+          'totalSets': totalSets,
           'timestamp': now.toIso8601String(),
           'date': Timestamp.fromDate(now),
         }
@@ -205,11 +213,11 @@ class WorkoutHistoryService {
             'exerciseId': exerciseId,
             'name': exercise.name,
             'setsCompleted': completedSets,
-            'sets': exercise.sets,
-            'isCompleted': completedSets >= int.parse(exercise.sets),
+            'sets': totalSets.toString(),
+            'isCompleted': completedSets >= totalSets,
             'lastCompleted': now.toIso8601String(),
             'musclesWorked': exercise.musclesWorked,
-            'reps': exercise.reps,
+            'reps': repsPerSet.toString(),
             'instructions': exercise.instructions,
             'imageHtml': exercise.imageHtml,
             'rest': exercise.rest,
@@ -378,9 +386,17 @@ class WorkoutHistoryService {
         'lastUpdated': now.toIso8601String(),
       }, SetOptions(merge: true));
 
-      // Log the progress update
+      // Log the progress update with sanitized document ID
+      final timestamp = now.millisecondsSinceEpoch.toString();
+      final sanitizedWorkoutName = workoutName
+          .replaceAll(RegExp(r'[^\w\s-]'), '')
+          .replaceAll(RegExp(r'\s+'), '_');
+      final sanitizedExerciseName = exerciseName
+          .replaceAll(RegExp(r'[^\w\s-]'), '')
+          .replaceAll(RegExp(r'\s+'), '_');
       final exerciseId =
-          '${workoutName}_${exerciseName}_${now.millisecondsSinceEpoch}';
+          '${sanitizedWorkoutName}_${sanitizedExerciseName}_$timestamp';
+
       await _firestore
           .collection('users')
           .doc(user.uid)

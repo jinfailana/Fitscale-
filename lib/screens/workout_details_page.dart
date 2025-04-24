@@ -44,6 +44,7 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
         if (mounted) {
           setState(() {
             _isLoading = false;
+            _isInMyWorkouts = false;
           });
         }
         return;
@@ -63,6 +64,12 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
           setState(() {
             _isLoading = false;
             _isInMyWorkouts = false;
+            // Reset exercise progress when workout is not in My Workouts
+            for (var exercise in _workout.exercises) {
+              exercise.setsCompleted = 0;
+              exercise.isCompleted = false;
+              exercise.lastCompleted = null;
+            }
           });
         }
         return;
@@ -75,13 +82,19 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
           setState(() {
             _isLoading = false;
             _isInMyWorkouts = false;
+            // Reset exercise progress when workout data is invalid
+            for (var exercise in _workout.exercises) {
+              exercise.setsCompleted = 0;
+              exercise.isCompleted = false;
+              exercise.lastCompleted = null;
+            }
           });
         }
         return;
       }
 
       // Check if workout is in user's list
-      _isInMyWorkouts = true;
+      _isInMyWorkouts = workoutData['isInMyWorkouts'] as bool? ?? false;
 
       // Get exercises data
       final exercisesData = workoutData['exercises'] as Map<String, dynamic>?;
@@ -90,6 +103,12 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
         if (mounted) {
           setState(() {
             _isLoading = false;
+            // Reset exercise progress when no exercise data is found
+            for (var exercise in _workout.exercises) {
+              exercise.setsCompleted = 0;
+              exercise.isCompleted = false;
+              exercise.lastCompleted = null;
+            }
           });
         }
         return;
@@ -124,6 +143,13 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isInMyWorkouts = false;
+          // Reset exercise progress on error
+          for (var exercise in _workout.exercises) {
+            exercise.setsCompleted = 0;
+            exercise.isCompleted = false;
+            exercise.lastCompleted = null;
+          }
         });
       }
     }
@@ -328,8 +354,7 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                   const SizedBox(height: 16),
                                   ..._workout.exercises.map((exercise) =>
                                       GestureDetector(
-                                        onTap: (!widget.isFromMyWorkouts &&
-                                                !_isInMyWorkouts)
+                                        onTap: !_isInMyWorkouts
                                             ? () {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
@@ -378,9 +403,7 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                                       exercise),
                                               width: 2,
                                             ),
-                                            gradient: (!widget
-                                                        .isFromMyWorkouts &&
-                                                    !_isInMyWorkouts)
+                                            gradient: !_isInMyWorkouts
                                                 ? const LinearGradient(
                                                     colors: [
                                                       Color.fromRGBO(

@@ -28,6 +28,16 @@ class _WorkoutCardState extends State<WorkoutCard> {
   }
 
   @override
+  void didUpdateWidget(WorkoutCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isInMyWorkouts != widget.isInMyWorkouts) {
+      setState(() {
+        _isInMyWorkouts = widget.isInMyWorkouts;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Card(
       color: const Color.fromRGBO(28, 28, 30, 1.0),
@@ -51,7 +61,9 @@ class _WorkoutCardState extends State<WorkoutCard> {
             ),
           ).then((_) {
             if (mounted) {
-              setState(() {});
+              setState(() {
+                _isInMyWorkouts = widget.isInMyWorkouts;
+              });
             }
           });
         },

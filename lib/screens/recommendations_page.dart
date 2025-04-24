@@ -352,6 +352,13 @@ class _RecommendationsPageState extends State<RecommendationsPage>
         'lastUpdated': DateTime.now().toIso8601String(),
       });
 
+      // Reset the workout's exercise progress in memory
+      for (var exercise in workout.exercises) {
+        exercise.setsCompleted = 0;
+        exercise.isCompleted = false;
+        exercise.lastCompleted = null;
+      }
+
       // Update local state
       setState(() {
         _workoutExistence[workout.name] = false;

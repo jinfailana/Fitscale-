@@ -1,55 +1,50 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart'; // Import the Firebase core package
-import 'signup.dart'; // Import the signup page
-import 'firstlogin.dart'; // Import the login page
-import 'select_gender.dart'; // Import the select gender page
-// Add this import
-// Import the select gender page
-import 'set_goal.dart'; // Import your SetGoalPage
-import 'birth_year.dart'; // Import the birth year page
-import 'set_height.dart'; // Import the set height page
+import 'package:firebase_core/firebase_core.dart';
+import 'signup.dart';
+import 'firstlogin.dart';
+import 'select_gender.dart';
+import 'set_goal.dart';
+import 'birth_year.dart';
+import 'set_height.dart';
 import 'set_weight.dart';
 import 'set_weight_mannually.dart';
 import 'splash_screen.dart';
-//import user preferences form
 import 'screens/recommendations_page.dart';
-
-import 'pref_workout.dart'; // Import the pref workout page
-import 'gym_equipment.dart'; // Import the gym equipment page
-import 'work_place.dart'; // Import the work place page
-import 'allset_page.dart'; // Import the all set page
+import 'pref_workout.dart';
+import 'gym_equipment.dart';
+import 'work_place.dart';
+import 'allset_page.dart';
 import 'SummaryPage/summary_page.dart';
-//import 'SummaryPage/step_tracker_page.dart';
 import 'SummaryPage/steps_page.dart';
 import 'SummaryPage/measure_weight.dart';
 import 'auth_check.dart';
 import 'intro_screen.dart';
-import 'models/user_model.dart'; // Import your UserModel
+import 'models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'screens/start_workout_page.dart';
+import 'screens/workout_tracker_page.dart';
+import 'screens/workout_history_page.dart';
+import 'services/steps_tracking_service.dart';
 
-class AuthenticationWrapper extends StatelessWidget {
-  const AuthenticationWrapper({super.key});
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase with default options
+  await Firebase.initializeApp();
+  
+  // Initialize the steps tracking service
+  final stepsService = StepsTrackingService();
+  await stepsService.initialize();
+  
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        // If the snapshot has user data, then they're already signed in
-        if (snapshot.hasData) {
-          return const SummaryPage(); // Navigate to Summary page
-        }
-        // Otherwise, they're not signed in
-        return const LoginPage(); // Or your initial page (Login/Signup)
-      },
-    );
-  }
-}
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(MaterialApp(
+    return MaterialApp(
     home: const SplashScreen(),
     debugShowCheckedModeBanner: false,
     title: 'FitScale',
@@ -70,18 +65,19 @@ Future<void> main() async {
       '/summary': (context) => const SummaryPage(),
       '/steps': (context) => const StepsPage(),
       '/measure_weight': (context) => const MeasureWeightPage(),
+        '/start_workout': (context) => const StartWorkoutPage(),
+        '/workout_history': (context) => const WorkoutHistoryPage(),
       '/workouts': (context) => RecommendationsPage(
             user: UserModel(
-              id: 'user_id', // Replace with actual user data
-              email: 'user@example.com', // Replace with actual user data
-              gender: 'Male', // Replace with actual user data
-              goal: 'Build Muscle', // Replace with actual user data
-              age: 25, // Replace with actual user data
-              weight: 70.0, // Replace with actual user data
-              height: 175.0, // Replace with actual user data
-              activityLevel:
-                  'Moderately Active', // Replace with actual user data
-              workoutPlace: 'Gym', // Replace with actual user data
+                id: 'user_id',
+                email: 'user@example.com',
+                gender: 'Male',
+                goal: 'Build Muscle',
+                age: 25,
+                weight: 70.0,
+                height: 175.0,
+                activityLevel: 'Moderately Active',
+                workoutPlace: 'Gym',
               setupCompleted: true,
               currentSetupStep: 'completed',
               createdAt: DateTime.now(),
@@ -90,5 +86,6 @@ Future<void> main() async {
           ),
       '/intro': (context) => const IntroScreen(),
     },
-  ));
+    );
+  }
 }

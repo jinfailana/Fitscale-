@@ -20,6 +20,7 @@ import '../screens/recommendations_page.dart';
 import '../models/user_model.dart';
 import 'manage_acc.dart';
 import 'package:flutter/rendering.dart' as ui;
+import '../services/steps_tracking_service.dart';
 
 class StepsPage extends StatefulWidget {
   const StepsPage({super.key});
@@ -33,10 +34,12 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? _userId;
+  StreamSubscription<DocumentSnapshot>? _userDataSubscription;
+  DateTime? _lastStepUpdateTime;
+  int _lastSavedSteps = 0;
 
-  // Pedometer streams
-  StreamSubscription<StepCount>? _stepCountSubscription;
-  StreamSubscription<PedestrianStatus>? _pedestrianStatusSubscription;
+  // Step tracking service
+  final StepsTrackingService _stepsService = StepsTrackingService();
 
   // Step tracking variables
   int _steps = 0;
@@ -46,110 +49,219 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   String _status = 'unknown';
   bool _hasSetGoal = false;
   int _goal = 0;
-  DateTime? _lastGoalSetDate;
-
-  final StepGoalService _stepGoalService = StepGoalService();
-
-  int _initialSteps = 0;
-  bool _isFirstReading = true;
-
-  // Add to class variables
   bool _goalCompleted = false;
-
-  // Add this line
-  int _selectedIndex = 0; // Default to 0 for Summary page
+  int _selectedIndex = 0;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeTracking();
+    _loadLastSavedData();
   }
 
   @override
   void dispose() {
+    _userDataSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    _stepCountSubscription?.cancel();
-    _pedestrianStatusSubscription?.cancel();
+    _saveCurrentSteps();
     super.dispose();
   }
 
-  Future<void> _initializeTracking() async {
+  Future<void> _loadLastSavedData() async {
     try {
       final user = _auth.currentUser;
-      if (user != null) {
-        _userId = user.uid;
-        await _initializeUserData();
-        await _requestPermissions();
-        await _initializePedometer();
+      if (user == null) {
+        print('No user logged in');
+        return;
       }
-    } catch (e) {
-      print('Error initializing tracking: $e');
-      _showError('Failed to initialize tracking');
-    }
-  }
 
-  Future<void> _initializeUserData() async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        _userId = user.uid;
+      _userId = user.uid;
 
-        // Get the last saved steps for today
-        final userDoc = await _firestore.collection('users').doc(_userId).get();
-        final data = userDoc.data();
+      // Get today's date
+      final now = DateTime.now();
+      final today = DateFormat('yyyy-MM-dd').format(now);
 
-        if (data != null) {
-          final lastUpdateDate = data['date'] as Timestamp?;
-          final today = DateTime.now();
-          final todayDate = DateTime(today.year, today.month, today.day);
-
-          // If last update was today, use those steps
-          if (lastUpdateDate != null &&
-              lastUpdateDate.toDate().isAtSameMomentAs(todayDate)) {
+      // Get user's document
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        final lastUpdateTime = data['last_updated'] as Timestamp?;
+        
+        // Check if we have data from today
+        if (lastUpdateTime != null) {
+          final lastUpdateDate = DateFormat('yyyy-MM-dd').format(lastUpdateTime.toDate());
+          
+          if (lastUpdateDate == today) {
+            // Use today's data
             setState(() {
               _steps = data['current_steps'] ?? 0;
-              _calories = data['calories'] ?? 0;
-              _distance = (data['distance'] ?? 0).toDouble();
+              _lastSavedSteps = _steps;
+              _lastStepUpdateTime = lastUpdateTime.toDate();
             });
           } else {
-            // If it's a new day, start from 0
-            await _firestore.collection('users').doc(_userId).set({
-              'current_steps': 0,
-              'calories': 0,
-              'distance': 0,
-              'last_updated': FieldValue.serverTimestamp(),
-              'date': Timestamp.fromDate(todayDate),
-            }, SetOptions(merge: true));
+            // It's a new day, start from 0 but save yesterday's data
+            await _saveStepHistory(data['current_steps'] ?? 0, lastUpdateDate);
+            setState(() {
+              _steps = 0;
+              _lastSavedSteps = 0;
+              _lastStepUpdateTime = now;
+            });
           }
         }
 
-        await _checkExistingGoal();
+        // Load goal regardless of date
+        setState(() {
+          _goal = data['step_goal'] ?? 0;
+          _hasSetGoal = data['step_goal'] != null && data['step_goal'] > 0;
+        });
       }
+
+      // Setup listeners and initialize step tracking
+      _setupUserDataListener();
+      await _initializeStepTracking();
+      
     } catch (e) {
-      print('Error initializing user data: $e');
+      print('Error loading last saved data: $e');
     }
   }
 
-  Future<void> _checkExistingGoal() async {
+  Future<void> _saveStepHistory(int steps, String date) async {
     try {
-      final doc = await _firestore.collection('users').doc(_userId).get();
-      if (doc.exists) {
-        final data = doc.data();
-        if (data?['step_goal'] != null) {
-          setState(() {
-            _hasSetGoal = true;
-            _goal = data?['step_goal'];
-          });
+      final user = _auth.currentUser;
+      if (user == null) return;
 
-          // Check last goal set date
-          if (data?['goal_set_date'] != null) {
-            _lastGoalSetDate = (data?['goal_set_date'] as Timestamp).toDate();
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('daily_steps')
+          .doc(date)
+          .set({
+        'steps': steps,
+        'date': date,
+        'timestamp': FieldValue.serverTimestamp(),
+        'user_id': user.uid,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving step history: $e');
+    }
+  }
+
+  Future<void> _saveCurrentSteps() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      await _firestore.collection('users').doc(user.uid).update({
+        'current_steps': _steps,
+        'last_updated': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error saving current steps: $e');
+    }
+  }
+
+  void _setupUserDataListener() {
+    // Cancel any existing subscription
+    _userDataSubscription?.cancel();
+
+    final user = _auth.currentUser;
+    if (user != null) {
+      _userId = user.uid;
+      
+      // Listen to user document changes
+      _userDataSubscription = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((snapshot) {
+        if (snapshot.exists && mounted) {
+          final data = snapshot.data()!;
+          final lastUpdateTime = data['last_updated'] as Timestamp?;
+          
+          setState(() {
+            // Only update steps if the Firebase data is newer
+            if (lastUpdateTime != null && (_lastStepUpdateTime == null || 
+                lastUpdateTime.toDate().isAfter(_lastStepUpdateTime!))) {
+              _steps = data['current_steps'] ?? _steps;
+              _lastSavedSteps = _steps;
+              _lastStepUpdateTime = lastUpdateTime.toDate();
+            }
+            
+            _goal = data['step_goal'] ?? 0;
+            _hasSetGoal = data['step_goal'] != null && data['step_goal'] > 0;
+            _updateStats();
+          });
+        }
+      });
+    }
+  }
+
+  Future<void> _initializeStepTracking() async {
+    try {
+      if (_isInitialized) return;
+      
+      // Request necessary permissions
+      await _requestPermissions();
+      
+      final user = _auth.currentUser;
+      if (user == null) {
+        print('No user logged in');
+        return;
+      }
+
+      // Initialize the service
+      await _stepsService.initialize();
+      
+      // Subscribe to real-time step updates
+      _stepsService.stepsStream.listen((newSteps) {
+        if (mounted) {
+          setState(() {
+            // Calculate the difference and add to last saved steps
+            final stepDiff = newSteps - _lastSavedSteps;
+            if (stepDiff > 0) {
+              _steps = _lastSavedSteps + stepDiff;
+              _updateStats();
+              // Save to Firebase periodically
+              _saveCurrentSteps();
+            }
+          });
+        }
+      });
+      
+      // Setup goal callbacks
+      _stepsService.onGoalChanged = (goal) {
+        if (mounted) {
+          setState(() {
+            _goal = goal;
+            _hasSetGoal = goal > 0;
+            _updateStats();
+          });
+        }
+      };
+      
+      _stepsService.onGoalCompleted = (completed) {
+        if (mounted) {
+          setState(() {
+            _goalCompleted = completed;
+          });
+          
+          if (completed) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Congratulations! You reached your goal of $_goal steps!'),
+                backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+              ),
+            );
           }
         }
-      }
+      };
+
+      _isInitialized = true;
     } catch (e) {
-      print('Error checking goal: $e');
+      print('Error initializing step tracking: $e');
+      _showError('Failed to initialize step tracking');
     }
   }
 
@@ -192,129 +304,82 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _initializePedometer() async {
-    try {
-      _stepCountSubscription?.cancel();
-      _pedestrianStatusSubscription?.cancel();
-
-      // Reset step counting variables
-      _isFirstReading = true;
-      _initialSteps = 0;
-      _steps = 0;
-
-      _stepCountSubscription = Pedometer.stepCountStream.listen(
-        onStepCount,
-        onError: (error) => _handleSensorError('Step counter', error),
-        cancelOnError: false,
-      );
-
-      _pedestrianStatusSubscription = Pedometer.pedestrianStatusStream.listen(
-        onPedestrianStatusChanged,
-        onError: (error) => _handleSensorError('Activity detection', error),
-        cancelOnError: false,
-      );
-    } catch (e) {
-      print('Error initializing pedometer: $e');
-      _handleSensorError('Pedometer', e);
-    }
-  }
-
-  void onStepCount(StepCount event) async {
-    if (_isFirstReading) {
-      _initialSteps = event.steps;
-      _isFirstReading = false;
-    }
-
-    setState(() {
-      // Calculate actual steps taken since app started
-      _steps = event.steps - _initialSteps;
-      _updateStats();
-    });
-
-    await _saveStepsToFirestore();
-  }
-
-  void onPedestrianStatusChanged(PedestrianStatus event) {
-    setState(() {
-      _status = event.status;
-    });
-  }
-
   void _updateStats() {
+    if (!mounted) return;
+    
     setState(() {
-      // Calculate percentage if goal is set, otherwise show 0
+      // Calculate percentage of goal
       _percentage = _hasSetGoal ? (_steps / _goal * 100).clamp(0, 100) : 0;
 
-      // Update calories and distance based on actual steps
-      // Average calorie burn per step (varies by person)
-      _calories = (_steps * 0.04).round();
-      // Average stride length (in km) - can be adjusted based on user height
-      _distance = _steps * 0.0007;
+      // Get user weight for more accurate calorie calculation
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Fetch user weight asynchronously
+        _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get()
+            .then((doc) {
+          if (doc.exists && mounted) {
+            final data = doc.data();
+            if (data != null && data['weight'] != null) {
+              final userWeight = (data['weight'] as num).toDouble();
+              
+              // Update calories with weight-based calculation
+              setState(() {
+                _calories = _stepsService.calculateCaloriesBurned(_steps, userWeight);
+              });
+            }
+          }
+        }).catchError((e) {
+          debugPrint('Error fetching user weight: $e');
+        });
+      }
+      
+      // Initialize with default calculation until weight data is fetched
+      _calories = _stepsService.calculateCaloriesBurned(_steps, null);
+      _distance = _stepsService.calculateDistance(_steps);
     });
   }
 
-  Future<void> _saveStepsToFirestore() async {
-    try {
-      final result = await InternetAddress.lookup('google.com');
-      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
+  void _showSetGoalBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => GoalSelectionSheet(
+        onGoalSelected: (selectedGoal) async {
+          final user = _auth.currentUser;
+          if (user == null) return;
 
-        // Check if goal is completed
-        if (_hasSetGoal && _steps >= _goal && !_goalCompleted) {
-          setState(() {
-            _goalCompleted = true;
-          });
-          // Record completed goal
-          await _firestore.collection('step_history').add({
-            'user_id': _userId,
-            'steps': _steps,
-            'goal': _goal,
-            'date': Timestamp.fromDate(today),
-            'completed': true,
-          });
+          try {
+            // Update goal in Firestore
+            await _firestore.collection('users').doc(user.uid).update({
+              'step_goal': selectedGoal,
+              'goal_set_date': FieldValue.serverTimestamp(),
+              'user_id': user.uid,
+            });
 
-          // Allow setting new goal
-          setState(() {
-            _hasSetGoal = false;
-            _goalCompleted = false;
-          });
+            // Update local state
+            if (mounted) {
+              setState(() {
+                _goal = selectedGoal;
+                _hasSetGoal = true;
+                _updateStats();
+              });
+            }
 
-          // Show completion message
-          if (mounted) {
+            // Update step service
+            await _stepsService.setStepGoal(selectedGoal);
+          } catch (e) {
+            print('Error setting goal: $e');
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    'Congratulations! You\'ve reached your goal of $_goal steps!'),
-                backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-              ),
+              const SnackBar(content: Text('Failed to set goal. Please try again.')),
             );
           }
-        }
-
-        // Save current stats
-        await _firestore.collection('users').doc(_userId).update({
-          'current_steps': _steps,
-          'calories': _calories,
-          'distance': _distance,
-          'last_updated': FieldValue.serverTimestamp(),
-          'date': Timestamp.fromDate(today),
-        });
-
-        // Save daily progress at end of day or when app closes
-        if (_steps > 0) {
-          await _firestore.collection('step_history').add({
-            'user_id': _userId,
-            'steps': _steps,
-            'goal': _goal,
-            'date': Timestamp.fromDate(today),
-            'completed': _goalCompleted,
-          });
-        }
-      }
-    } catch (e) {
-      print('No internet connection or error saving: $e');
-    }
+        },
+      ),
+    );
   }
 
   void _onItemTapped(int index) {
@@ -604,59 +669,6 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _showGoalSelectionSheet() async {
-    try {
-      // Get user's BMI from Firestore
-      final userDoc = await _firestore.collection('users').doc(_userId).get();
-      final userData = userDoc.data();
-
-      double? bmi;
-      if (userData != null &&
-          userData['weight'] != null &&
-          userData['height'] != null) {
-        final weight = (userData['weight'] as num).toDouble();
-        final height =
-            (userData['height'] as num).toDouble() / 100; // convert to meters
-        bmi = weight / (height * height);
-      }
-
-      // Get recommended goals based on BMI
-      final recommendedGoals =
-          await _stepGoalService.getRecommendedStepGoals(bmi ?? 25);
-
-      final selectedGoal = await showModalBottomSheet<int>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => GoalSelectionSheet(
-          recommendedGoals: recommendedGoals,
-        ),
-      );
-
-      if (selectedGoal != null) {
-        final now = DateTime.now();
-        setState(() {
-          _hasSetGoal = true;
-          _goal = selectedGoal;
-          _lastGoalSetDate = now;
-          _updateStats();
-        });
-
-        try {
-          await _firestore.collection('users').doc(_userId).update({
-            'step_goal': selectedGoal,
-            'goal_set_date': Timestamp.fromDate(now),
-          });
-        } catch (e) {
-          print('Error saving goal: $e');
-          _showError('Failed to save goal');
-        }
-      }
-    } catch (e) {
-      print('Error showing goal selection: $e');
-    }
-  }
-
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -764,7 +776,7 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
                       if (!_hasSetGoal) ...[
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: _showGoalSelectionSheet,
+                          onPressed: _showSetGoalBottomSheet,
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
                                 const Color.fromRGBO(223, 77, 15, 1.0),
@@ -853,6 +865,58 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
         ],
       ),
     );
+  }
+
+  // Add this method to show reset confirmation dialog
+  void _showResetConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+        title: const Text(
+          'Reset Steps?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'This will reset your step count to zero. This action cannot be undone.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              _stepsService.resetSteps();
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Steps have been reset'),
+                  backgroundColor: Color.fromRGBO(223, 77, 15, 1.0),
+                ),
+              );
+            },
+            child: const Text(
+              'Reset',
+              style: TextStyle(color: Color(0xFFDF4D0F)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Reinitialize when app is resumed
+      _setupUserDataListener();
+      _initializeStepTracking();
+    }
   }
 }
 

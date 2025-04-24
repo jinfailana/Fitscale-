@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class GoalSelectionSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> recommendedGoals;
+  final Function(int) onGoalSelected;
   
   const GoalSelectionSheet({
     super.key,
-    required this.recommendedGoals,
+    required this.onGoalSelected,
   });
 
   @override
@@ -15,7 +15,15 @@ class GoalSelectionSheet extends StatefulWidget {
 class _GoalSelectionSheetState extends State<GoalSelectionSheet> {
   int? _selectedGoal;
   bool _isCustom = false;
-  final List<int> _customGoals = [1000, 1500, 2000, 2500, 3000, 3500];
+  
+  final List<Map<String, dynamic>> _recommendedGoals = [
+    {'steps': 5000, 'description': 'Start your journey'},
+    {'steps': 7500, 'description': 'Stay active'},
+    {'steps': 10000, 'description': 'Get fit'},
+    {'steps': 12000, 'description': 'Push yourself'},
+  ];
+  
+  final List<int> _customGoals = [1000, 2000, 3000, 5000, 7500, 10000];
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +85,17 @@ class _GoalSelectionSheetState extends State<GoalSelectionSheet> {
           ),
           const SizedBox(height: 20),
           if (!_isCustom) ...[
-            ...widget.recommendedGoals.map((goal) => _buildGoalOption(goal)),
+            ..._recommendedGoals.map((goal) => _buildGoalOption(goal)),
           ] else ...[
             ..._customGoals.map((steps) => _buildCustomGoalOption(steps)),
           ],
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _selectedGoal != null 
-              ? () => Navigator.pop(context, _selectedGoal)
+              ? () {
+                  widget.onGoalSelected(_selectedGoal!);
+                  Navigator.pop(context);
+                }
               : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),

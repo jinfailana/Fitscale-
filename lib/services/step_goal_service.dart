@@ -1,12 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StepGoalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<List<Map<String, dynamic>>> getRecommendedStepGoals(double bmi) async {
     try {
-      // Fetch step goals from Firebase
+      final user = _auth.currentUser;
+      if (user == null) throw Exception('No user logged in');
+
+      // Fetch step goals from Firebase, scoped to user's BMI range
       final QuerySnapshot stepGoalsDoc = await _firestore
+          .collection('users')
+          .doc(user.uid)
           .collection('step_goals')
           .orderBy('min_bmi')
           .get();
@@ -24,15 +31,45 @@ class StepGoalService {
             return {
               'steps': data['steps'],
               'description': data['description'],
+              'user_id': user.uid, // Add user ID for reference
             };
           })
           .toList();
 
-      return goals.isEmpty ? getDefaultStepGoals() : goals;
+      // If no personalized goals exist, create default ones for this user
+      if (goals.isEmpty) {
+        await _createDefaultGoalsForUser(user.uid, bmi);
+        return await getRecommendedStepGoals(bmi); // Retry after creating defaults
+      }
+
+      return goals;
     } catch (e) {
       print('Error fetching step goals: $e');
       return getDefaultStepGoals();
     }
+  }
+
+  Future<void> _createDefaultGoalsForUser(String userId, double bmi) async {
+    final defaultGoals = getDefaultStepGoals();
+    final batch = _firestore.batch();
+
+    for (var goal in defaultGoals) {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('step_goals')
+          .doc();
+
+      batch.set(docRef, {
+        ...goal,
+        'user_id': userId,
+        'min_bmi': bmi - 2, // Create a reasonable BMI range
+        'max_bmi': bmi + 2,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
   }
 
   List<Map<String, dynamic>> getDefaultStepGoals() {

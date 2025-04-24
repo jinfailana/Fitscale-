@@ -17,6 +17,7 @@ import '../models/diet_plan.dart';
 import 'package:intl/intl.dart';
 import '../navigation/custom_navbar.dart';
 import '../utils/custom_page_route.dart';
+import '../services/steps_tracking_service.dart';
 
 class SummaryPage extends StatefulWidget {
   const SummaryPage({super.key});
@@ -25,7 +26,7 @@ class SummaryPage extends StatefulWidget {
   State<SummaryPage> createState() => _SummaryPageState();
 }
 
-class _SummaryPageState extends State<SummaryPage> {
+class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   String username = '';
   String email = '';
@@ -34,9 +35,13 @@ class _SummaryPageState extends State<SummaryPage> {
   bool _isLoading = true;
   final WorkoutHistoryService _historyService = WorkoutHistoryService();
   final DietService _dietService = DietService();
+  final StepsTrackingService _stepsService = StepsTrackingService();
   String? _selectedDietPlanId;
   DietPlan? _selectedDietPlan;
   bool _loadingDiet = true;
+  int _currentSteps = 0;
+  int _stepGoal = 0;
+  double _stepPercentage = 0.0;
   final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
 
   @override
@@ -45,6 +50,33 @@ class _SummaryPageState extends State<SummaryPage> {
     _fetchUserData();
     _loadRecentWorkouts();
     _loadSelectedDiet();
+    _initializeStepTracking();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Resume step tracking when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      _stepsService.resume();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // Don't dispose the step service itself, just remove listeners
+    // This ensures step tracking continues even when summary page is closed
+    if (_stepsService.onStepsChanged != null) {
+      _stepsService.onStepsChanged = null;
+    }
+    if (_stepsService.onGoalChanged != null) {
+      _stepsService.onGoalChanged = null;
+    }
+    if (_stepsService.onGoalCompleted != null) {
+      _stepsService.onGoalCompleted = null;
+    }
+    super.dispose();
   }
 
   Future<void> _fetchUserData() async {
@@ -128,6 +160,53 @@ class _SummaryPageState extends State<SummaryPage> {
       print('Error loading selected diet: $e');
       setState(() => _loadingDiet = false);
     }
+  }
+
+  Future<void> _initializeStepTracking() async {
+    // Initialize the step tracking service
+    await _stepsService.initialize();
+    
+    // Set initial values
+    setState(() {
+      _currentSteps = _stepsService.currentSteps;
+      _stepGoal = _stepsService.goalSteps;
+      _updateStepPercentage();
+    });
+    
+    // Subscribe to the step updates stream for real-time updates
+    _stepsService.stepsStream.listen((steps) {
+      if (mounted) {
+        setState(() {
+          _currentSteps = steps;
+          _updateStepPercentage();
+        });
+      }
+    });
+    
+    // Setup goal-related callbacks
+    _stepsService.onGoalChanged = (goal) {
+      if (mounted) {
+        setState(() {
+          _stepGoal = goal;
+          _updateStepPercentage();
+        });
+      }
+    };
+    
+    _stepsService.onGoalCompleted = (completed) {
+      if (mounted && completed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Congratulations! You reached your step goal of $_stepGoal steps!'),
+            backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+          ),
+        );
+      }
+    };
+  }
+  
+  void _updateStepPercentage() {
+    _stepPercentage = _stepGoal > 0 ? (_currentSteps / _stepGoal * 100).clamp(0.0, 100.0) : 0.0;
   }
 
   void _onItemTapped(int index) {
@@ -398,8 +477,7 @@ class _SummaryPageState extends State<SummaryPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              _buildAnimatedSummaryCard('Set Step Goal',
-                  'Daily goal: No goal yet', Icons.directions_walk),
+              _buildAnimatedStepGoalCard(),
               _buildAnimatedSummaryCard(
                   userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
                   'Current Weight',
@@ -513,6 +591,126 @@ class _SummaryPageState extends State<SummaryPage> {
         showProfileModal: _showProfileModal,
         loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
         key: _navbarKey,
+      ),
+    );
+  }
+
+  Widget _buildAnimatedStepGoalCard() {
+    // Format the step numbers with commas
+    final formattedSteps = NumberFormat('#,###').format(_currentSteps);
+    
+    // Calculate calories based on weight
+    int calories = 0;
+    double distance = 0;
+    
+    // Get calorie and distance data from service
+    calories = _stepsService.calculateCaloriesBurned(_currentSteps, userWeight);
+    distance = _stepsService.calculateDistance(_currentSteps);
+    
+    // Format distance to 2 decimal places
+    final formattedDistance = distance.toStringAsFixed(2);
+    
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          CustomPageRoute(
+            child: const StepsPage(),
+            transitionType: TransitionType.fade,
+          ),
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(50),
+              blurRadius: 5,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      formattedSteps,
+                      style: const TextStyle(
+                        color: Color.fromRGBO(223, 77, 15, 1.0),
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Steps',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ],
+                ),
+                const Icon(
+                  Icons.directions_walk,
+                  color: Color.fromRGBO(223, 77, 15, 1.0),
+                  size: 40,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department,
+                      color: Color.fromRGBO(223, 77, 15, 0.7),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$calories kcal',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.place,
+                      color: Color.fromRGBO(223, 77, 15, 0.7),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$formattedDistance km',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

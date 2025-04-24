@@ -43,6 +43,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   int _stepGoal = 0;
   double _stepPercentage = 0.0;
   final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
+  bool _goalCompleted = false;
 
   @override
   void initState() {
@@ -193,14 +194,28 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
       }
     };
     
-    _stepsService.onGoalCompleted = (completed) {
-      if (mounted && completed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Congratulations! You reached your step goal of $_stepGoal steps!'),
-            backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-          ),
-        );
+    _stepsService.onGoalCompleted = (completed, {int? steps, int? goal}) {
+      if (mounted) {
+        setState(() {
+          _goalCompleted = completed;
+        });
+        
+        if (completed && steps != null && goal != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
+              backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Dismiss',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
+            ),
+          );
+        }
       }
     };
   }

@@ -32,6 +32,7 @@ class StepsTrackingService {
   DateTime? _lastStepTime;
   int _lastStepCount = 0;
   bool _isInitialized = false;
+  DateTime? _lastFirestoreUpdate;
   
   // Timer for periodic updates
   Timer? _updateTimer;
@@ -51,7 +52,7 @@ class StepsTrackingService {
   // Callbacks for UI updates
   Function(int)? onStepsChanged;
   Function(int)? onGoalChanged;
-  Function(bool)? onGoalCompleted;
+  Function(bool, {int steps, int goal})? onGoalCompleted;
   
   /// Initialize the step tracking service
   Future<void> initialize() async {
@@ -66,7 +67,10 @@ class StepsTrackingService {
       // Only initialize once
       if (_isInitialized) return;
       
+      // Load user data first
       await _loadUserData();
+      
+      // Then initialize pedometer
       await _initializePedometerStream();
       
       // Set up periodic updates every 2 seconds to ensure UI stays fresh
@@ -82,7 +86,12 @@ class StepsTrackingService {
       
       // Sync with Firestore every 30 seconds
       _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        _saveStepsToFirestore();
+        // Only update if enough time has passed since last update
+        final now = DateTime.now();
+        final lastUpdate = _lastFirestoreUpdate ?? DateTime.now().subtract(const Duration(minutes: 5));
+        if (now.difference(lastUpdate).inMinutes >= 5) {
+          _updateFirestoreSteps();
+        }
       });
       
       _isInitialized = true;
@@ -112,44 +121,39 @@ class StepsTrackingService {
       
       // Check if we need to reset steps for a new day
       final prefs = await SharedPreferences.getInstance();
-      final prefKey = '${user.uid}_last_step_date'; // Make preference key user-specific
-      final lastRecordedDate = prefs.getString(prefKey);
+      final lastDate = prefs.getString('${user.uid}_last_step_date');
       
-      if (lastRecordedDate != formattedDate) {
-        // It's a new day, save yesterday's data to history
+      if (lastDate != formattedDate) {
+        // It's a new day, save yesterday's data before resetting
         final yesterdaySteps = prefs.getInt('${user.uid}_current_steps') ?? 0;
         if (yesterdaySteps > 0) {
-          await _saveStepHistory(yesterdaySteps, lastRecordedDate);
+          await _saveStepHistory(yesterdaySteps, lastDate);
         }
         
         // Reset steps for new day
-        prefs.setInt('${user.uid}_current_steps', 0);
-        prefs.setString(prefKey, formattedDate);
         _steps = 0;
+        await prefs.setInt('${user.uid}_current_steps', 0);
+        await prefs.setString('${user.uid}_last_step_date', formattedDate);
+        
+        // Reset Firestore steps for new day
+        await _updateFirestoreSteps();
       } else {
-        // Load today's steps from cache
-        _steps = prefs.getInt('${user.uid}_current_steps') ?? 0;
+        // Load today's steps from Firebase
+        final userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final data = userDoc.data()!;
+          _steps = data['current_steps'] ?? 0;
+          debugPrint('Loaded steps from Firebase: $_steps');
+        } else {
+          // If no Firestore data, try to load from cache
+          _steps = prefs.getInt('${user.uid}_current_steps') ?? 0;
+          debugPrint('Loaded steps from cache: $_steps');
+        }
       }
       
-      // Get user's current step data
+      // Get user's step goal
       final stepData = await _userService.getCurrentStepData();
-      _goal = stepData['step_goal'];
-      
-      // Check if Firestore has more recent step data
-      final firestoreSteps = stepData['current_steps'];
-      
-      // Take the maximum of local and firestore steps
-      if (firestoreSteps > _steps) {
-        _steps = firestoreSteps;
-        // Update local cache
-        prefs.setInt('${user.uid}_current_steps', _steps);
-      }
-      
-      // Update goal status
-      _goalCompleted = _steps >= _goal;
-      if (_goal > 0 && onGoalChanged != null) {
-        onGoalChanged!(_goal);
-      }
+      _goal = stepData['step_goal'] ?? 0;
       
       // Update UI immediately
       _stepsController.add(_steps);
@@ -269,6 +273,9 @@ class StepsTrackingService {
       
       // Update user data using UserService
       await _userService.updateUserSteps(steps, calories.toDouble(), distance);
+      _lastFirestoreUpdate = DateTime.now();
+      
+      debugPrint('Saved steps to Firestore: $steps');
     } catch (e) {
       debugPrint('Error saving steps: $e');
       rethrow;
@@ -348,6 +355,8 @@ class StepsTrackingService {
             'private': true,
             'user_id': userId,
           }, SetOptions(merge: true));
+          
+      _lastFirestoreUpdate = DateTime.now();
     } catch (e) {
       debugPrint('Error updating steps in Firestore: $e');
     }
@@ -366,7 +375,7 @@ class StepsTrackingService {
       }
       
       if (onGoalCompleted != null && _goalCompleted) {
-        onGoalCompleted!(_goalCompleted);
+        onGoalCompleted!(true, steps: _steps, goal: _goal);
       }
       
       // Save to Firestore using UserService
@@ -529,25 +538,13 @@ class StepsTrackingService {
       _lastStepTime = now;
       _lastStepCount = event.steps;
       
-      // Load cached steps for today
-      final prefs = await SharedPreferences.getInstance();
-      final cachedSteps = prefs.getInt('current_steps') ?? 0;
-      
-      // If we have cached steps, use them as a base
-      if (cachedSteps > 0) {
-        _steps = cachedSteps;
-      }
-      
-      // Immediately update UI
-      _stepsController.add(_steps);
-      if (onStepsChanged != null) {
-        onStepsChanged!(_steps);
-      }
+      // Keep existing steps from Firebase/cache instead of using pedometer's initial value
+      debugPrint('Initial pedometer reading: ${event.steps}, keeping existing steps: $_steps');
     } else {
       // Calculate time difference between readings
       final timeDiff = now.difference(_lastStepTime!).inMilliseconds;
       
-      // Calculate step difference
+      // Calculate step difference from last reading
       final stepDiff = event.steps - _lastStepCount;
       
       // Update last values
@@ -556,14 +553,18 @@ class StepsTrackingService {
       
       // Apply filters for more accurate step counting
       if (stepDiff > 0) {
-        // Increased steps per second threshold for more responsive updates
-        // Most people can't walk more than 10 steps per second, but this allows for more responsive counting
+        // Validate step count increment
         if (timeDiff > 0 && stepDiff / (timeDiff / 1000) <= 10.0) {
-          // Calculate new step count
-          int newSteps = _steps + stepDiff;
+          // Add the new steps to existing count
+          _steps += stepDiff;
+          debugPrint('Added $stepDiff steps, new total: $_steps');
           
-          // Update steps immediately
-          _steps = newSteps;
+          // Save steps immediately to cache
+          final user = _auth.currentUser;
+          if (user != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('${user.uid}_current_steps', _steps);
+          }
           
           // Update UI immediately using stream
           _stepsController.add(_steps);
@@ -574,15 +575,13 @@ class StepsTrackingService {
           // Check if goal completed
           if (_goal > 0 && _steps >= _goal && !_goalCompleted) {
             _goalCompleted = true;
-            
-            // Notify UI if callback is set
             if (onGoalCompleted != null) {
-              onGoalCompleted!(true);
+              onGoalCompleted!(true, steps: _steps, goal: _goal);
             }
           }
           
-          // Save to cache and update Firestore in background
-          _saveStepsAsync(newSteps);
+          // Save to Firestore
+          _saveStepsAsync(_steps);
         } else {
           debugPrint('Filtered out anomalous step reading: $stepDiff steps in $timeDiff ms');
         }

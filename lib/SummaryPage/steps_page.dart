@@ -82,11 +82,16 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
       final now = DateTime.now();
       final today = DateFormat('yyyy-MM-dd').format(now);
 
-      // Get user's document
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      // Get user's private steps document
+      final userStepsDoc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('private_data')
+          .doc('steps')
+          .get();
       
-      if (userDoc.exists) {
-        final data = userDoc.data()!;
+      if (userStepsDoc.exists) {
+        final data = userStepsDoc.data()!;
         final lastUpdateTime = data['last_updated'] as Timestamp?;
         
         // Check if we have data from today
@@ -102,20 +107,29 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
             });
           } else {
             // It's a new day, start from 0 but save yesterday's data
-            await _saveStepHistory(data['current_steps'] ?? 0, lastUpdateDate);
-            setState(() {
-              _steps = 0;
-              _lastSavedSteps = 0;
-              _lastStepUpdateTime = now;
-            });
+            if (data['current_steps'] != null && data['current_steps'] > 0) {
+              await _saveStepHistory(data['current_steps'], lastUpdateDate);
+            }
+            // Reset steps for new day
+            await _resetStepsForNewDay();
           }
+        } else {
+          // No previous data, start fresh
+          await _resetStepsForNewDay();
         }
 
-        // Load goal regardless of date
-        setState(() {
-          _goal = data['step_goal'] ?? 0;
-          _hasSetGoal = data['step_goal'] != null && data['step_goal'] > 0;
-        });
+        // Load goal from main user document
+        final userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          setState(() {
+            _goal = userData['step_goal'] ?? 0;
+            _hasSetGoal = userData['step_goal'] != null && userData['step_goal'] > 0;
+          });
+        }
+      } else {
+        // Initialize private steps document
+        await _resetStepsForNewDay();
       }
 
       // Setup listeners and initialize step tracking
@@ -127,25 +141,31 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _saveStepHistory(int steps, String date) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
+  Future<void> _resetStepsForNewDay() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('daily_steps')
-          .doc(date)
-          .set({
-        'steps': steps,
-        'date': date,
-        'timestamp': FieldValue.serverTimestamp(),
-        'user_id': user.uid,
-      }, SetOptions(merge: true));
-    } catch (e) {
-      print('Error saving step history: $e');
-    }
+    final now = DateTime.now();
+    
+    // Reset steps in private data document
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('private_data')
+        .doc('steps')
+        .set({
+          'current_steps': 0,
+          'last_updated': now,
+          'date': DateFormat('yyyy-MM-dd').format(now),
+          'user_id': user.uid,
+        }, SetOptions(merge: true));
+
+    setState(() {
+      _steps = 0;
+      _lastSavedSteps = 0;
+      _lastStepUpdateTime = now;
+      _updateStats();
+    });
   }
 
   Future<void> _saveCurrentSteps() async {
@@ -153,12 +173,47 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      await _firestore.collection('users').doc(user.uid).update({
-        'current_steps': _steps,
-        'last_updated': FieldValue.serverTimestamp(),
-      });
+      final now = DateTime.now();
+      
+      // Save to private data collection
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('private_data')
+          .doc('steps')
+          .set({
+            'current_steps': _steps,
+            'last_updated': now,
+            'date': DateFormat('yyyy-MM-dd').format(now),
+            'user_id': user.uid,
+          }, SetOptions(merge: true));
+
     } catch (e) {
       print('Error saving current steps: $e');
+    }
+  }
+
+  Future<void> _saveStepHistory(int steps, String date) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      // Save to private history collection
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('private_data')
+          .doc('step_history')
+          .collection('daily')
+          .doc(date)
+          .set({
+            'steps': steps,
+            'date': date,
+            'timestamp': FieldValue.serverTimestamp(),
+            'user_id': user.uid,
+          }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving step history: $e');
     }
   }
 
@@ -170,10 +225,12 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     if (user != null) {
       _userId = user.uid;
       
-      // Listen to user document changes
+      // Listen to private steps document
       _userDataSubscription = _firestore
           .collection('users')
           .doc(user.uid)
+          .collection('private_data')
+          .doc('steps')
           .snapshots()
           .listen((snapshot) {
         if (snapshot.exists && mounted) {
@@ -188,7 +245,20 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
               _lastSavedSteps = _steps;
               _lastStepUpdateTime = lastUpdateTime.toDate();
             }
-            
+            _updateStats();
+          });
+        }
+      });
+
+      // Listen to user document for goal updates
+      _firestore
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((snapshot) {
+        if (snapshot.exists && mounted) {
+          final data = snapshot.data()!;
+          setState(() {
             _goal = data['step_goal'] ?? 0;
             _hasSetGoal = data['step_goal'] != null && data['step_goal'] > 0;
             _updateStats();
@@ -216,16 +286,12 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
       
       // Subscribe to real-time step updates
       _stepsService.stepsStream.listen((newSteps) {
-        if (mounted) {
+        if (mounted && newSteps >= 0) {  // Ensure valid step count
           setState(() {
-            // Calculate the difference and add to last saved steps
-            final stepDiff = newSteps - _lastSavedSteps;
-            if (stepDiff > 0) {
-              _steps = _lastSavedSteps + stepDiff;
-              _updateStats();
-              // Save to Firebase periodically
-              _saveCurrentSteps();
-            }
+            _steps = newSteps;  // Directly use the steps from service
+            _updateStats();
+            // Save to Firebase periodically
+            _saveCurrentSteps();
           });
         }
       });
@@ -241,17 +307,25 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
         }
       };
       
-      _stepsService.onGoalCompleted = (completed) {
+      _stepsService.onGoalCompleted = (completed, {int? steps, int? goal}) {
         if (mounted) {
           setState(() {
             _goalCompleted = completed;
           });
           
-          if (completed) {
+          if (completed && steps != null && goal != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Congratulations! You reached your goal of $_goal steps!'),
+                content: Text('Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
                 backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Dismiss',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  },
+                ),
               ),
             );
           }

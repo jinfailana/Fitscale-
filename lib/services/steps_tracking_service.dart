@@ -38,6 +38,12 @@ class StepsTrackingService {
   Timer? _updateTimer;
   Timer? _syncTimer;
   
+  // Add Firebase listener
+  StreamSubscription<DocumentSnapshot>? _firebaseListener;
+  
+  // Add current user ID tracking
+  String? _currentUserId;
+  
   // Getters
   int get currentSteps => _steps;
   int get goalSteps => _goal;
@@ -52,68 +58,94 @@ class StepsTrackingService {
   // Callbacks for UI updates
   Function(int)? onStepsChanged;
   Function(int)? onGoalChanged;
-  Function(bool, {int steps, int goal})? onGoalCompleted;
+  Function(bool, {int? steps, int? goal})? onGoalCompleted;
   
-  /// Initialize the step tracking service
-  Future<void> initialize() async {
+  /// Reset service for new user
+  Future<void> resetForNewUser() async {
     try {
-      // Check if user is logged in
-      final user = _auth.currentUser;
-      if (user == null) {
-        debugPrint('No user logged in');
-        return;
+      debugPrint('Starting complete reset for new user');
+      
+      // First save any pending steps for previous user
+      if (_currentUserId != null) {
+        await _updateFirestoreSteps();
       }
 
-      // Only initialize once
-      if (_isInitialized) return;
+      // Cancel all existing subscriptions and timers
+      _stepCountSubscription?.cancel();
+      _stepCountSubscription = null;
+      _updateTimer?.cancel();
+      _updateTimer = null;
+      _syncTimer?.cancel();
+      _syncTimer = null;
+      _firebaseListener?.cancel();
+      _firebaseListener = null;
+
+      // Reset all variables
+      _steps = 0;
+      _initialSteps = 0;
+      _isFirstReading = true;
+      _goal = 0;
+      _goalCompleted = false;
+      _lastStepTime = null;
+      _lastStepCount = 0;
+      _lastFirestoreUpdate = null;
+      _isInitialized = false;
       
-      // Load user data first
-      await _loadUserData();
+      // Clear stream
+      _stepsController.add(0);
       
-      // Then initialize pedometer
-      await _initializePedometerStream();
-      
-      // Set up periodic updates every 2 seconds to ensure UI stays fresh
-      _updateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-        // Emit current steps to stream
-        _stepsController.add(_steps);
+      // Get current user
+      final user = _auth.currentUser;
+      if (user != null && user.uid != _currentUserId) {
+        debugPrint('Detected new user: ${user.uid}, old user: $_currentUserId');
+        _currentUserId = user.uid;
         
-        // Also call the callback for any existing listeners
-        if (onStepsChanged != null) {
-          onStepsChanged!(_steps);
-        }
-      });
-      
-      // Sync with Firestore every 30 seconds
-      _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        // Only update if enough time has passed since last update
-        final now = DateTime.now();
-        final lastUpdate = _lastFirestoreUpdate ?? DateTime.now().subtract(const Duration(minutes: 5));
-        if (now.difference(lastUpdate).inMinutes >= 5) {
-          _updateFirestoreSteps();
-        }
-      });
-      
-      _isInitialized = true;
+        // Load fresh data for new user
+        await _loadUserData();
+        
+        // Setup Firebase listener first to ensure we don't miss updates
+        _setupFirebaseListener();
+        
+        // Then initialize tracking
+        await _initializePedometerStream();
+        
+        // Setup new timers
+        _setupTimers();
+        
+        _isInitialized = true;
+        debugPrint('Reset completed for new user: ${user.uid}');
+      }
     } catch (e) {
-      debugPrint('Error initializing step tracking: $e');
+      debugPrint('Error resetting service for new user: $e');
     }
   }
-  
-  /// Helper method to save steps to Firestore
-  void _saveStepsToFirestore() {
-    _saveStepsAsync(_steps).then((_) {
-      // Optional: Handle successful save
-    }).catchError((error) {
-      debugPrint('Error saving steps to Firestore: $error');
+
+  void _setupTimers() {
+    // Cancel existing timers first
+    _updateTimer?.cancel();
+    _syncTimer?.cancel();
+
+    // Set up periodic updates every 2 seconds
+    _updateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _stepsController.add(_steps);
+      if (onStepsChanged != null) {
+        onStepsChanged!(_steps);
+      }
+    });
+    
+    // Sync with Firestore every 30 seconds
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _updateFirestoreSteps();
     });
   }
-  
+
   /// Load user data, including current steps and goals
   Future<void> _loadUserData() async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
+      
+      debugPrint('Loading data for user: ${user.uid}');
       
       // Get current date
       final today = DateTime.now();
@@ -123,32 +155,44 @@ class StepsTrackingService {
       final prefs = await SharedPreferences.getInstance();
       final lastDate = prefs.getString('${user.uid}_last_step_date');
       
-      if (lastDate != formattedDate) {
-        // It's a new day, save yesterday's data before resetting
-        final yesterdaySteps = prefs.getInt('${user.uid}_current_steps') ?? 0;
-        if (yesterdaySteps > 0) {
-          await _saveStepHistory(yesterdaySteps, lastDate);
-        }
+      // First try to get data from Firebase
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        final lastUpdateTime = data['last_updated'] as Timestamp?;
+        final firebaseSteps = data['current_steps'] as int?;
         
-        // Reset steps for new day
-        _steps = 0;
-        await prefs.setInt('${user.uid}_current_steps', 0);
-        await prefs.setString('${user.uid}_last_step_date', formattedDate);
-        
-        // Reset Firestore steps for new day
-        await _updateFirestoreSteps();
-      } else {
-        // Load today's steps from Firebase
-        final userDoc = await _firestore.collection('users').doc(user.uid).get();
-        if (userDoc.exists) {
-          final data = userDoc.data()!;
-          _steps = data['current_steps'] ?? 0;
-          debugPrint('Loaded steps from Firebase: $_steps');
+        if (lastDate != formattedDate) {
+          // It's a new day, save yesterday's data before resetting
+          if (firebaseSteps != null && firebaseSteps > 0) {
+            await _saveStepHistory(firebaseSteps, lastDate);
+          }
+          
+          // Reset steps for new day
+          _steps = 0;
+          await prefs.setInt('${user.uid}_current_steps', 0);
+          await prefs.setString('${user.uid}_last_step_date', formattedDate);
+          
+          // Reset Firestore steps for new day
+          await _updateFirestoreSteps();
+          debugPrint('Reset steps for new day');
         } else {
-          // If no Firestore data, try to load from cache
-          _steps = prefs.getInt('${user.uid}_current_steps') ?? 0;
-          debugPrint('Loaded steps from cache: $_steps');
+          // Use the larger value between Firebase and local cache
+          final cachedSteps = prefs.getInt('${user.uid}_current_steps') ?? 0;
+          if (firebaseSteps != null) {
+            _steps = firebaseSteps > cachedSteps ? firebaseSteps : cachedSteps;
+            await prefs.setInt('${user.uid}_current_steps', _steps);
+            debugPrint('Using larger value between Firebase ($_steps) and cache ($cachedSteps)');
+          } else {
+            _steps = cachedSteps;
+            debugPrint('Using cached steps: $_steps');
+          }
         }
+      } else {
+        // No data exists, start from cached value or 0
+        _steps = prefs.getInt('${user.uid}_current_steps') ?? 0;
+        await prefs.setString('${user.uid}_last_step_date', formattedDate);
+        debugPrint('No Firebase data, using cached steps: $_steps');
       }
       
       // Get user's step goal
@@ -160,6 +204,8 @@ class StepsTrackingService {
       if (onStepsChanged != null) {
         onStepsChanged!(_steps);
       }
+
+      debugPrint('Successfully loaded user data. Steps: $_steps, Goal: $_goal');
     } catch (e) {
       debugPrint('Error loading user data: $e');
     }
@@ -196,33 +242,75 @@ class StepsTrackingService {
     }
   }
 
-  /// Resume the step tracking service
+  /// Resume tracking after login or app resume
   Future<void> resume() async {
-    // If not initialized, do full initialization
-    if (!_isInitialized) {
-      await initialize();
-      return;
-    }
-    
-    // If already initialized but pedometer subscription was canceled, reconnect it
-    if (_stepCountSubscription == null) {
-      await _initializePedometerStream();
-    }
-    
-    // Restart timers if they were stopped
-    if (_updateTimer == null || !_updateTimer!.isActive) {
-      _updateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    try {
+      // Check if user is logged in first
+      final user = _auth.currentUser;
+      if (user == null) {
+        debugPrint('No user logged in during resume');
+        return;
+      }
+
+      // Check if user has changed
+      if (user.uid != _currentUserId) {
+        debugPrint('Different user detected, resetting service');
+        await resetForNewUser();
+        return;
+      }
+
+      debugPrint('Resuming step tracking for user: ${user.uid}');
+
+      // Load latest data from cache first
+      final prefs = await SharedPreferences.getInstance();
+      final cachedSteps = prefs.getInt('${user.uid}_current_steps');
+      if (cachedSteps != null) {
+        _steps = cachedSteps;
         _stepsController.add(_steps);
         if (onStepsChanged != null) {
           onStepsChanged!(_steps);
         }
-      });
-    }
-    
-    if (_syncTimer == null || !_syncTimer!.isActive) {
-      _syncTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-        _updateFirestoreSteps();
-      });
+        debugPrint('Loaded steps from cache: $_steps');
+      }
+
+      // Then try to get Firebase data
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        if (data != null && data['current_steps'] != null) {
+          final firebaseSteps = data['current_steps'] as int;
+          if (firebaseSteps > _steps) {
+            _steps = firebaseSteps;
+            await prefs.setInt('${user.uid}_current_steps', _steps);
+            _stepsController.add(_steps);
+            if (onStepsChanged != null) {
+              onStepsChanged!(_steps);
+            }
+            debugPrint('Updated steps from Firebase: $_steps');
+          }
+        }
+      }
+
+      // If not initialized, do full initialization
+      if (!_isInitialized) {
+        await initialize();
+        return;
+      }
+      
+      // Setup Firebase listener again
+      _setupFirebaseListener();
+      
+      // If already initialized but pedometer subscription was canceled, reconnect it
+      if (_stepCountSubscription == null) {
+        await _initializePedometerStream();
+      }
+      
+      // Restart timers if they were stopped
+      _setupTimers();
+
+      debugPrint('Successfully resumed step tracking for user: ${user.uid}. Current steps: $_steps');
+    } catch (e) {
+      debugPrint('Error in resume: $e');
     }
   }
   
@@ -306,57 +394,48 @@ class StepsTrackingService {
   /// Update steps in Firestore
   Future<void> _updateFirestoreSteps() async {
     try {
-      final String? userId = _auth.currentUser?.uid;
-      if (userId == null) return;
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      // Get current date for daily tracking
+      final now = DateTime.now();
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
       
-      // Get user weight for more accurate calorie calculation
-      double? userWeight;
-      try {
-        final userDoc = await _firestore.collection('users').doc(userId).get();
-        if (userDoc.exists) {
-          final userData = userDoc.data();
-          if (userData != null && userData['weight'] != null) {
-            userWeight = (userData['weight'] as num).toDouble();
-          }
-        }
-      } catch (e) {
-        // Fallback to default weight calculation if we can't get the user's weight
-        debugPrint('Error getting user weight: $e');
-      }
-      
-      // Calculate calories and distance
-      final calories = calculateCaloriesBurned(_steps, userWeight);
-      final distance = calculateDistance(_steps);
-      
-      // Update user document with privacy settings
-      await _firestore.collection('users').doc(userId).update({
-        'current_steps': _steps,
-        'calories': calories,
-        'distance': distance,
-        'last_updated': FieldValue.serverTimestamp(),
-        'private': true, // Mark data as private
-        'user_id': userId, // Ensure user ID is set
+      // Use transaction to ensure data consistency
+      await _firestore.runTransaction((transaction) async {
+        final userDoc = _firestore.collection('users').doc(user.uid);
+        final userSnapshot = await transaction.get(userDoc);
+        
+        // Calculate calories and distance
+        final userData = userSnapshot.data();
+        final userWeight = userData?['weight'] as double?;
+        final calories = calculateCaloriesBurned(_steps, userWeight);
+        final distance = calculateDistance(_steps);
+
+        // Update main user document
+        transaction.set(userDoc, {
+          'current_steps': _steps,
+          'calories': calories,
+          'distance': distance,
+          'last_updated': FieldValue.serverTimestamp(),
+          'private': true,
+          'user_id': user.uid,
+        }, SetOptions(merge: true));
+
+        // Update daily tracking
+        final dailyDoc = userDoc.collection('daily_tracking').doc(dateStr);
+        transaction.set(dailyDoc, {
+          'steps': _steps,
+          'calories': calories,
+          'distance': distance,
+          'timestamp': FieldValue.serverTimestamp(),
+          'private': true,
+          'user_id': user.uid,
+        }, SetOptions(merge: true));
       });
 
-      // Also update the daily tracking document
-      final now = DateTime.now();
-      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('daily_tracking')
-          .doc(dateStr)
-          .set({
-            'steps': _steps,
-            'calories': calories,
-            'distance': distance,
-            'timestamp': FieldValue.serverTimestamp(),
-            'private': true,
-            'user_id': userId,
-          }, SetOptions(merge: true));
-          
-      _lastFirestoreUpdate = DateTime.now();
+      _lastFirestoreUpdate = now;
+      debugPrint('Successfully updated steps in Firestore: $_steps');
     } catch (e) {
       debugPrint('Error updating steps in Firestore: $e');
     }
@@ -498,14 +577,17 @@ class StepsTrackingService {
   /// Initialize the pedometer stream
   Future<void> _initializePedometerStream() async {
     try {
-      // Cancel any existing subscriptions
+      // Cancel any existing subscription
       await _stepCountSubscription?.cancel();
+      _stepCountSubscription = null;
       
       // Reset tracking variables
       _isFirstReading = true;
       _initialSteps = 0;
       _lastStepTime = null;
       _lastStepCount = 0;
+      
+      debugPrint('Initializing pedometer for user: $_currentUserId');
       
       // Start listening for step count updates
       _stepCountSubscription = Pedometer.stepCountStream.listen(
@@ -527,20 +609,35 @@ class StepsTrackingService {
     }
   }
   
-  /// Handle step count updates with improved accuracy
+  /// Handle step count updates with improved accuracy and persistence
   void _onStepCount(StepCount event) async {
-    final now = DateTime.now();
-    
-    // Initialize step counting on first reading
-    if (_isFirstReading) {
-      _initialSteps = event.steps;
-      _isFirstReading = false;
-      _lastStepTime = now;
-      _lastStepCount = event.steps;
+    try {
+      final now = DateTime.now();
       
-      // Keep existing steps from Firebase/cache instead of using pedometer's initial value
-      debugPrint('Initial pedometer reading: ${event.steps}, keeping existing steps: $_steps');
-    } else {
+      // Initialize step counting on first reading
+      if (_isFirstReading) {
+        // Load existing steps from cache first
+        final user = _auth.currentUser;
+        if (user != null) {
+          final prefs = await SharedPreferences.getInstance();
+          _steps = prefs.getInt('${user.uid}_current_steps') ?? _steps;
+        }
+        
+        _initialSteps = event.steps;
+        _isFirstReading = false;
+        _lastStepTime = now;
+        _lastStepCount = event.steps;
+        
+        // Update UI with current steps
+        _stepsController.add(_steps);
+        if (onStepsChanged != null) {
+          onStepsChanged!(_steps);
+        }
+        
+        debugPrint('Initial steps from cache: $_steps, Pedometer reading: ${event.steps}');
+        return;
+      }
+      
       // Calculate time difference between readings
       final timeDiff = now.difference(_lastStepTime!).inMilliseconds;
       
@@ -564,6 +661,7 @@ class StepsTrackingService {
           if (user != null) {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setInt('${user.uid}_current_steps', _steps);
+            debugPrint('Saved steps to cache: $_steps');
           }
           
           // Update UI immediately using stream
@@ -580,12 +678,17 @@ class StepsTrackingService {
             }
           }
           
-          // Save to Firestore
-          _saveStepsAsync(_steps);
+          // Update Firestore if enough time has passed
+          final lastUpdate = _lastFirestoreUpdate ?? DateTime.now().subtract(const Duration(minutes: 5));
+          if (now.difference(lastUpdate).inMinutes >= 1) {  // Update every minute
+            await _updateFirestoreSteps();
+          }
         } else {
           debugPrint('Filtered out anomalous step reading: $stepDiff steps in $timeDiff ms');
         }
       }
+    } catch (e) {
+      debugPrint('Error in _onStepCount: $e');
     }
   }
   
@@ -600,7 +703,131 @@ class StepsTrackingService {
     _stepCountSubscription?.cancel();
     _updateTimer?.cancel();
     _syncTimer?.cancel();
+    _firebaseListener?.cancel();
     _stepsController.close();
     _isInitialized = false;
   }
+
+  /// Initialize the step tracking service
+  Future<void> initialize() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        debugPrint('No user logged in during initialization');
+        return;
+      }
+
+      debugPrint('Initializing step tracking service for user: ${user.uid}');
+      _currentUserId = user.uid;
+
+      // Load user data first
+      await _loadUserData();
+      
+      // Initialize pedometer
+      await _initializePedometerStream();
+      
+      // Setup timers for updates
+      _setupTimers();
+      
+      // Setup Firebase listener
+      _setupFirebaseListener();
+      
+      _isInitialized = true;
+      debugPrint('Step tracking service initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing step tracking service: $e');
+      _isInitialized = false;
+    }
+  }
+
+  /// Setup Firebase listener for real-time updates
+  void _setupFirebaseListener() {
+    try {
+      // Cancel any existing subscription
+      _firebaseListener?.cancel();
+      
+      final user = _auth.currentUser;
+      if (user == null) return;
+      
+      debugPrint('Setting up Firebase listener for user: ${user.uid}');
+      
+      // Listen to user document for step and goal updates
+      _firebaseListener = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((snapshot) async {
+        if (!snapshot.exists || !mounted) return;
+        
+        final data = snapshot.data()!;
+        final firebaseSteps = data['current_steps'] as int?;
+        final firebaseGoal = data['step_goal'] as int?;
+        final lastUpdateTime = data['last_updated'] as Timestamp?;
+        
+        // Get current cache
+        final prefs = await SharedPreferences.getInstance();
+        final cachedSteps = prefs.getInt('${user.uid}_current_steps') ?? 0;
+        
+        // If Firebase has newer data (based on timestamp) or higher step count
+        if (lastUpdateTime != null && firebaseSteps != null) {
+          final shouldUpdate = firebaseSteps > _steps || 
+                             (lastUpdateTime.toDate().isAfter(_lastFirestoreUpdate ?? DateTime(2000)));
+          
+          if (shouldUpdate) {
+            debugPrint('Updating steps from Firebase. Old: $_steps, New: $firebaseSteps');
+            _steps = firebaseSteps;
+            
+            // Update local cache
+            await prefs.setInt('${user.uid}_current_steps', _steps);
+            
+            // Update UI
+            _stepsController.add(_steps);
+            if (onStepsChanged != null) {
+              onStepsChanged!(_steps);
+            }
+            
+            // Update last update time
+            _lastFirestoreUpdate = lastUpdateTime.toDate();
+          }
+        }
+        
+        // Update goal if changed
+        if (firebaseGoal != null && firebaseGoal != _goal) {
+          debugPrint('Updating goal from Firebase. Old: $_goal, New: $firebaseGoal');
+          _goal = firebaseGoal;
+          if (onGoalChanged != null) {
+            onGoalChanged!(_goal);
+          }
+        }
+        
+        // Check goal completion
+        final newGoalCompleted = _goal > 0 && _steps >= _goal;
+        if (newGoalCompleted && !_goalCompleted) {
+          _goalCompleted = true;
+          if (onGoalCompleted != null) {
+            onGoalCompleted!(true, steps: _steps, goal: _goal);
+          }
+        }
+      }, onError: (e) {
+        debugPrint('Error in Firebase listener: $e');
+        // Try to reestablish listener after error
+        Future.delayed(const Duration(seconds: 5), () {
+          if (_firebaseListener == null) {
+            _setupFirebaseListener();
+          }
+        });
+      });
+    } catch (e) {
+      debugPrint('Error setting up Firebase listener: $e');
+      // Try to reestablish listener after error
+      Future.delayed(const Duration(seconds: 5), () {
+        if (_firebaseListener == null) {
+          _setupFirebaseListener();
+        }
+      });
+    }
+  }
+
+  /// Add this getter for the mounted property
+  bool get mounted => true;
 } 

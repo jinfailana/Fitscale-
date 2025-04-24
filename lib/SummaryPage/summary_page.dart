@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';  // Add this import for StreamSubscription
 import '../models/workout_plan.dart';
 import '../models/workout_history.dart';
 import 'manage_acc.dart';
@@ -44,30 +45,88 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   double _stepPercentage = 0.0;
   final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
   bool _goalCompleted = false;
+  StreamSubscription<User?>? _authStateSubscription;
+  StreamSubscription<DocumentSnapshot>? _userDataSubscription;
 
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
-    _loadRecentWorkouts();
-    _loadSelectedDiet();
-    _initializeStepTracking();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Listen to auth state changes
+    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+      if (user != null) {
+        // User is signed in
+        debugPrint('User signed in: ${user.uid}');
+        
+        // Cancel existing subscriptions first
+        _userDataSubscription?.cancel();
+        
+        // Reset all state
+        if (mounted) {
+          setState(() {
+            username = '';
+            email = '';
+            userWeight = 0.0;
+            _currentSteps = 0;
+            _stepGoal = 0;
+            _stepPercentage = 0.0;
+            _goalCompleted = false;
+            _updateStepPercentage();
+          });
+        }
+        
+        // First reset step tracking service for new user
+        await _stepsService.resetForNewUser();
+        
+        // Then fetch user data
+        await _fetchUserData();
+        
+        // Finally load other data
+        _loadRecentWorkouts();
+        _loadSelectedDiet();
+      } else {
+        // User is signed out
+        debugPrint('User signed out');
+        
+        // Cancel subscriptions
+        _userDataSubscription?.cancel();
+        
+        // Reset all state
+        if (mounted) {
+          setState(() {
+            username = '';
+            email = '';
+            userWeight = 0.0;
+            _currentSteps = 0;
+            _stepGoal = 0;
+            _stepPercentage = 0.0;
+            _goalCompleted = false;
+            _updateStepPercentage();
+          });
+        }
+      }
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Resume step tracking when app comes back to foreground
     if (state == AppLifecycleState.resumed) {
-      _stepsService.resume();
+      debugPrint('App resumed - checking user and reinitializing step tracking');
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        _stepsService.resume();
+      }
     }
   }
 
   @override
   void dispose() {
+    _userDataSubscription?.cancel();
+    _authStateSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     
     // Don't dispose the step service itself, just remove listeners
-    // This ensures step tracking continues even when summary page is closed
     if (_stepsService.onStepsChanged != null) {
       _stepsService.onStepsChanged = null;
     }
@@ -83,23 +142,36 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   Future<void> _fetchUserData() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+      if (user == null) return;
 
-        if (userDoc.exists) {
+      debugPrint('Fetching user data for: ${user.uid}');
+
+      // Cancel existing subscription
+      _userDataSubscription?.cancel();
+
+      // Setup real-time listener for user data
+      _userDataSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((userDoc) {
+        if (userDoc.exists && mounted && FirebaseAuth.instance.currentUser?.uid == user.uid) {
           final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
             username = userData['username'] ?? '';
             email = userData['email'] ?? '';
             userWeight = (userData['weight'] ?? 0.0).toDouble();
+            _stepGoal = userData['step_goal'] ?? 0;
+            _currentSteps = userData['current_steps'] ?? _currentSteps;
+            _updateStepPercentage();
           });
+          debugPrint('Updated user data for ${user.uid} - Steps: $_currentSteps, Goal: $_stepGoal');
         }
-      }
+      }, onError: (e) {
+        debugPrint('Error in user data listener: $e');
+      });
     } catch (e) {
-      print('Error fetching user data: $e');
+      debugPrint('Error setting up user data listener: $e');
     }
   }
 
@@ -164,60 +236,70 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   }
 
   Future<void> _initializeStepTracking() async {
-    // Initialize the step tracking service
-    await _stepsService.initialize();
-    
-    // Set initial values
-    setState(() {
-      _currentSteps = _stepsService.currentSteps;
-      _stepGoal = _stepsService.goalSteps;
-      _updateStepPercentage();
-    });
-    
-    // Subscribe to the step updates stream for real-time updates
-    _stepsService.stepsStream.listen((steps) {
-      if (mounted) {
-        setState(() {
-          _currentSteps = steps;
-          _updateStepPercentage();
-        });
-      }
-    });
-    
-    // Setup goal-related callbacks
-    _stepsService.onGoalChanged = (goal) {
-      if (mounted) {
-        setState(() {
-          _stepGoal = goal;
-          _updateStepPercentage();
-        });
-      }
-    };
-    
-    _stepsService.onGoalCompleted = (completed, {int? steps, int? goal}) {
-      if (mounted) {
-        setState(() {
-          _goalCompleted = completed;
-        });
-        
-        if (completed && steps != null && goal != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
-              backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-              duration: const Duration(seconds: 5),
-              action: SnackBarAction(
-                label: 'Dismiss',
-                textColor: Colors.white,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                },
-              ),
-            ),
-          );
+    try {
+      debugPrint('Initializing step tracking');
+      
+      // Initialize the step tracking service
+      await _stepsService.initialize();
+      
+      // Set initial values
+      setState(() {
+        _currentSteps = _stepsService.currentSteps;
+        _stepGoal = _stepsService.goalSteps;
+        _updateStepPercentage();
+      });
+      
+      // Subscribe to the step updates stream for real-time updates
+      _stepsService.stepsStream.listen((steps) {
+        if (mounted) {
+          setState(() {
+            _currentSteps = steps;
+            _updateStepPercentage();
+          });
+          debugPrint('Step update received: $_currentSteps');
         }
-      }
-    };
+      });
+      
+      // Setup goal-related callbacks
+      _stepsService.onGoalChanged = (goal) {
+        if (mounted) {
+          setState(() {
+            _stepGoal = goal;
+            _updateStepPercentage();
+          });
+          debugPrint('Goal updated: $_stepGoal');
+        }
+      };
+      
+      _stepsService.onGoalCompleted = (completed, {int? steps, int? goal}) {
+        if (mounted) {
+          setState(() {
+            _goalCompleted = completed;
+          });
+          
+          if (completed && steps != null && goal != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
+                backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Dismiss',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      };
+
+      debugPrint('Step tracking initialized successfully');
+    } catch (e) {
+      debugPrint('Error in _initializeStepTracking: $e');
+    }
   }
   
   void _updateStepPercentage() {
@@ -613,6 +695,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   Widget _buildAnimatedStepGoalCard() {
     // Format the step numbers with commas
     final formattedSteps = NumberFormat('#,###').format(_currentSteps);
+    final formattedGoal = NumberFormat('#,###').format(_stepGoal);
     
     // Calculate calories based on weight
     int calories = 0;
@@ -638,90 +721,82 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.transparent,
           border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
           borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(50),
-              blurRadius: 5,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      formattedSteps,
-                      style: const TextStyle(
-                        color: Color.fromRGBO(223, 77, 15, 1.0),
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                // Steps information with "You have walked:" text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                     
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            formattedSteps,
+                            style: const TextStyle(
+                              color: Color(0xFFDF4D0F),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(
+                            ' Steps',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Steps',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Daily Goal: $formattedGoal steps',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Icon(
-                  Icons.directions_walk,
-                  color: Color.fromRGBO(223, 77, 15, 1.0),
-                  size: 40,
+                
+                // Step image/icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: const Color(0xFFDF4D0F),
+                      width: 2,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.directions_walk,
+                      color: Color(0xFFDF4D0F),
+                      size: 30,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department,
-                      color: Color.fromRGBO(223, 77, 15, 0.7),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      '$calories kcal',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.place,
-                      color: Color.fromRGBO(223, 77, 15, 0.7),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      '$formattedDistance km',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
+              
+               
               ],
             ),
           ],
@@ -730,21 +805,10 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildAnimatedSummaryCard(
-      String title, String subtitle, IconData icon) {
+  Widget _buildAnimatedSummaryCard(String title, String subtitle, IconData icon) {
     return GestureDetector(
       onTap: () {
-        // Handle navigation based on the card type
-        if (title == 'Set Step Goal') {
-          Navigator.push(
-            context,
-            CustomPageRoute(
-              child: const StepsPage(),
-              transitionType: TransitionType.fade,
-            ),
-          );
-        } else if (title.contains('kg')) {
-          // Navigate to MeasureWeightPage when weight card is tapped
+        if (title.contains('kg')) {
           Navigator.push(
             context,
             CustomPageRoute(
@@ -752,62 +816,62 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
               transitionType: TransitionType.fade,
             ),
           ).then((_) {
-            // Refresh data when returning from MeasureWeightPage
             _fetchUserData();
           });
-        } else if (title == 'Set Diets!') {
-          // Navigate to DietRecommendationsPage when diet card is tapped
-          Navigator.push(
-            context,
-            CustomPageRoute(
-              child: const DietRecommendationsPage(),
-              transitionType: TransitionType.fade,
-            ),
-          );
         }
-        // Add more conditions for other cards if needed
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.transparent,
           border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
           borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(50),
-              blurRadius: 5,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color.fromRGBO(223, 77, 15, 1.0),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Current Weight:',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 14,
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFFDF4D0F),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            Icon(icon, color: const Color.fromRGBO(223, 77, 15, 1.0), size: 40),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: const Color(0xFFDF4D0F),
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  icon,
+                  color: const Color(0xFFDF4D0F),
+                  size: 30,
+                ),
+              ),
+            ),
           ],
         ),
       ),

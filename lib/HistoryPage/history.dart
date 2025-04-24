@@ -43,6 +43,8 @@ class _HistoryPageState extends State<HistoryPage> {
   bool _isLoading = true;
   List<WorkoutHistory> _filteredWorkouts = [];
   final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
+  List<Map<String, dynamic>> _stepHistory = [];
+  bool _loadingSteps = true;
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _HistoryPageState extends State<HistoryPage> {
     selectedMonth = months[now.month - 1];
     selectedYear = now.year;
     _loadWorkoutHistory();
+    _loadStepHistory();
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -68,6 +71,37 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  Future<void> _loadStepHistory() async {
+    setState(() => _loadingSteps = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('daily_tracking')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      setState(() {
+        _stepHistory = querySnapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'steps': data['steps'] ?? 0,
+            'date': (data['timestamp'] as Timestamp).toDate(),
+            'calories': data['calories'] ?? 0,
+            'distance': data['distance'] ?? 0.0,
+          };
+        }).toList();
+        _loadingSteps = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading step history: $e');
+      setState(() => _loadingSteps = false);
+    }
+  }
+
   void _filterWorkoutsByMonth() {
     if (_workoutHistory.isEmpty) {
       _filteredWorkouts = [];
@@ -79,6 +113,14 @@ class _HistoryPageState extends State<HistoryPage> {
     _filteredWorkouts = _workoutHistory.where((workout) {
       return workout.date.month == monthIndex &&
           workout.date.year == selectedYear;
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _getFilteredStepHistory() {
+    final monthIndex = months.indexOf(selectedMonth) + 1;
+    return _stepHistory.where((step) {
+      final stepDate = step['date'] as DateTime;
+      return stepDate.month == monthIndex && stepDate.year == selectedYear;
     }).toList();
   }
 
@@ -630,100 +672,231 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildActivityHistoryTable() {
-    return Container(
-      margin: const EdgeInsets.only(top: 24),
-      decoration: BoxDecoration(
-        color: const Color.fromRGBO(44, 44, 46, 1.0),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color.fromRGBO(223, 77, 15, 1.0),
-          width: 1,
+  Widget _buildStepHistoryList() {
+    if (_loadingSteps) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final filteredSteps = _getFilteredStepHistory();
+
+    if (filteredSteps.isEmpty) {
+      return const Center(
+        child: Text(
+          'No step history available for this month',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Activities history',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _showMonthPicker,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(28, 28, 30, 1.0),
-                      borderRadius: BorderRadius.circular(8),
+      );
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: filteredSteps.length,
+      itemBuilder: (context, index) {
+        final stepData = filteredSteps[index];
+        final steps = stepData['steps'] as int;
+        final date = stepData['date'] as DateTime;
+        final calories = stepData['calories'] as num;
+        final distance = stepData['distance'] as num;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(28, 28, 30, 1.0),
+            border: Border.all(
+              color: const Color.fromRGBO(223, 77, 15, 1.0),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.directions_walk,
+                      color: Color.fromRGBO(223, 77, 15, 1.0),
+                      size: 24,
                     ),
-                    child: Row(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Steps Taken',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            DateFormat('MMM d, yyyy').format(date),
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '$steps',
+                      style: const TextStyle(
+                        color: Color.fromRGBO(223, 77, 15, 1.0),
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text(
+                      ' Steps',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Row(
                       children: [
+                        const Icon(
+                          Icons.local_fire_department,
+                          color: Color.fromRGBO(223, 77, 15, 0.7),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
                         Text(
-                          '$selectedMonth $selectedYear',
+                          '${calories.round()} kcal',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Colors.white70,
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(width: 4),
+                      ],
+                    ),
+                    Row(
+                      children: [
                         const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Colors.white,
+                          Icons.place,
+                          color: Color.fromRGBO(223, 77, 15, 0.7),
                           size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${distance.toStringAsFixed(2)} km',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const Divider(
-            height: 1,
-            color: Color.fromRGBO(28, 28, 30, 1.0),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityHistoryTable() {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.only(top: 24),
+        decoration: BoxDecoration(
+          color: const Color.fromRGBO(44, 44, 46, 1.0),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color.fromRGBO(223, 77, 15, 1.0),
+            width: 1,
           ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color.fromRGBO(28, 28, 30, 0.7),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color.fromRGBO(60, 60, 62, 1.0),
-                width: 1,
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Activities history',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _showMonthPicker,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color.fromRGBO(28, 28, 30, 1.0),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '$selectedMonth $selectedYear',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Workout History',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+            const Divider(height: 1, color: Color.fromRGBO(28, 28, 30, 1.0)),
+            Expanded(
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  children: [
+                    const TabBar(
+                      tabs: [
+                        Tab(text: 'Steps'),
+                        Tab(text: 'Workouts'),
+                      ],
+                      labelColor: Color.fromRGBO(223, 77, 15, 1.0),
+                      unselectedLabelColor: Colors.grey,
+                      indicatorColor: Color.fromRGBO(223, 77, 15, 1.0),
+                    ),
+                    const Divider(height: 1, color: Color.fromRGBO(28, 28, 30, 1.0)),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildStepHistoryList(),
+                          _buildWorkoutHistoryList(),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-          const Divider(
-            height: 1,
-            color: Color.fromRGBO(28, 28, 30, 1.0),
-          ),
-          Expanded(
-            child: _buildWorkoutHistoryList(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -741,12 +914,11 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
@@ -771,16 +943,12 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      // Navigate to Home page and update selected index
                       setState(() {
                         _selectedIndex = 0;
                       });
-                      
-                      // Use the navbar's handler for consistent behavior
                       if (_navbarKey.currentState != null) {
                         _navbarKey.currentState!.handleLogoClick(context);
                       } else {
-                        // Fallback if key isn't available
                         Navigator.pushReplacement(
                           context,
                           CustomPageRoute(
@@ -800,12 +968,14 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Expanded(
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
                 child: _buildActivityHistoryTable(),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: CustomNavBar(

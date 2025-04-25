@@ -19,8 +19,10 @@ class HistoryPage extends StatefulWidget {
   State<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
+class _HistoryPageState extends State<HistoryPage>
+    with SingleTickerProviderStateMixin {
   late final WorkoutHistoryService _historyService;
+  late TabController _tabController;
   final List<String> months = [
     'January',
     'February',
@@ -48,6 +50,7 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     final now = DateTime.now();
     selectedMonth = months[now.month - 1];
     selectedYear = now.year;
@@ -56,6 +59,12 @@ class _HistoryPageState extends State<HistoryPage> {
       _historyService = WorkoutHistoryService(userId: user.uid);
       _loadWorkoutHistory();
     }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -634,6 +643,111 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(0),
+        child: AppBar(
+          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
+          elevation: 0,
+          automaticallyImplyLeading: false,
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'History',
+                        style: TextStyle(
+                          color: Color(0xFFDF4D0F),
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'Track your activities',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedIndex = 0;
+                      });
+                      if (_navbarKey.currentState != null) {
+                        _navbarKey.currentState!.handleLogoClick(context);
+                      } else {
+                        Navigator.pushReplacement(
+                          context,
+                          CustomPageRoute(
+                            child: const SummaryPage(),
+                            transitionType: TransitionType.fade,
+                          ),
+                        );
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Image.asset(
+                        'assets/Fitscale_LOGO.png',
+                        height: 50,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                labelColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                unselectedLabelColor: Colors.white70,
+                tabs: const [
+                  Tab(text: 'Workout History'),
+                  Tab(text: 'Steps History'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Workout History Tab
+                    _buildActivityHistoryTable(),
+                    // Steps History Tab
+                    _buildStepsHistoryList(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        showProfileModal: _showProfileModal,
+        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
+        key: _navbarKey,
+      ),
+    );
+  }
+
   Widget _buildActivityHistoryTable() {
     return Container(
       margin: const EdgeInsets.only(top: 24),
@@ -695,35 +809,6 @@ class _HistoryPageState extends State<HistoryPage> {
             height: 1,
             color: Color.fromRGBO(28, 28, 30, 1.0),
           ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color.fromRGBO(28, 28, 30, 0.7),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color.fromRGBO(60, 60, 62, 1.0),
-                width: 1,
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Workout History',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(
-            height: 1,
-            color: Color.fromRGBO(28, 28, 30, 1.0),
-          ),
           Expanded(
             child: _buildWorkoutHistoryList(),
           ),
@@ -732,92 +817,15 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(0),
-        child: AppBar(
-          backgroundColor: const Color.fromRGBO(28, 28, 30, 1.0),
-          elevation: 0,
-          automaticallyImplyLeading: false,
+  Widget _buildStepsHistoryList() {
+    // TODO: Implement steps history list
+    return const Center(
+      child: Text(
+        'Steps history will be implemented soon',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
         ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'History',
-                        style: TextStyle(
-                          color: Color(0xFFDF4D0F),
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        'Track your activities',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      // Navigate to Home page and update selected index
-                      setState(() {
-                        _selectedIndex = 0;
-                      });
-
-                      // Use the navbar's handler for consistent behavior
-                      if (_navbarKey.currentState != null) {
-                        _navbarKey.currentState!.handleLogoClick(context);
-                      } else {
-                        // Fallback if key isn't available
-                        Navigator.pushReplacement(
-                          context,
-                          CustomPageRoute(
-                            child: const SummaryPage(),
-                            transitionType: TransitionType.fade,
-                          ),
-                        );
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Image.asset(
-                        'assets/Fitscale_LOGO.png',
-                        height: 50,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _buildActivityHistoryTable(),
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: CustomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
-        showProfileModal: _showProfileModal,
-        loadAndNavigateToRecommendations: _loadAndNavigateToRecommendations,
-        key: _navbarKey,
       ),
     );
   }

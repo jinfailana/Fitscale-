@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'act_level.dart';
+import 'package:flutter/services.dart';
+import 'act_level.dart';  // Add this import for the next page
 import 'services/auth_service.dart';
 import 'services/user_service.dart';
 
@@ -13,66 +14,68 @@ class SetWeightManuallyPage extends StatefulWidget {
 class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
+  final TextEditingController _weightController = TextEditingController(text: '65.0');
   bool _isLoading = false;
-  
   String unit = 'kg';
-  double? selectedWeight;
-  final List<double> weightsKg =
-      List.generate(221, (index) => (30 + index).toDouble());
-  final List<double> weightsLbs =
-      List.generate(485, (index) => (66 + index).toDouble());
 
-  // Convert weight to kilograms
-  double _convertToKg(double weight) {
+  @override
+  void dispose() {
+    _weightController.dispose();
+    super.dispose();
+  }
+
+  // Convert weight to kg
+  double _convertToKg(String weight) {
+    if (weight.isEmpty) return 0.0;
+    double? value = double.tryParse(weight);
+    if (value == null) return 0.0;
+    
     if (unit == 'kg') {
-      return weight;
+      return value;
     } else {
-      return weight * 0.453592; // Convert lbs to kg
+      // Convert lbs to kg
+      return value * 0.453592;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context);
+        return true;
+      },
+      child: Scaffold(
         backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: Color.fromRGBO(223, 77, 15, 1.0)),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+        appBar: AppBar(
+          backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(223, 77, 15, 1.0)),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Center(
+        body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Spacer(flex: 2),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Weight',
-                      style: TextStyle(
-                        color: Color.fromRGBO(223, 77, 15, 1.0),
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Complete this to calculate your BMI and recommend your workouts and types of diets',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Enter Weight',
+                  style: TextStyle(
+                    color: Color.fromRGBO(223, 77, 15, 1.0),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Enter your current weight to track your progress',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 40),
                 Row(
@@ -83,60 +86,79 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
                     _unitButton('Lbs'),
                   ],
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 300,
-                  child: ListView.builder(
-                    itemCount:
-                        unit == 'kg' ? weightsKg.length : weightsLbs.length,
-                    itemBuilder: (context, index) {
-                      double weight =
-                          unit == 'kg' ? weightsKg[index] : weightsLbs[index];
-                      return _weightButton(weight);
-                    },
+                const SizedBox(height: 60),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _weightController,
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color.fromRGBO(223, 77, 15, 1.0),
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: '0.0',
+                          hintStyle: TextStyle(
+                            color: const Color.fromRGBO(223, 77, 15, 1.0).withOpacity(0.5),
+                          ),
+                          suffixText: unit,
+                          suffixStyle: const TextStyle(
+                            color: Color.fromRGBO(223, 77, 15, 1.0),
+                            fontSize: 24,
+                          ),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        ],
+                      ),
+                      Container(
+                        height: 2,
+                        color: const Color.fromRGBO(223, 77, 15, 1.0),
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(flex: 1),
+                const Spacer(),
                 SizedBox(
-                  width: 350,
+                  width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: selectedWeight != null
-                        ? () async {
-                            setState(() {
-                              _isLoading = true;
-                            });
+                    onPressed: () async {
+                      if (_weightController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter your weight')),
+                        );
+                        return;
+                      }
 
-                            try {
-                              final userId = _authService.getCurrentUserId();
-                              if (userId == null) {
-                                throw Exception('User not logged in');
-                              }
+                      setState(() => _isLoading = true);
+                      try {
+                        final userId = _authService.getCurrentUserId();
+                        if (userId == null) throw Exception('User not logged in');
 
-                              // Convert to kg and save
-                              final weightInKg = _convertToKg(selectedWeight!);
-                              await _userService.updateMetrics(
-                                userId,
-                                weight: weightInKg,
-                              );
-
-                              // Navigate to activity level page
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ActivityLevelPage(),
-                                ),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: ${e.toString()}')),
-                              );
-                            } finally {
-                              setState(() {
-                                _isLoading = false;
-                              });
-                            }
-                          }
-                        : null,
+                        final weightInKg = _convertToKg(_weightController.text);
+                        if (weightInKg <= 0) {
+                          throw Exception('Please enter a valid weight');
+                        }
+                        
+                        await _userService.updateMetrics(userId, weight: weightInKg);
+                        
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ActivityLevelPage()),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: ${e.toString()}')),
+                        );
+                      } finally {
+                        setState(() => _isLoading = false);
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                       shape: RoundedRectangleBorder(
@@ -156,7 +178,7 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
                             ),
                           )
                         : const Text(
-                            'Confirm',
+                            'Next',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 20,
@@ -166,7 +188,7 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
                           ),
                   ),
                 ),
-                const SizedBox(height: 80),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -180,8 +202,22 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
     return GestureDetector(
       onTap: () {
         setState(() {
+          String oldUnit = unit;
           unit = unitType.toLowerCase();
-          selectedWeight = null; // Reset selection when changing units
+          
+          // Convert the current weight when switching units
+          if (_weightController.text.isNotEmpty) {
+            double? currentWeight = double.tryParse(_weightController.text);
+            if (currentWeight != null) {
+              if (oldUnit == 'kg' && unit == 'lbs') {
+                // Convert from kg to lbs
+                _weightController.text = (currentWeight / 0.453592).toStringAsFixed(1);
+              } else if (oldUnit == 'lbs' && unit == 'kg') {
+                // Convert from lbs to kg
+                _weightController.text = (currentWeight * 0.453592).toStringAsFixed(1);
+              }
+            }
+          }
         });
       },
       child: Container(
@@ -198,59 +234,9 @@ class _SetWeightManuallyPageState extends State<SetWeightManuallyPage> {
         child: Text(
           unitType,
           style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : const Color.fromRGBO(223, 77, 15, 1.0),
+            color: isSelected ? Colors.white : const Color.fromRGBO(223, 77, 15, 1.0),
             fontSize: 16,
             fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _weightButton(double weight) {
-    bool isSelected = selectedWeight == weight;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedWeight = weight;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        width: MediaQuery.of(context).size.width * 0.6,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          border: Border.all(
-            color: isSelected
-                ? const Color.fromRGBO(223, 77, 15, 1.0)
-                : Colors.transparent,
-            width: isSelected ? 3 : 0,
-          ),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(50),
-                    blurRadius: 5,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Center(
-          child: Text(
-            '${weight.toStringAsFixed(1)}${unit.toLowerCase()}',
-            style: TextStyle(
-              color: isSelected
-                  ? const Color.fromRGBO(223, 77, 15, 1.0)
-                  : Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
           ),
         ),
       ),

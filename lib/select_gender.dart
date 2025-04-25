@@ -26,13 +26,7 @@ class _SelectGenderPageState extends State<SelectGenderPage> {
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: Color.fromRGBO(223, 77, 15, 1.0)),
-          onPressed: () {
-            Navigator.pushReplacementNamed(context, '/login');
-          },
-        ),
+        
       ),
       body: SafeArea(
         child: SingleChildScrollView(

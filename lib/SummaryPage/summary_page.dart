@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:async';  // Add this import for StreamSubscription
+import 'dart:async'; // Add this import for StreamSubscription
 import '../models/workout_plan.dart';
 import '../models/workout_history.dart';
 import 'manage_acc.dart';
@@ -34,7 +34,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   double userWeight = 0.0;
   List<WorkoutHistory> _recentWorkouts = [];
   bool _isLoading = true;
-  final WorkoutHistoryService _historyService = WorkoutHistoryService();
+  late final WorkoutHistoryService _historyService;
   final DietService _dietService = DietService();
   final StepsTrackingService _stepsService = StepsTrackingService();
   String? _selectedDietPlanId;
@@ -43,7 +43,8 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   int _currentSteps = 0;
   int _stepGoal = 0;
   double _stepPercentage = 0.0;
-  final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
+  final GlobalKey<CustomNavBarState> _navbarKey =
+      GlobalKey<CustomNavBarState>();
   bool _goalCompleted = false;
   StreamSubscription<User?>? _authStateSubscription;
   StreamSubscription<DocumentSnapshot>? _userDataSubscription;
@@ -52,16 +53,17 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Listen to auth state changes
-    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+    _authStateSubscription =
+        FirebaseAuth.instance.authStateChanges().listen((User? user) async {
       if (user != null) {
         // User is signed in
         debugPrint('User signed in: ${user.uid}');
-        
+
         // Cancel existing subscriptions first
         _userDataSubscription?.cancel();
-        
+
         // Reset all state
         if (mounted) {
           setState(() {
@@ -75,23 +77,23 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
             _updateStepPercentage();
           });
         }
-        
+
         // First reset step tracking service for new user
         await _stepsService.resetForNewUser();
-        
+
         // Then fetch user data
         await _fetchUserData();
-        
+
         // Finally load other data
         _loadRecentWorkouts();
         _loadSelectedDiet();
       } else {
         // User is signed out
         debugPrint('User signed out');
-        
+
         // Cancel subscriptions
         _userDataSubscription?.cancel();
-        
+
         // Reset all state
         if (mounted) {
           setState(() {
@@ -112,7 +114,8 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint('App resumed - checking user and reinitializing step tracking');
+      debugPrint(
+          'App resumed - checking user and reinitializing step tracking');
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         _stepsService.resume();
@@ -125,7 +128,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
     _userDataSubscription?.cancel();
     _authStateSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    
+
     // Don't dispose the step service itself, just remove listeners
     if (_stepsService.onStepsChanged != null) {
       _stepsService.onStepsChanged = null;
@@ -155,7 +158,9 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
           .doc(user.uid)
           .snapshots()
           .listen((userDoc) {
-        if (userDoc.exists && mounted && FirebaseAuth.instance.currentUser?.uid == user.uid) {
+        if (userDoc.exists &&
+            mounted &&
+            FirebaseAuth.instance.currentUser?.uid == user.uid) {
           final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
             username = userData['username'] ?? '';
@@ -165,7 +170,8 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
             _currentSteps = userData['current_steps'] ?? _currentSteps;
             _updateStepPercentage();
           });
-          debugPrint('Updated user data for ${user.uid} - Steps: $_currentSteps, Goal: $_stepGoal');
+          debugPrint(
+              'Updated user data for ${user.uid} - Steps: $_currentSteps, Goal: $_stepGoal');
         }
       }, onError: (e) {
         debugPrint('Error in user data listener: $e');
@@ -209,11 +215,11 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   Future<void> _loadSelectedDiet() async {
     try {
       setState(() => _loadingDiet = true);
-      
+
       // Get the selected diet plan ID
       final selectedDietPlanId = await _dietService.getSelectedDietPlan();
       _selectedDietPlanId = selectedDietPlanId;
-      
+
       // If user has a selected diet, get the diet plan details
       if (selectedDietPlanId != null) {
         final dietPlans = await _dietService.getDietRecommendations();
@@ -221,7 +227,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
           (plan) => plan.id == selectedDietPlanId,
           orElse: () => dietPlans.first,
         );
-        
+
         setState(() {
           _selectedDietPlan = selectedPlan;
           _loadingDiet = false;
@@ -238,17 +244,17 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   Future<void> _initializeStepTracking() async {
     try {
       debugPrint('Initializing step tracking');
-      
+
       // Initialize the step tracking service
       await _stepsService.initialize();
-      
+
       // Set initial values
       setState(() {
         _currentSteps = _stepsService.currentSteps;
         _stepGoal = _stepsService.goalSteps;
         _updateStepPercentage();
       });
-      
+
       // Subscribe to the step updates stream for real-time updates
       _stepsService.stepsStream.listen((steps) {
         if (mounted) {
@@ -259,7 +265,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
           debugPrint('Step update received: $_currentSteps');
         }
       });
-      
+
       // Setup goal-related callbacks
       _stepsService.onGoalChanged = (goal) {
         if (mounted) {
@@ -270,17 +276,18 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
           debugPrint('Goal updated: $_stepGoal');
         }
       };
-      
+
       _stepsService.onGoalCompleted = (completed, {int? steps, int? goal}) {
         if (mounted) {
           setState(() {
             _goalCompleted = completed;
           });
-          
+
           if (completed && steps != null && goal != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
+                content: Text(
+                    'Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
                 backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
                 duration: const Duration(seconds: 5),
                 action: SnackBarAction(
@@ -301,9 +308,11 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
       debugPrint('Error in _initializeStepTracking: $e');
     }
   }
-  
+
   void _updateStepPercentage() {
-    _stepPercentage = _stepGoal > 0 ? (_currentSteps / _stepGoal * 100).clamp(0.0, 100.0) : 0.0;
+    _stepPercentage = _stepGoal > 0
+        ? (_currentSteps / _stepGoal * 100).clamp(0.0, 100.0)
+        : 0.0;
   }
 
   void _onItemTapped(int index) {
@@ -529,7 +538,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
             setState(() {
               _selectedIndex = 0;
             });
-            
+
             // This will update the navbar highlight
             if (_navbarKey.currentState != null) {
               _navbarKey.currentState!.handleLogoClick(context);
@@ -629,13 +638,11 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
                                       decoration: BoxDecoration(
                                         color: const Color.fromRGBO(
                                             223, 77, 15, 0.2),
-                                        borderRadius:
-                                            BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: const Icon(
                                         Icons.fitness_center,
-                                        color: Color.fromRGBO(
-                                            223, 77, 15, 1.0),
+                                        color: Color.fromRGBO(223, 77, 15, 1.0),
                                         size: 24,
                                       ),
                                     ),
@@ -696,18 +703,18 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
     // Format the step numbers with commas
     final formattedSteps = NumberFormat('#,###').format(_currentSteps);
     final formattedGoal = NumberFormat('#,###').format(_stepGoal);
-    
+
     // Calculate calories based on weight
     int calories = 0;
     double distance = 0;
-    
+
     // Get calorie and distance data from service
     calories = _stepsService.calculateCaloriesBurned(_currentSteps, userWeight);
     distance = _stepsService.calculateDistance(_currentSteps);
-    
+
     // Format distance to 2 decimal places
     final formattedDistance = distance.toStringAsFixed(2);
-    
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -737,7 +744,6 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                     
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -769,7 +775,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
                     ],
                   ),
                 ),
-                
+
                 // Step image/icon
                 Container(
                   width: 60,
@@ -794,10 +800,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-              
-               
-              ],
+              children: [],
             ),
           ],
         ),
@@ -805,7 +808,8 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildAnimatedSummaryCard(String title, String subtitle, IconData icon) {
+  Widget _buildAnimatedSummaryCard(
+      String title, String subtitle, IconData icon) {
     return GestureDetector(
       onTap: () {
         if (title.contains('kg')) {
@@ -962,7 +966,7 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  
+
                   // Diet image
                   Container(
                     width: 60,

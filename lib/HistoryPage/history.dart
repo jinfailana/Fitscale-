@@ -20,7 +20,7 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  final WorkoutHistoryService _historyService = WorkoutHistoryService();
+  late final WorkoutHistoryService _historyService;
   final List<String> months = [
     'January',
     'February',
@@ -41,10 +41,11 @@ class _HistoryPageState extends State<HistoryPage> {
   int _selectedIndex = 2;
   List<WorkoutHistory> _workoutHistory = [];
   bool _isLoading = true;
-  List<WorkoutHistory> _filteredWorkouts = [];
-  final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
+  bool _loadingSteps = false;
   List<Map<String, dynamic>> _stepHistory = [];
-  bool _loadingSteps = true;
+  List<WorkoutHistory> _filteredWorkouts = [];
+  final GlobalKey<CustomNavBarState> _navbarKey =
+      GlobalKey<CustomNavBarState>();
 
   @override
   void initState() {
@@ -53,7 +54,6 @@ class _HistoryPageState extends State<HistoryPage> {
     selectedMonth = months[now.month - 1];
     selectedYear = now.year;
     _loadWorkoutHistory();
-    _loadStepHistory();
   }
 
   Future<void> _loadWorkoutHistory() async {
@@ -238,8 +238,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         children: [
                           // Profile picture
                           const CircleAvatar(
-                            backgroundColor:
-                                Color.fromRGBO(223, 77, 15, 0.2),
+                            backgroundColor: Color.fromRGBO(223, 77, 15, 0.2),
                             radius: 20,
                             child: Icon(
                               Icons.person,
@@ -840,7 +839,8 @@ class _HistoryPageState extends State<HistoryPage> {
                   GestureDetector(
                     onTap: _showMonthPicker,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: const Color.fromRGBO(28, 28, 30, 1.0),
                         borderRadius: BorderRadius.circular(8),
@@ -882,7 +882,8 @@ class _HistoryPageState extends State<HistoryPage> {
                       unselectedLabelColor: Colors.grey,
                       indicatorColor: Color.fromRGBO(223, 77, 15, 1.0),
                     ),
-                    const Divider(height: 1, color: Color.fromRGBO(28, 28, 30, 1.0)),
+                    const Divider(
+                        height: 1, color: Color.fromRGBO(28, 28, 30, 1.0)),
                     Expanded(
                       child: TabBarView(
                         children: [
@@ -946,6 +947,8 @@ class _HistoryPageState extends State<HistoryPage> {
                       setState(() {
                         _selectedIndex = 0;
                       });
+
+                      // Use the navbar's handler for consistent behavior
                       if (_navbarKey.currentState != null) {
                         _navbarKey.currentState!.handleLogoClick(context);
                       } else {
@@ -988,4 +991,3 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 }
-

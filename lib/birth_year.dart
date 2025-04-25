@@ -4,7 +4,6 @@ import 'services/auth_service.dart';
 import 'services/user_service.dart';
 import 'set_goal.dart';
 
-
 class BirthYearPage extends StatefulWidget {
   const BirthYearPage({super.key});
 
@@ -17,8 +16,13 @@ class _BirthYearPageState extends State<BirthYearPage> {
   final UserService _userService = UserService();
   int? selectedYear;
   bool _isLoading = false;
-  final List<int> years =
-      List.generate(100, (index) => DateTime.now().year - index);
+  final List<int> years = List.generate(
+    100,
+    (index) => DateTime.now().year - index,
+  ).where((year) {
+    final age = DateTime.now().year - year;
+    return age >= 13;
+  }).toList();
 
   void _handleBack(BuildContext context) {
     Navigator.pushReplacement(
@@ -89,7 +93,8 @@ class _BirthYearPageState extends State<BirthYearPage> {
 
                             try {
                               final userId = _authService.getCurrentUserId();
-                              if (userId == null) throw Exception('User not logged in');
+                              if (userId == null)
+                                throw Exception('User not logged in');
 
                               // Save birth year
                               await _userService.updateMetrics(
@@ -101,12 +106,13 @@ class _BirthYearPageState extends State<BirthYearPage> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>const SetHeightPage(),
+                                  builder: (context) => const SetHeightPage(),
                                 ),
                               );
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: ${e.toString()}')),
+                                SnackBar(
+                                    content: Text('Error: ${e.toString()}')),
                               );
                             } finally {
                               setState(() {

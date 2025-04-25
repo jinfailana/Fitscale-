@@ -53,6 +53,9 @@ class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _historyService = WorkoutHistoryService(
+        userId: FirebaseAuth.instance.currentUser?.uid ??
+            ''); // Initialize with current user ID
 
     // Listen to auth state changes
     _authStateSubscription =

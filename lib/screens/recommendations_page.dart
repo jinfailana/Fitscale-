@@ -58,27 +58,53 @@ class _RecommendationsPageState extends State<RecommendationsPage>
         for (var doc in workoutsCollection.docs) {
           final data = doc.data();
 
-          // Handle exercises as a Map instead of a List
-          final exercisesMap = data['exercises'] as Map<String, dynamic>;
-          final exercises = exercisesMap.values.map((e) {
-            return Exercise(
-              name: e['name'] as String,
-              sets: (e['sets'] ?? '0').toString(),
-              reps: (e['reps'] ?? '0').toString(),
-              rest: e['rest'] as String? ?? '30s',
-              icon: IconData(
-                  e['iconCode'] as int? ?? Icons.fitness_center.codePoint,
-                  fontFamily: 'MaterialIcons'),
-              musclesWorked: List<String>.from(e['musclesWorked'] ?? []),
-              instructions: List<String>.from(e['instructions'] ?? []),
-              imageHtml: e['imageHtml'] as String? ?? '',
-              setsCompleted: e['setsCompleted'] as int? ?? 0,
-              isCompleted: e['isCompleted'] as bool? ?? false,
-              lastCompleted: e['lastCompleted'] != null
-                  ? DateTime.parse(e['lastCompleted'] as String)
-                  : null,
-            );
-          }).toList();
+          // Handle exercises data structure
+          final exercisesData = data['exercises'];
+          List<Exercise> exercises = [];
+
+          if (exercisesData is Map<String, dynamic>) {
+            // Handle exercises as a Map
+            exercises = exercisesData.values.map((e) {
+              return Exercise(
+                name: e['name'] as String? ?? '',
+                sets: (e['sets'] ?? '0').toString(),
+                reps: (e['reps'] ?? '0').toString(),
+                rest: e['rest'] as String? ?? '30s',
+                icon: IconData(
+                    e['iconCode'] as int? ?? Icons.fitness_center.codePoint,
+                    fontFamily: 'MaterialIcons'),
+                musclesWorked: List<String>.from(e['musclesWorked'] ?? []),
+                instructions: List<String>.from(e['instructions'] ?? []),
+                imageHtml: e['imageHtml'] as String? ?? '',
+                setsCompleted: e['setsCompleted'] as int? ?? 0,
+                isCompleted: e['isCompleted'] as bool? ?? false,
+                lastCompleted: e['lastCompleted'] != null
+                    ? DateTime.parse(e['lastCompleted'] as String)
+                    : null,
+              );
+            }).toList();
+          } else if (exercisesData is List) {
+            // Handle exercises as a List
+            exercises = exercisesData.map((e) {
+              return Exercise(
+                name: e['name'] as String? ?? '',
+                sets: (e['sets'] ?? '0').toString(),
+                reps: (e['reps'] ?? '0').toString(),
+                rest: e['rest'] as String? ?? '30s',
+                icon: IconData(
+                    e['iconCode'] as int? ?? Icons.fitness_center.codePoint,
+                    fontFamily: 'MaterialIcons'),
+                musclesWorked: List<String>.from(e['musclesWorked'] ?? []),
+                instructions: List<String>.from(e['instructions'] ?? []),
+                imageHtml: e['imageHtml'] as String? ?? '',
+                setsCompleted: e['setsCompleted'] as int? ?? 0,
+                isCompleted: e['isCompleted'] as bool? ?? false,
+                lastCompleted: e['lastCompleted'] != null
+                    ? DateTime.parse(e['lastCompleted'] as String)
+                    : null,
+              );
+            }).toList();
+          }
 
           final workout = WorkoutPlan(
             name: data['name'] as String? ?? '',

@@ -57,7 +57,7 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadLastSavedData();
+    _initializeStepTracking();
   }
 
   @override
@@ -68,103 +68,72 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  Future<void> _loadLastSavedData() async {
+  Future<void> _initializeStepTracking() async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
-        print('No user logged in');
+        debugPrint('No user logged in');
         return;
       }
 
       _userId = user.uid;
 
-      // Get today's date
-      final now = DateTime.now();
-      final today = DateFormat('yyyy-MM-dd').format(now);
-
-      // Get user's private steps document
-      final userStepsDoc = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('private_data')
-          .doc('steps')
-          .get();
-      
-      if (userStepsDoc.exists) {
-        final data = userStepsDoc.data()!;
-        final lastUpdateTime = data['last_updated'] as Timestamp?;
-        
-        // Check if we have data from today
-        if (lastUpdateTime != null) {
-          final lastUpdateDate = DateFormat('yyyy-MM-dd').format(lastUpdateTime.toDate());
-          
-          if (lastUpdateDate == today) {
-            // Use today's data
-            setState(() {
-              _steps = data['current_steps'] ?? 0;
-              _lastSavedSteps = _steps;
-              _lastStepUpdateTime = lastUpdateTime.toDate();
-            });
-          } else {
-            // It's a new day, start from 0 but save yesterday's data
-            if (data['current_steps'] != null && data['current_steps'] > 0) {
-              await _saveStepHistory(data['current_steps'], lastUpdateDate);
-            }
-            // Reset steps for new day
-            await _resetStepsForNewDay();
-          }
-        } else {
-          // No previous data, start fresh
-          await _resetStepsForNewDay();
-        }
-
-        // Load goal from main user document
-        final userDoc = await _firestore.collection('users').doc(user.uid).get();
-        if (userDoc.exists) {
-          final userData = userDoc.data()!;
-          setState(() {
-            _goal = userData['step_goal'] ?? 0;
-            _hasSetGoal = userData['step_goal'] != null && userData['step_goal'] > 0;
-          });
-        }
-      } else {
-        // Initialize private steps document
-        await _resetStepsForNewDay();
+      // Initialize step tracking service first for immediate updates
+      if (!_stepsService.isInitialized) {
+        await _stepsService.initialize();
       }
 
-      // Setup listeners and initialize step tracking
+      // Setup real-time listeners for immediate UI updates
+      _stepsService.stepsStream.listen((steps) {
+        if (mounted) {
+          setState(() {
+            _steps = steps;
+            _updateStats();
+          });
+        }
+      });
+
+      // Setup user document listener for real-time updates
       _setupUserDataListener();
-      await _initializeStepTracking();
-      
+
     } catch (e) {
-      print('Error loading last saved data: $e');
+      debugPrint('Error initializing step tracking: $e');
+      _showError('Failed to initialize step tracking');
     }
   }
 
-  Future<void> _resetStepsForNewDay() async {
+  void _setupUserDataListener() {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final now = DateTime.now();
-    
-    // Reset steps in private data document
-    await _firestore
+    // Cancel any existing subscription
+    _userDataSubscription?.cancel();
+
+    // Listen to user document for real-time updates
+    _userDataSubscription = _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('private_data')
-        .doc('steps')
-        .set({
-          'current_steps': 0,
-          'last_updated': now,
-          'date': DateFormat('yyyy-MM-dd').format(now),
-          'user_id': user.uid,
-        }, SetOptions(merge: true));
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted || !snapshot.exists) return;
 
-    setState(() {
-      _steps = 0;
-      _lastSavedSteps = 0;
-      _lastStepUpdateTime = now;
-      _updateStats();
+      final data = snapshot.data()!;
+      setState(() {
+        // Update steps if available
+        if (data['current_steps'] != null) {
+          _steps = data['current_steps'];
+        }
+
+        // Update goal if available
+        if (data['step_goal'] != null) {
+          _goal = data['step_goal'];
+          _hasSetGoal = _goal > 0;
+        }
+
+        _updateStats();
+      });
+    }, onError: (e) {
+      debugPrint('Error in user data listener: $e');
     });
   }
 
@@ -193,226 +162,19 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _saveStepHistory(int steps, String date) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-
-      // Save to private history collection
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('private_data')
-          .doc('step_history')
-          .collection('daily')
-          .doc(date)
-          .set({
-            'steps': steps,
-            'date': date,
-            'timestamp': FieldValue.serverTimestamp(),
-            'user_id': user.uid,
-          }, SetOptions(merge: true));
-    } catch (e) {
-      print('Error saving step history: $e');
-    }
-  }
-
-  void _setupUserDataListener() {
-    // Cancel any existing subscription
-    _userDataSubscription?.cancel();
-
-    final user = _auth.currentUser;
-    if (user != null) {
-      _userId = user.uid;
-      
-      // Listen to private steps document
-      _userDataSubscription = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('private_data')
-          .doc('steps')
-          .snapshots()
-          .listen((snapshot) {
-        if (snapshot.exists && mounted) {
-          final data = snapshot.data()!;
-          final lastUpdateTime = data['last_updated'] as Timestamp?;
-          
-          setState(() {
-            // Only update steps if the Firebase data is newer
-            if (lastUpdateTime != null && (_lastStepUpdateTime == null || 
-                lastUpdateTime.toDate().isAfter(_lastStepUpdateTime!))) {
-              _steps = data['current_steps'] ?? _steps;
-              _lastSavedSteps = _steps;
-              _lastStepUpdateTime = lastUpdateTime.toDate();
-            }
-            _updateStats();
-          });
-        }
-      });
-
-      // Listen to user document for goal updates
-      _firestore
-          .collection('users')
-          .doc(user.uid)
-          .snapshots()
-          .listen((snapshot) {
-        if (snapshot.exists && mounted) {
-          final data = snapshot.data()!;
-          setState(() {
-            _goal = data['step_goal'] ?? 0;
-            _hasSetGoal = data['step_goal'] != null && data['step_goal'] > 0;
-            _updateStats();
-          });
-        }
-      });
-    }
-  }
-
-  Future<void> _initializeStepTracking() async {
-    try {
-      if (_isInitialized) return;
-      
-      // Request necessary permissions
-      await _requestPermissions();
-      
-      final user = _auth.currentUser;
-      if (user == null) {
-        print('No user logged in');
-        return;
-      }
-
-      // Initialize the service
-      await _stepsService.initialize();
-      
-      // Subscribe to real-time step updates
-      _stepsService.stepsStream.listen((newSteps) {
-        if (mounted && newSteps >= 0) {  // Ensure valid step count
-          setState(() {
-            _steps = newSteps;  // Directly use the steps from service
-            _updateStats();
-            // Save to Firebase periodically
-            _saveCurrentSteps();
-          });
-        }
-      });
-      
-      // Setup goal callbacks
-      _stepsService.onGoalChanged = (goal) {
-        if (mounted) {
-          setState(() {
-            _goal = goal;
-            _hasSetGoal = goal > 0;
-            _updateStats();
-          });
-        }
-      };
-      
-      _stepsService.onGoalCompleted = (completed, {int? steps, int? goal}) {
-        if (mounted) {
-          setState(() {
-            _goalCompleted = completed;
-          });
-          
-          if (completed && steps != null && goal != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
-                backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                duration: const Duration(seconds: 5),
-                action: SnackBarAction(
-                  label: 'Dismiss',
-                  textColor: Colors.white,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  },
-                ),
-              ),
-            );
-          }
-        }
-      };
-
-      _isInitialized = true;
-    } catch (e) {
-      print('Error initializing step tracking: $e');
-      _showError('Failed to initialize step tracking');
-    }
-  }
-
-  Future<void> _requestPermissions() async {
-    final statuses = await [
-      Permission.activityRecognition,
-      Permission.sensors,
-    ].request();
-
-    bool allGranted = true;
-    statuses.forEach((permission, status) {
-      if (!status.isGranted) allGranted = false;
-    });
-
-    if (!allGranted) {
-      if (!mounted) return;
-      final shouldOpenSettings = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Permissions Required'),
-          content: const Text(
-            'This app needs activity recognition and sensor permissions to count your steps.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Open Settings'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldOpenSettings == true) {
-        await openAppSettings();
-      }
-    }
-  }
-
   void _updateStats() {
     if (!mounted) return;
-    
+
     setState(() {
-      // Calculate percentage of goal
+      // Calculate percentage
       _percentage = _hasSetGoal ? (_steps / _goal * 100).clamp(0, 100) : 0;
 
-      // Get user weight for more accurate calorie calculation
-      final user = _auth.currentUser;
-      if (user != null) {
-        // Fetch user weight asynchronously
-        _firestore
-            .collection('users')
-            .doc(user.uid)
-            .get()
-            .then((doc) {
-          if (doc.exists && mounted) {
-            final data = doc.data();
-            if (data != null && data['weight'] != null) {
-              final userWeight = (data['weight'] as num).toDouble();
-              
-              // Update calories with weight-based calculation
-              setState(() {
-                _calories = _stepsService.calculateCaloriesBurned(_steps, userWeight);
-              });
-            }
-          }
-        }).catchError((e) {
-          debugPrint('Error fetching user weight: $e');
-        });
-      }
-      
-      // Initialize with default calculation until weight data is fetched
+      // Calculate calories and distance using the service
       _calories = _stepsService.calculateCaloriesBurned(_steps, null);
       _distance = _stepsService.calculateDistance(_steps);
+
+      // Update goal completion status
+      _goalCompleted = _goal > 0 && _steps >= _goal;
     });
   }
 
@@ -988,7 +750,6 @@ class _StepsPageState extends State<StepsPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Reinitialize when app is resumed
-      _setupUserDataListener();
       _initializeStepTracking();
     }
   }

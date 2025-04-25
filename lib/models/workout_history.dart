@@ -18,6 +18,8 @@ class WorkoutHistory {
       exerciseDetails; // Detailed tracking of each set (reps, weight, etc.)
   final String difficulty; // User-rated difficulty of the workout
   final int restBetweenSets; // Rest time between sets in seconds
+  final double progress;
+  final String goal;
 
   WorkoutHistory({
     required this.id,
@@ -31,11 +33,13 @@ class WorkoutHistory {
     required this.duration,
     required this.musclesWorked,
     required this.notes,
-    this.weight = 0.0,
-    this.caloriesBurned = 0.0,
-    this.exerciseDetails = const {},
-    this.difficulty = 'medium',
-    this.restBetweenSets = 60,
+    required this.weight,
+    required this.caloriesBurned,
+    required this.exerciseDetails,
+    required this.difficulty,
+    required this.restBetweenSets,
+    this.progress = 0.0,
+    this.goal = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -56,6 +60,8 @@ class WorkoutHistory {
       'exerciseDetails': exerciseDetails,
       'difficulty': difficulty,
       'restBetweenSets': restBetweenSets,
+      'progress': progress,
+      'goal': goal,
     };
   }
 
@@ -77,12 +83,14 @@ class WorkoutHistory {
       exerciseDetails: Map<String, dynamic>.from(map['exerciseDetails'] ?? {}),
       difficulty: map['difficulty'] ?? 'medium',
       restBetweenSets: map['restBetweenSets'] ?? 60,
+      progress: (map['progress'] ?? 0.0).toDouble(),
+      goal: map['goal'] ?? '',
     );
   }
 
   @override
   String toString() {
-    return 'WorkoutHistory(id: $id, workoutName: $workoutName, exerciseName: $exerciseName, date: $date, setsCompleted: $setsCompleted, totalSets: $totalSets, repsPerSet: $repsPerSet, status: $status, duration: $duration, musclesWorked: $musclesWorked, notes: $notes, weight: $weight, caloriesBurned: $caloriesBurned, difficulty: $difficulty)';
+    return 'WorkoutHistory(id: $id, workoutName: $workoutName, exerciseName: $exerciseName, date: $date, setsCompleted: $setsCompleted, totalSets: $totalSets, repsPerSet: $repsPerSet, status: $status, duration: $duration, musclesWorked: $musclesWorked, notes: $notes, weight: $weight, caloriesBurned: $caloriesBurned, difficulty: $difficulty, progress: $progress, goal: $goal)';
   }
 
   double get progressPercentage => (setsCompleted / totalSets) * 100;

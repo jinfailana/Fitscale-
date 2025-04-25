@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/workout_history.dart';
 import '../services/workout_history_service.dart';
 import 'dart:math';
+import 'dart:isolate';
 import '../navigation/custom_navbar.dart';
 import '../utils/custom_page_route.dart';
 import '../screens/recommendations_page.dart';
@@ -26,7 +27,11 @@ class _ManageAccPageState extends State<ManageAccPage> {
   String username = '';
   String signInMethod = '';
   late final WorkoutHistoryService _historyService;
-  int _selectedIndex = 3; // Set to 3 for the "Me" tab
+  int _selectedIndex = 3;
+  List<WorkoutHistory>? _cachedWorkoutHistory;
+  DateTime? _lastFetchTime;
+  bool _isLoading = true;
+  bool _mounted = true;
 
   @override
   void initState() {
@@ -35,7 +40,54 @@ class _ManageAccPageState extends State<ManageAccPage> {
     if (user != null) {
       _historyService = WorkoutHistoryService(userId: user.uid);
     }
-    _fetchUserData();
+    _initializeData();
+  }
+
+  @override
+  void dispose() {
+    _mounted = false;
+    super.dispose();
+  }
+
+  Future<void> _initializeData() async {
+    if (!_mounted) return;
+
+    try {
+      await Future.wait([
+        _fetchUserData(),
+        _loadWorkoutHistory(),
+      ]);
+    } catch (e) {
+      if (_mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadWorkoutHistory() async {
+    if (!_mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final workouts = await _fetchWorkoutHistory();
+      if (!_mounted) return;
+
+      setState(() {
+        _cachedWorkoutHistory = workouts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (_mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _fetchUserData() async {
@@ -84,288 +136,110 @@ class _ManageAccPageState extends State<ManageAccPage> {
   }
 
   Widget _buildProgressChart() {
-    return Container(
-      height: 400, // Increased height to prevent overflow
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: FutureBuilder<Map<String, dynamic>>(
-        future: Future.wait([
-          _fetchWorkoutHistory().then((history) => {'history': history}),
-          _fetchUserGoals().then((goals) => {'goals': goals}),
-        ]).then((results) => {...results[0], ...results[1]}),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFDF4D0F)),
-            );
-          }
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFDF4D0F)),
+      );
+    }
 
-          if (!snapshot.hasData ||
-              (snapshot.data!['history'] as List<WorkoutHistory>).isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.fitness_center, color: Colors.white24, size: 48),
-                  SizedBox(height: 16),
-                  Text(
-                    'No workout data available yet',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                  Text(
-                    'Complete workouts to track progress',
-                    style: TextStyle(color: Colors.white54, fontSize: 14),
-                  ),
-                ],
-              ),
-            );
-          }
+    if (_cachedWorkoutHistory == null || _cachedWorkoutHistory!.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.fitness_center, color: Colors.white24, size: 48),
+            SizedBox(height: 16),
+            Text(
+              'No workout data available yet',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            Text(
+              'Complete workouts to track progress',
+              style: TextStyle(color: Colors.white54, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
 
-          final workouts = snapshot.data!['history'] as List<WorkoutHistory>;
+    final workouts = _cachedWorkoutHistory!;
 
-          // Filter to only include recommended workouts (from "My Workouts")
-          final recommendedWorkouts = workouts
-              .where((w) => w.workoutName.startsWith('My Workout'))
-              .toList();
-
-          if (recommendedWorkouts.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.fitness_center,
-                    color: Color(0xFFDF4D0F),
-                    size: 48,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No recommended workout data to display',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Add and complete recommended workouts to see progress',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Group workouts by date
-          final Map<DateTime, List<WorkoutHistory>> workoutsByDate = {};
-          for (var workout in recommendedWorkouts) {
-            final date = DateTime(
-              workout.date.year,
-              workout.date.month,
-              workout.date.day,
-            );
-            workoutsByDate[date] = [...(workoutsByDate[date] ?? []), workout];
-          }
-
-          // Create spots for the line graph
-          final spots = workoutsByDate.entries.map((entry) {
-            final dailyWorkouts = entry.value;
-            final completedWorkouts =
-                dailyWorkouts.where((w) => w.isCompleted).length;
-            final totalSets =
-                dailyWorkouts.fold<int>(0, (sum, w) => sum + w.setsCompleted);
-
-            // Calculate progress based on completion and sets
-            final progress = (completedWorkouts / dailyWorkouts.length) * 100;
-
-            return FlSpot(
-              entry.key.millisecondsSinceEpoch.toDouble(),
-              progress.clamp(0, 100),
-            );
-          }).toList()
-            ..sort((a, b) => a.x.compareTo(b.x));
-
-          // Calculate statistics for recommended workouts only
-          final totalWorkouts = recommendedWorkouts.length;
-          final completedWorkouts =
-              recommendedWorkouts.where((w) => w.isCompleted).length;
-          final totalSets = recommendedWorkouts.fold<int>(
-              0, (sum, w) => sum + w.setsCompleted);
-          final averageSetsPerWorkout =
-              totalWorkouts > 0 ? (totalSets / totalWorkouts).round() : 0;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            'Workout Progress',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          height: 220,
+          child: OptimizedProgressChart(workouts: workouts),
+        ),
+        const SizedBox(height: 24),
+        // Progress Stats
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Recommended Workout Progress',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Expanded(
+                child: _buildStatCard(
+                  'Total\nWorkouts',
+                  workouts.length.toString(),
+                  Icons.fitness_center,
                 ),
               ),
-              const SizedBox(height: 24),
-              // Progress chart
-              SizedBox(
-                height: 220,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: LineChart(
-                    LineChartData(
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: true,
-                        getDrawingHorizontalLine: (value) => const FlLine(
-                          color: Colors.white12,
-                          strokeWidth: 1,
-                        ),
-                        getDrawingVerticalLine: (value) => const FlLine(
-                          color: Colors.white12,
-                          strokeWidth: 1,
-                        ),
-                      ),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 30,
-                            interval: (spots.last.x - spots.first.x) /
-                                3, // Reduced number of date labels
-                            getTitlesWidget: (value, meta) {
-                              final date = DateTime.fromMillisecondsSinceEpoch(
-                                  value.toInt());
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  DateFormat('MM/dd').format(date),
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 30,
-                            interval: 25,
-                            getTitlesWidget: (value, meta) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Text(
-                                  '${value.toInt()}%',
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(
-                        show: true,
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      minX: spots.first.x,
-                      maxX: spots.last.x,
-                      minY: 0,
-                      maxY: 100,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: spots,
-                          isCurved: true,
-                          color: const Color(0xFFDF4D0F),
-                          barWidth: 3,
-                          isStrokeCapRound: true,
-                          dotData: FlDotData(
-                            show: true,
-                            checkToShowDot: (spot, barData) {
-                              final index = barData.spots.indexOf(spot);
-                              return index == 0 ||
-                                  index == barData.spots.length - 1 ||
-                                  index % 3 == 0;
-                            },
-                            getDotPainter: (spot, percent, barData, index) =>
-                                FlDotCirclePainter(
-                              radius: 4,
-                              color: const Color(0xFFDF4D0F),
-                              strokeWidth: 2,
-                              strokeColor: Colors.white,
-                            ),
-                          ),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: const Color(0xFFDF4D0F).withOpacity(0.1),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Completed',
+                  '${workouts.where((w) => w.isCompleted).length}/${workouts.length}',
+                  Icons.check_circle,
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Progress stats
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        'Recommended\nWorkouts',
-                        totalWorkouts.toString(),
-                        Icons.fitness_center,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'Completed',
-                        '$completedWorkouts/$totalWorkouts',
-                        Icons.check_circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'Avg. Sets',
-                        averageSetsPerWorkout.toString(),
-                        Icons.repeat,
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Avg. Sets',
+                  (workouts.fold<int>(0, (sum, w) => sum + w.setsCompleted) /
+                          workouts.length)
+                      .round()
+                      .toString(),
+                  Icons.repeat,
                 ),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
+  }
+
+  double _calculateWeekProgress(List<WorkoutHistory> weekWorkouts) {
+    if (weekWorkouts.isEmpty) return 0.0;
+
+    double totalProgress = 0.0;
+    for (var workout in weekWorkouts) {
+      if (workout.progress > 0) {
+        totalProgress += workout.progress;
+      } else {
+        final setProgress = workout.totalSets > 0
+            ? (workout.setsCompleted / workout.totalSets)
+            : 0.0;
+        final completionProgress = workout.isCompleted ? 1.0 : 0.0;
+        totalProgress += (setProgress * 0.7 + completionProgress * 0.3);
+      }
+    }
+
+    return (totalProgress / weekWorkouts.length).clamp(0.0, 100.0);
   }
 
   Widget _buildStatCard(String label, String value, IconData icon) {
@@ -409,50 +283,62 @@ class _ManageAccPageState extends State<ManageAccPage> {
   }
 
   Future<List<WorkoutHistory>> _fetchWorkoutHistory() async {
+    // Check if we have cached data that's less than 5 minutes old
+    if (_cachedWorkoutHistory != null && _lastFetchTime != null) {
+      final now = DateTime.now();
+      if (now.difference(_lastFetchTime!).inMinutes < 5) {
+        return _cachedWorkoutHistory!;
+      }
+    }
+
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        print("No user logged in");
-        return [];
-      }
+      if (user == null) return [];
 
-      print("Fetching workout history for user: ${user.uid}");
+      // Get only the last 30 days of data
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
 
       final querySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('workout_history')
-          .orderBy('date', descending: true)
-          .limit(50) // Increased limit to ensure we get enough data
+          .where('date',
+              isGreaterThanOrEqualTo: thirtyDaysAgo.toIso8601String())
+          .orderBy('date', descending: false)
           .get();
 
-      print("Fetched ${querySnapshot.docs.length} workout history documents");
+      final workouts = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return WorkoutHistory(
+          id: doc.id,
+          workoutName: data['workoutName'] ?? '',
+          exerciseName: data['exerciseName'] ?? '',
+          date: DateTime.tryParse(data['date'] ?? '') ?? DateTime.now(),
+          setsCompleted: data['setsCompleted'] ?? 0,
+          totalSets: data['totalSets'] ?? 0,
+          repsPerSet: data['repsPerSet'] ?? 0,
+          status: data['status'] ?? 'in_progress',
+          duration: data['duration'] ?? 0,
+          musclesWorked: List<String>.from(data['musclesWorked'] ?? []),
+          notes: data['notes'] ?? '',
+          weight: (data['weight'] ?? 0.0).toDouble(),
+          caloriesBurned: (data['caloriesBurned'] ?? 0.0).toDouble(),
+          exerciseDetails:
+              Map<String, dynamic>.from(data['exerciseDetails'] ?? {}),
+          difficulty: data['difficulty'] ?? 'medium',
+          restBetweenSets: data['restBetweenSets'] ?? 60,
+          progress: (data['progress'] ?? 0.0).toDouble(),
+          goal: data['goal'] ?? '',
+        );
+      }).toList();
 
-      final workouts = querySnapshot.docs
-          .map((doc) {
-            try {
-              return WorkoutHistory.fromMap(doc.data());
-            } catch (e) {
-              print("Error parsing workout history: $e");
-              return null;
-            }
-          })
-          .where((workout) => workout != null)
-          .cast<WorkoutHistory>()
-          .toList();
-
-      print("Successfully parsed ${workouts.length} workout history items");
-
-      // Print some sample data for debugging
-      if (workouts.isNotEmpty) {
-        print(
-            "Sample workout: ${workouts[0].workoutName}, completed: ${workouts[0].isCompleted}, sets: ${workouts[0].setsCompleted}/${workouts[0].totalSets}");
-      }
+      // Cache the results
+      _cachedWorkoutHistory = workouts;
+      _lastFetchTime = DateTime.now();
 
       return workouts;
     } catch (e) {
-      print('Error fetching workout history: $e');
-      return [];
+      return _cachedWorkoutHistory ?? [];
     }
   }
 
@@ -542,365 +428,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      height: 220,
-                      child: FutureBuilder<List<WorkoutHistory>>(
-                        future: _fetchWorkoutHistory(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                color: Color(0xFFDF4D0F),
-                              ),
-                            );
-                          }
-
-                          if (!snapshot.hasData) {
-                            return const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.fitness_center,
-                                      color: Colors.white24, size: 48),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'No workout data available',
-                                    style: TextStyle(color: Colors.white54),
-                                  ),
-                                  Text(
-                                    'Complete workouts to see your progress',
-                                    style: TextStyle(
-                                        color: Colors.white38, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          final workouts = snapshot.data!;
-                          print("Fetched ${workouts.length} workouts");
-
-                          if (workouts.isEmpty) {
-                            return const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.fitness_center,
-                                      color: Colors.white24, size: 48),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'No workout data available',
-                                    style: TextStyle(color: Colors.white54),
-                                  ),
-                                  Text(
-                                    'Complete workouts to see your progress',
-                                    style: TextStyle(
-                                        color: Colors.white38, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          final spots = _createDataPoints(workouts);
-                          print(
-                              "Generated ${spots.length} spots for the graph");
-
-                          if (spots.isEmpty) {
-                            return const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.fitness_center,
-                                      color: Colors.white24, size: 48),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'No workout progress to display',
-                                    style: TextStyle(color: Colors.white54),
-                                  ),
-                                  Text(
-                                    'Complete more workouts to track progress',
-                                    style: TextStyle(
-                                        color: Colors.white38, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          return LineChart(
-                            LineChartData(
-                              gridData: FlGridData(
-                                show: true,
-                                drawVerticalLine: true,
-                                getDrawingHorizontalLine: (value) =>
-                                    const FlLine(
-                                  color: Colors.white10,
-                                  strokeWidth: 1,
-                                ),
-                                getDrawingVerticalLine: (value) => const FlLine(
-                                  color: Colors.white10,
-                                  strokeWidth: 1,
-                                ),
-                              ),
-                              titlesData: FlTitlesData(
-                                show: true,
-                                rightTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                topTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    reservedSize: 25,
-                                    interval:
-                                        (spots.last.x - spots.first.x) / 4,
-                                    getTitlesWidget: (value, meta) {
-                                      final date =
-                                          DateTime.fromMillisecondsSinceEpoch(
-                                              value.toInt());
-                                      return Padding(
-                                        padding:
-                                            const EdgeInsets.only(top: 8.0),
-                                        child: Text(
-                                          DateFormat('MM/dd').format(date),
-                                          style: const TextStyle(
-                                            color: Colors.white54,
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                leftTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    reservedSize: 30,
-                                    interval: 25,
-                                    getTitlesWidget: (value, meta) {
-                                      return Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 8),
-                                        child: Text(
-                                          '${value.toInt()}%',
-                                          style: const TextStyle(
-                                            color: Colors.white54,
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              borderData: FlBorderData(show: false),
-                              minX: spots.first.x,
-                              maxX: spots.last.x,
-                              minY: 0,
-                              maxY: 100,
-                              lineBarsData: [
-                                LineChartBarData(
-                                  spots: spots,
-                                  isCurved: true,
-                                  color: const Color(0xFFDF4D0F),
-                                  barWidth: 3,
-                                  isStrokeCapRound: true,
-                                  dotData: FlDotData(
-                                    show: true,
-                                    checkToShowDot: (spot, barData) {
-                                      final index = barData.spots.indexOf(spot);
-                                      return index == 0 ||
-                                          index == barData.spots.length - 1 ||
-                                          index % 3 == 0;
-                                    },
-                                    getDotPainter:
-                                        (spot, percent, barData, index) =>
-                                            FlDotCirclePainter(
-                                      radius: 4,
-                                      color: const Color(0xFFDF4D0F),
-                                      strokeWidth: 2,
-                                      strokeColor: Colors.white,
-                                    ),
-                                  ),
-                                  belowBarData: BarAreaData(
-                                    show: true,
-                                    color: const Color(0xFFDF4D0F)
-                                        .withOpacity(0.1),
-                                  ),
-                                ),
-                              ],
-                              extraLinesData: ExtraLinesData(
-                                horizontalLines: [
-                                  HorizontalLine(
-                                    y: 70,
-                                    color: Colors.green.withOpacity(0.5),
-                                    strokeWidth: 1,
-                                    dashArray: [5, 5],
-                                    label: HorizontalLineLabel(
-                                      show: true,
-                                      alignment: Alignment.topRight,
-                                      padding: const EdgeInsets.only(
-                                          right: 5, bottom: 5),
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontSize: 10,
-                                      ),
-                                      labelResolver: (line) => 'Goal',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              lineTouchData: LineTouchData(
-                                touchTooltipData: LineTouchTooltipData(
-                                  tooltipBgColor:
-                                      const Color(0xFF2A2A2A).withOpacity(0.8),
-                                  tooltipRoundedRadius: 8,
-                                  getTooltipItems:
-                                      (List<LineBarSpot> touchedSpots) {
-                                    return touchedSpots
-                                        .map((LineBarSpot touchedSpot) {
-                                      final date =
-                                          DateTime.fromMillisecondsSinceEpoch(
-                                              touchedSpot.x.toInt());
-                                      return LineTooltipItem(
-                                        '${DateFormat('MM/dd').format(date)}\n',
-                                        const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        children: [
-                                          TextSpan(
-                                            text:
-                                                '${touchedSpot.y.toInt()}% progress',
-                                            style: const TextStyle(
-                                              color: Color(0xFFDF4D0F),
-                                              fontWeight: FontWeight.normal,
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    }).toList();
-                                  },
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Progress Stats
-                    FutureBuilder<List<WorkoutHistory>>(
-                      future: _fetchWorkoutHistory(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final workouts = snapshot.data!;
-                        final recommendedWorkouts = workouts
-                            .where(
-                                (w) => w.workoutName.startsWith('My Workout'))
-                            .toList();
-
-                        if (recommendedWorkouts.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final totalWorkouts = recommendedWorkouts.length;
-                        final completedWorkouts = recommendedWorkouts
-                            .where((w) => w.isCompleted)
-                            .length;
-                        final totalSets = recommendedWorkouts.fold<int>(
-                            0, (sum, w) => sum + w.setsCompleted);
-                        final totalPossibleSets = recommendedWorkouts.fold<int>(
-                            0, (sum, w) => sum + w.totalSets);
-
-                        // Calculate overall progress
-                        final completionRate = totalWorkouts > 0
-                            ? (completedWorkouts / totalWorkouts) * 100
-                            : 0.0;
-                        final setsRate = totalPossibleSets > 0
-                            ? (totalSets / totalPossibleSets) * 100
-                            : 0.0;
-                        final overallProgress =
-                            ((completionRate + setsRate) / 2).round();
-
-                        // Calculate streak
-                        int currentStreak = 0;
-                        if (recommendedWorkouts.isNotEmpty) {
-                          final groupedByDate =
-                              <DateTime, List<WorkoutHistory>>{};
-                          for (var workout in recommendedWorkouts) {
-                            final date = DateTime(
-                              workout.date.year,
-                              workout.date.month,
-                              workout.date.day,
-                            );
-                            if (!groupedByDate.containsKey(date)) {
-                              groupedByDate[date] = [];
-                            }
-                            groupedByDate[date]!.add(workout);
-                          }
-
-                          final sortedDates = groupedByDate.keys.toList()
-                            ..sort((a, b) => b.compareTo(a)); // Sort descending
-
-                          final today = DateTime(
-                            DateTime.now().year,
-                            DateTime.now().month,
-                            DateTime.now().day,
-                          );
-
-                          // Check if there's a workout today
-                          bool hasWorkoutToday = sortedDates.isNotEmpty &&
-                              sortedDates[0].isAtSameMomentAs(today);
-
-                          if (hasWorkoutToday ||
-                              sortedDates.isNotEmpty &&
-                                  today.difference(sortedDates[0]).inDays ==
-                                      1) {
-                            // Start counting streak
-                            currentStreak = hasWorkoutToday ? 1 : 0;
-
-                            for (int i = hasWorkoutToday ? 1 : 0;
-                                i < sortedDates.length;
-                                i++) {
-                              final currentDate = sortedDates[i];
-                              final previousDate = sortedDates[i - 1];
-
-                              // If dates are consecutive, increase streak
-                              if (previousDate.difference(currentDate).inDays ==
-                                  1) {
-                                currentStreak++;
-                              } else {
-                                break;
-                              }
-                            }
-                          }
-                        }
-
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildProgressStat('Progress', '$overallProgress%',
-                                Icons.trending_up),
-                            _buildProgressStat(
-                                'Completed',
-                                '$completedWorkouts/$totalWorkouts',
-                                Icons.check_circle),
-                            _buildProgressStat(
-                                'Streak',
-                                currentStreak.toString(),
-                                Icons.local_fire_department),
-                          ],
-                        );
-                      },
-                    ),
+                    _buildProgressChart(),
                   ],
                 ),
               ),
@@ -1519,144 +1047,74 @@ class _ManageAccPageState extends State<ManageAccPage> {
     );
   }
 
-  Widget _buildProgressStat(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: const Color(0xFFDF4D0F), size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white54, fontSize: 12),
-        ),
-      ],
-    );
-  }
-
   List<FlSpot> _createDataPoints(List<WorkoutHistory> workouts) {
-    // Print for debugging
-    print("Total workouts fetched: ${workouts.length}");
-
-    // Filter to include all workouts, not just "My Workout"
-    // This ensures we're not missing any data
-    final filteredWorkouts = workouts.toList();
-
-    print("Filtered workouts: ${filteredWorkouts.length}");
-
-    if (filteredWorkouts.isEmpty) {
-      return [];
-    }
-
-    // Sort workouts by date (oldest to newest)
-    filteredWorkouts.sort((a, b) => a.date.compareTo(b.date));
+    if (workouts.isEmpty) return [];
 
     // Get date range (last 30 days)
     final DateTime endDate = DateTime.now();
     final DateTime startDate = endDate.subtract(const Duration(days: 29));
 
-    print("Date range: $startDate to $endDate");
+    // Pre-calculate the number of days and step size
+    final int totalDays = 30;
+    final int step = (totalDays / OptimizedProgressChart.maxDataPoints).ceil();
 
-    // Create a map of dates to track cumulative progress
-    final Map<DateTime, double> progressByDate = {};
-    double cumulativeProgress = 0;
+    // Create fixed-size arrays for better memory management
+    final List<DateTime> dates = List.generate(
+        OptimizedProgressChart.maxDataPoints,
+        (index) => startDate.add(Duration(days: index * step)));
 
-    // Initialize with start date
-    DateTime currentDate =
-        DateTime(startDate.year, startDate.month, startDate.day);
+    final List<double> values =
+        List.filled(OptimizedProgressChart.maxDataPoints, 0.0);
 
-    // Group workouts by date
-    final Map<DateTime, List<WorkoutHistory>> workoutsByDate = {};
-    for (var workout in filteredWorkouts) {
+    // Group workouts by date more efficiently
+    final workoutsByDate = <DateTime, List<WorkoutHistory>>{};
+    for (var workout in workouts) {
       final date = DateTime(
         workout.date.year,
         workout.date.month,
         workout.date.day,
       );
-
-      if (!workoutsByDate.containsKey(date)) {
-        workoutsByDate[date] = [];
-      }
-      workoutsByDate[date]!.add(workout);
+      workoutsByDate.putIfAbsent(date, () => []).add(workout);
     }
 
-    print("Dates with workouts: ${workoutsByDate.keys.length}");
+    // Calculate progress with fixed intervals
+    double cumulativeProgress = 0;
+    for (var i = 0; i < dates.length; i++) {
+      final currentDate = dates[i];
 
-    // Calculate cumulative progress over time
-    while (currentDate.isBefore(endDate) ||
-        currentDate.isAtSameMomentAs(endDate)) {
-      // If there are workouts for this date, calculate progress
       if (workoutsByDate.containsKey(currentDate)) {
         final dailyWorkouts = workoutsByDate[currentDate]!;
-        final completedWorkouts =
-            dailyWorkouts.where((w) => w.isCompleted).length;
+        double dailyProgress = 0;
 
-        // Ensure we don't divide by zero
-        final totalSets =
-            dailyWorkouts.fold<int>(0, (sum, w) => sum + w.setsCompleted);
-        final totalPossibleSets = dailyWorkouts.fold<int>(
-            0,
-            (sum, w) =>
-                sum +
-                (w.totalSets > 0
-                    ? w.totalSets
-                    : 3)); // Default to 3 sets if totalSets is 0
+        for (var workout in dailyWorkouts) {
+          if (workout.progress > 0) {
+            dailyProgress += workout.progress;
+          } else {
+            final setProgress = workout.totalSets > 0
+                ? (workout.setsCompleted / workout.totalSets)
+                : 0.0;
+            final completionProgress = workout.isCompleted ? 1.0 : 0.0;
+            dailyProgress += (setProgress * 0.7 + completionProgress * 0.3);
+          }
+        }
 
-        // Calculate daily progress (50% completion rate, 50% sets completed)
-        final completionRate = dailyWorkouts.isNotEmpty
-            ? (completedWorkouts / dailyWorkouts.length)
-            : 0.0;
-        final setsRate =
-            totalPossibleSets > 0 ? (totalSets / totalPossibleSets) : 0.0;
-
-        // Add daily progress to cumulative total (max 100)
-        // Increase the increment to make progress more visible
-        final dailyIncrement = (completionRate * 0.5 + setsRate * 0.5) * 15;
-        cumulativeProgress += dailyIncrement;
-
-        print(
-            "Date: $currentDate, Workouts: ${dailyWorkouts.length}, Completed: $completedWorkouts, Progress: $dailyIncrement, Cumulative: $cumulativeProgress");
+        dailyProgress = dailyProgress / dailyWorkouts.length;
+        cumulativeProgress = (cumulativeProgress * 0.7) + (dailyProgress * 0.3);
       } else {
-        // Small increment even on days without workouts to show some progress
-        cumulativeProgress += 0.5;
+        cumulativeProgress *= 0.95;
       }
 
-      // Ensure progress stays within bounds
-      cumulativeProgress = cumulativeProgress.clamp(0, 100);
-
-      // Store cumulative progress for this date
-      progressByDate[currentDate] = cumulativeProgress;
-
-      // Move to next day
-      currentDate = currentDate.add(const Duration(days: 1));
+      values[i] = cumulativeProgress.clamp(0.0, 100.0);
     }
 
-    // Convert to FlSpots for the chart
-    final spots = progressByDate.entries.map((entry) {
-      return FlSpot(
-        entry.key.millisecondsSinceEpoch.toDouble(),
-        entry.value,
-      );
-    }).toList();
-
-    print("Generated ${spots.length} data points for the graph");
-
-    // Ensure we have at least two points for the graph
-    if (spots.length < 2) {
-      // Create default data if we don't have enough real data
-      return [
-        FlSpot(startDate.millisecondsSinceEpoch.toDouble(), 0),
-        FlSpot(endDate.millisecondsSinceEpoch.toDouble(), 0),
-      ];
-    }
-
-    return spots;
+    // Create spots directly without intermediate collections
+    return List.generate(
+      OptimizedProgressChart.maxDataPoints,
+      (i) => FlSpot(
+        dates[i].millisecondsSinceEpoch.toDouble(),
+        values[i],
+      ),
+    );
   }
 
   void _onItemTapped(int index) {
@@ -1905,4 +1363,286 @@ class DailyProgress {
     required this.totalDuration,
     required this.completedSets,
   });
+}
+
+class OptimizedProgressChart extends StatefulWidget {
+  final List<WorkoutHistory> workouts;
+  static const int maxDataPoints = 10; // Limit total data points
+
+  const OptimizedProgressChart({
+    Key? key,
+    required this.workouts,
+  }) : super(key: key);
+
+  @override
+  State<OptimizedProgressChart> createState() => _OptimizedProgressChartState();
+}
+
+class _OptimizedProgressChartState extends State<OptimizedProgressChart> {
+  List<FlSpot>? _spots;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChartData();
+  }
+
+  void _loadChartData() {
+    Future.microtask(() {
+      if (!mounted) return;
+
+      final spots = _createDataPoints(widget.workouts);
+      if (mounted) {
+        setState(() {
+          _spots = spots;
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  List<FlSpot> _createDataPoints(List<WorkoutHistory> workouts) {
+    if (workouts.isEmpty) return [];
+
+    // Get date range (last 30 days)
+    final DateTime endDate = DateTime.now();
+    final DateTime startDate = endDate.subtract(const Duration(days: 29));
+
+    // Pre-calculate the number of days and step size
+    final int totalDays = 30;
+    final int step = (totalDays / OptimizedProgressChart.maxDataPoints).ceil();
+
+    // Create fixed-size arrays for better memory management
+    final List<DateTime> dates = List.generate(
+        OptimizedProgressChart.maxDataPoints,
+        (index) => startDate.add(Duration(days: index * step)));
+
+    final List<double> values =
+        List.filled(OptimizedProgressChart.maxDataPoints, 0.0);
+
+    // Group workouts by date more efficiently
+    final workoutsByDate = <DateTime, List<WorkoutHistory>>{};
+    for (var workout in workouts) {
+      final date = DateTime(
+        workout.date.year,
+        workout.date.month,
+        workout.date.day,
+      );
+      workoutsByDate.putIfAbsent(date, () => []).add(workout);
+    }
+
+    // Calculate progress with fixed intervals
+    double cumulativeProgress = 0;
+    for (var i = 0; i < dates.length; i++) {
+      final currentDate = dates[i];
+
+      if (workoutsByDate.containsKey(currentDate)) {
+        final dailyWorkouts = workoutsByDate[currentDate]!;
+        double dailyProgress = 0;
+
+        for (var workout in dailyWorkouts) {
+          if (workout.progress > 0) {
+            dailyProgress += workout.progress;
+          } else {
+            final setProgress = workout.totalSets > 0
+                ? (workout.setsCompleted / workout.totalSets)
+                : 0.0;
+            final completionProgress = workout.isCompleted ? 1.0 : 0.0;
+            dailyProgress += (setProgress * 0.7 + completionProgress * 0.3);
+          }
+        }
+
+        dailyProgress = dailyProgress / dailyWorkouts.length;
+        cumulativeProgress = (cumulativeProgress * 0.7) + (dailyProgress * 0.3);
+      } else {
+        cumulativeProgress *= 0.95;
+      }
+
+      values[i] = cumulativeProgress.clamp(0.0, 100.0);
+    }
+
+    // Create spots directly without intermediate collections
+    return List.generate(
+      OptimizedProgressChart.maxDataPoints,
+      (i) => FlSpot(
+        dates[i].millisecondsSinceEpoch.toDouble(),
+        values[i],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading || _spots == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFDF4D0F)),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 20,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: Colors.white.withOpacity(0.1),
+                strokeWidth: 1,
+              );
+            },
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: 7,
+                getTitlesWidget: (value, meta) {
+                  final date =
+                      DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      DateFormat('MM/dd').format(date),
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 10,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 20,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    '${value.toInt()}%',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 10,
+                    ),
+                  );
+                },
+                reservedSize: 40,
+              ),
+            ),
+          ),
+          borderData: FlBorderData(
+            show: false,
+          ),
+          minX: _spots!.first.x,
+          maxX: _spots!.last.x,
+          minY: 0,
+          maxY: 100,
+          lineBarsData: [
+            LineChartBarData(
+              spots: _spots!,
+              isCurved: true,
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFDF4D0F).withOpacity(0.5),
+                  const Color(0xFFDF4D0F),
+                ],
+              ),
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                checkToShowDot: (spot, barData) {
+                  final index = barData.spots.indexOf(spot);
+                  return index == 0 || index == barData.spots.length - 1;
+                },
+                getDotPainter: (spot, percent, barData, index) {
+                  return FlDotCirclePainter(
+                    radius: 4,
+                    color: const Color(0xFFDF4D0F),
+                    strokeWidth: 2,
+                    strokeColor: Colors.white,
+                  );
+                },
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFDF4D0F).withOpacity(0.3),
+                    const Color(0xFFDF4D0F).withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              tooltipBgColor: const Color(0xFF1A1A1A),
+              tooltipRoundedRadius: 8,
+              getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                return touchedBarSpots.map((barSpot) {
+                  final date =
+                      DateTime.fromMillisecondsSinceEpoch(barSpot.x.toInt());
+                  return LineTooltipItem(
+                    '${DateFormat('MMM d').format(date)}\n',
+                    const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: 'Progress: ${barSpot.y.toInt()}%',
+                        style: const TextStyle(
+                          color: Color(0xFFDF4D0F),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList();
+              },
+            ),
+            handleBuiltInTouches: true,
+            getTouchedSpotIndicator:
+                (LineChartBarData barData, List<int> spotIndexes) {
+              return spotIndexes.map((spotIndex) {
+                return TouchedSpotIndicatorData(
+                  FlLine(
+                    color: const Color(0xFFDF4D0F),
+                    strokeWidth: 2,
+                    dashArray: [5, 5],
+                  ),
+                  FlDotData(
+                    getDotPainter: (spot, percent, barData, index) {
+                      return FlDotCirclePainter(
+                        radius: 6,
+                        color: Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: const Color(0xFFDF4D0F),
+                      );
+                    },
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
+      ),
+    );
+  }
 }

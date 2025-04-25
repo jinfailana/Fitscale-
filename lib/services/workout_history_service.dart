@@ -127,6 +127,15 @@ class WorkoutHistoryService {
       final repsPerSet =
           int.tryParse(exercise.reps.replaceAll(RegExp(r'[^0-9]'), '')) ?? 12;
 
+      // Calculate progress
+      final isCompleted = completedSets >= totalSets;
+      final completionProgress =
+          isCompleted ? 50.0 : 0.0; // 50% weight for completion
+      final setsProgress = totalSets > 0
+          ? (completedSets / totalSets) * 50
+          : 0.0; // 50% weight for sets
+      final progress = completionProgress + setsProgress;
+
       // Create workout history entry
       final workoutHistory = WorkoutHistory(
         id: exerciseId,
@@ -136,16 +145,16 @@ class WorkoutHistoryService {
         setsCompleted: completedSets,
         totalSets: totalSets,
         repsPerSet: repsPerSet,
-        status: completedSets >= totalSets ? 'completed' : 'in_progress',
-        duration: 0, // You can add actual duration if tracked
+        status: isCompleted ? 'completed' : 'in_progress',
+        duration: 0,
         musclesWorked: exercise.musclesWorked,
         notes: notes,
-        // Add default values for new fields
         weight: 0.0,
         caloriesBurned: 0.0,
         exerciseDetails: {},
         difficulty: 'medium',
         restBetweenSets: 60,
+        progress: progress, // Include calculated progress
       );
 
       // Save to workout_history collection
@@ -173,7 +182,7 @@ class WorkoutHistoryService {
         'year': now.year,
         'userId': user.uid,
         'volume': completedSets * repsPerSet,
-        'status': completedSets >= totalSets ? 'completed' : 'in_progress',
+        'status': isCompleted ? 'completed' : 'in_progress',
       };
 
       // Save to exerciseHistory collection with proper path structure
@@ -214,7 +223,7 @@ class WorkoutHistoryService {
             'name': exercise.name,
             'setsCompleted': completedSets,
             'sets': totalSets.toString(),
-            'isCompleted': completedSets >= totalSets,
+            'isCompleted': isCompleted,
             'lastCompleted': now.toIso8601String(),
             'musclesWorked': exercise.musclesWorked,
             'reps': repsPerSet.toString(),

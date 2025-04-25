@@ -3,10 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import '../models/workout_history.dart';
 import '../services/workout_history_service.dart';
 import 'dart:math';
-import 'dart:isolate';
 import '../navigation/custom_navbar.dart';
 import '../utils/custom_page_route.dart';
 import '../screens/recommendations_page.dart';
@@ -181,7 +181,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
         const SizedBox(height: 24),
         SizedBox(
           height: 220,
-          child: OptimizedProgressChart(workouts: workouts),
+          child: OptimizedProgressChart(),
         ),
         const SizedBox(height: 24),
         // Progress Stats
@@ -279,6 +279,65 @@ class _ManageAccPageState extends State<ManageAccPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // Add a stream builder for real-time stats
+  Widget _buildWorkoutStats() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('workout_history')
+          .orderBy('date', descending: true)
+          .limit(30) // Last 30 days
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Center(child: Text('Error loading stats'));
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final workouts = snapshot.data!.docs
+            .map((doc) => WorkoutHistory.fromMap(
+                {...doc.data() as Map<String, dynamic>, 'id': doc.id}))
+            .toList();
+
+        // Calculate stats
+        final totalWorkouts = workouts.length;
+        final completedWorkouts = workouts.where((w) => w.isCompleted).length;
+        final totalSets =
+            workouts.fold<int>(0, (sum, w) => sum + w.setsCompleted);
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildStatCard(
+              'Total\nWorkouts',
+              totalWorkouts.toString(),
+              Icons.fitness_center,
+            ),
+            _buildStatCard(
+              'Completed',
+              '$completedWorkouts/$totalWorkouts',
+              Icons.check_circle_outline,
+            ),
+            _buildStatCard(
+              'Avg. Sets',
+              totalWorkouts > 0
+                  ? (totalSets / totalWorkouts).toStringAsFixed(1)
+                  : '0',
+              Icons.repeat,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -383,8 +442,9 @@ class _ManageAccPageState extends State<ManageAccPage> {
             Card(
               color: const Color(0xFF2A2A2A),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
+              elevation: 0,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -398,37 +458,42 @@ class _ManageAccPageState extends State<ManageAccPage> {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDF4D0F).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFFDF4D0F).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Text(
-                            'Last 30 Days',
+                            'Today',
                             style: TextStyle(
                               color: Color(0xFFDF4D0F),
                               fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Track your cumulative progress over time',
+                    Text(
+                      'Track your workout completion and set progress',
                       style: TextStyle(
-                        color: Colors.white54,
+                        color: Colors.white.withOpacity(0.5),
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 24),
-                    _buildProgressChart(),
+                    SizedBox(
+                      height: 300,
+                      child: OptimizedProgressChart(),
+                    ),
                   ],
                 ),
               ),
@@ -1050,71 +1115,54 @@ class _ManageAccPageState extends State<ManageAccPage> {
   List<FlSpot> _createDataPoints(List<WorkoutHistory> workouts) {
     if (workouts.isEmpty) return [];
 
-    // Get date range (last 30 days)
-    final DateTime endDate = DateTime.now();
-    final DateTime startDate = endDate.subtract(const Duration(days: 29));
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
 
-    // Pre-calculate the number of days and step size
-    final int totalDays = 30;
-    final int step = (totalDays / OptimizedProgressChart.maxDataPoints).ceil();
+    // Always start with a point at the beginning of the day
+    List<FlSpot> spots = [
+      FlSpot(startOfDay.millisecondsSinceEpoch.toDouble(), 0)
+    ];
 
-    // Create fixed-size arrays for better memory management
-    final List<DateTime> dates = List.generate(
-        OptimizedProgressChart.maxDataPoints,
-        (index) => startDate.add(Duration(days: index * step)));
-
-    final List<double> values =
-        List.filled(OptimizedProgressChart.maxDataPoints, 0.0);
-
-    // Group workouts by date more efficiently
-    final workoutsByDate = <DateTime, List<WorkoutHistory>>{};
-    for (var workout in workouts) {
-      final date = DateTime(
+    // Filter and sort today's workouts
+    final todayWorkouts = workouts.where((workout) {
+      final workoutDate = DateTime(
         workout.date.year,
         workout.date.month,
         workout.date.day,
       );
-      workoutsByDate.putIfAbsent(date, () => []).add(workout);
-    }
+      return workoutDate.isAtSameMomentAs(startOfDay);
+    }).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
 
-    // Calculate progress with fixed intervals
-    double cumulativeProgress = 0;
-    for (var i = 0; i < dates.length; i++) {
-      final currentDate = dates[i];
-
-      if (workoutsByDate.containsKey(currentDate)) {
-        final dailyWorkouts = workoutsByDate[currentDate]!;
-        double dailyProgress = 0;
-
-        for (var workout in dailyWorkouts) {
-          if (workout.progress > 0) {
-            dailyProgress += workout.progress;
-          } else {
-            final setProgress = workout.totalSets > 0
-                ? (workout.setsCompleted / workout.totalSets)
-                : 0.0;
-            final completionProgress = workout.isCompleted ? 1.0 : 0.0;
-            dailyProgress += (setProgress * 0.7 + completionProgress * 0.3);
-          }
-        }
-
-        dailyProgress = dailyProgress / dailyWorkouts.length;
-        cumulativeProgress = (cumulativeProgress * 0.7) + (dailyProgress * 0.3);
+    // Add points for each workout
+    for (var workout in todayWorkouts) {
+      double progress = 0.0;
+      if (workout.progress > 0) {
+        progress = workout.progress;
       } else {
-        cumulativeProgress *= 0.95;
+        final completionProgress = workout.isCompleted ? 50.0 : 0.0;
+        final setsProgress = workout.totalSets > 0
+            ? (workout.setsCompleted / workout.totalSets) * 50
+            : 0.0;
+        progress = completionProgress + setsProgress;
       }
 
-      values[i] = cumulativeProgress.clamp(0.0, 100.0);
+      spots.add(FlSpot(
+        workout.date.millisecondsSinceEpoch.toDouble(),
+        progress,
+      ));
     }
 
-    // Create spots directly without intermediate collections
-    return List.generate(
-      OptimizedProgressChart.maxDataPoints,
-      (i) => FlSpot(
-        dates[i].millisecondsSinceEpoch.toDouble(),
-        values[i],
-      ),
-    );
+    // Add current time point if no workouts or last workout was earlier
+    if (todayWorkouts.isEmpty ||
+        (todayWorkouts.isNotEmpty && todayWorkouts.last.date.isBefore(now))) {
+      spots.add(FlSpot(
+        now.millisecondsSinceEpoch.toDouble(),
+        spots.isEmpty ? 0 : spots.last.y,
+      ));
+    }
+
+    return spots;
   }
 
   void _onItemTapped(int index) {
@@ -1366,36 +1414,80 @@ class DailyProgress {
 }
 
 class OptimizedProgressChart extends StatefulWidget {
-  final List<WorkoutHistory> workouts;
-  static const int maxDataPoints = 10; // Limit total data points
-
-  const OptimizedProgressChart({
-    Key? key,
-    required this.workouts,
-  }) : super(key: key);
+  const OptimizedProgressChart({Key? key}) : super(key: key);
 
   @override
   State<OptimizedProgressChart> createState() => _OptimizedProgressChartState();
 }
 
-class _OptimizedProgressChartState extends State<OptimizedProgressChart> {
+class _OptimizedProgressChartState extends State<OptimizedProgressChart>
+    with SingleTickerProviderStateMixin {
   List<FlSpot>? _spots;
   bool _isLoading = true;
+  StreamSubscription<QuerySnapshot>? _workoutSubscription;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    _loadChartData();
+    _setupAnimations();
+    _setupWorkoutListener();
   }
 
-  void _loadChartData() {
-    Future.microtask(() {
+  void _setupAnimations() {
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _workoutSubscription?.cancel();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _setupWorkoutListener() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+
+    // Listen to real-time updates
+    _workoutSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('workout_history')
+        .where('date', isGreaterThanOrEqualTo: startOfDay.toIso8601String())
+        .orderBy('date', descending: false)
+        .snapshots()
+        .listen((snapshot) {
       if (!mounted) return;
 
-      final spots = _createDataPoints(widget.workouts);
+      final workouts = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return WorkoutHistory.fromMap({...data, 'id': doc.id});
+      }).toList();
+
+      setState(() {
+        _spots = _createDataPoints(workouts);
+        _isLoading = false;
+      });
+
+      // Trigger animation when data updates
+      _animationController.reset();
+      _animationController.forward();
+    }, onError: (error) {
+      print('Error in workout listener: $error');
       if (mounted) {
         setState(() {
-          _spots = spots;
           _isLoading = false;
         });
       }
@@ -1405,244 +1497,248 @@ class _OptimizedProgressChartState extends State<OptimizedProgressChart> {
   List<FlSpot> _createDataPoints(List<WorkoutHistory> workouts) {
     if (workouts.isEmpty) return [];
 
-    // Get date range (last 30 days)
-    final DateTime endDate = DateTime.now();
-    final DateTime startDate = endDate.subtract(const Duration(days: 29));
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
 
-    // Pre-calculate the number of days and step size
-    final int totalDays = 30;
-    final int step = (totalDays / OptimizedProgressChart.maxDataPoints).ceil();
+    // Always start with a point at the beginning of the day
+    List<FlSpot> spots = [
+      FlSpot(startOfDay.millisecondsSinceEpoch.toDouble(), 0)
+    ];
 
-    // Create fixed-size arrays for better memory management
-    final List<DateTime> dates = List.generate(
-        OptimizedProgressChart.maxDataPoints,
-        (index) => startDate.add(Duration(days: index * step)));
-
-    final List<double> values =
-        List.filled(OptimizedProgressChart.maxDataPoints, 0.0);
-
-    // Group workouts by date more efficiently
-    final workoutsByDate = <DateTime, List<WorkoutHistory>>{};
-    for (var workout in workouts) {
-      final date = DateTime(
+    // Filter and sort today's workouts
+    final todayWorkouts = workouts.where((workout) {
+      final workoutDate = DateTime(
         workout.date.year,
         workout.date.month,
         workout.date.day,
       );
-      workoutsByDate.putIfAbsent(date, () => []).add(workout);
-    }
+      return workoutDate.isAtSameMomentAs(startOfDay);
+    }).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
 
-    // Calculate progress with fixed intervals
-    double cumulativeProgress = 0;
-    for (var i = 0; i < dates.length; i++) {
-      final currentDate = dates[i];
-
-      if (workoutsByDate.containsKey(currentDate)) {
-        final dailyWorkouts = workoutsByDate[currentDate]!;
-        double dailyProgress = 0;
-
-        for (var workout in dailyWorkouts) {
-          if (workout.progress > 0) {
-            dailyProgress += workout.progress;
-          } else {
-            final setProgress = workout.totalSets > 0
-                ? (workout.setsCompleted / workout.totalSets)
-                : 0.0;
-            final completionProgress = workout.isCompleted ? 1.0 : 0.0;
-            dailyProgress += (setProgress * 0.7 + completionProgress * 0.3);
-          }
-        }
-
-        dailyProgress = dailyProgress / dailyWorkouts.length;
-        cumulativeProgress = (cumulativeProgress * 0.7) + (dailyProgress * 0.3);
+    // Add points for each workout
+    for (var workout in todayWorkouts) {
+      double progress = 0.0;
+      if (workout.progress > 0) {
+        progress = workout.progress;
       } else {
-        cumulativeProgress *= 0.95;
+        final completionProgress = workout.isCompleted ? 50.0 : 0.0;
+        final setsProgress = workout.totalSets > 0
+            ? (workout.setsCompleted / workout.totalSets) * 50
+            : 0.0;
+        progress = completionProgress + setsProgress;
       }
 
-      values[i] = cumulativeProgress.clamp(0.0, 100.0);
+      spots.add(FlSpot(
+        workout.date.millisecondsSinceEpoch.toDouble(),
+        progress,
+      ));
     }
 
-    // Create spots directly without intermediate collections
-    return List.generate(
-      OptimizedProgressChart.maxDataPoints,
-      (i) => FlSpot(
-        dates[i].millisecondsSinceEpoch.toDouble(),
-        values[i],
-      ),
-    );
+    // Add current time point if no workouts or last workout was earlier
+    if (todayWorkouts.isEmpty ||
+        (todayWorkouts.isNotEmpty && todayWorkouts.last.date.isBefore(now))) {
+      spots.add(FlSpot(
+        now.millisecondsSinceEpoch.toDouble(),
+        spots.isEmpty ? 0 : spots.last.y,
+      ));
+    }
+
+    return spots;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading || _spots == null) {
+    if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFFDF4D0F)),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: 20,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
+    if (_spots == null || _spots!.isEmpty) {
+      return const Center(
+        child: Text(
+          'No workout data available today',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return LineChart(
+          LineChartData(
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: true,
+              getDrawingHorizontalLine: (value) => FlLine(
                 color: Colors.white.withOpacity(0.1),
-                strokeWidth: 1,
-              );
-            },
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+                strokeWidth: 0.5,
+              ),
+              getDrawingVerticalLine: (value) => FlLine(
+                color: Colors.white.withOpacity(0.1),
+                strokeWidth: 0.5,
+              ),
             ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: 7,
-                getTitlesWidget: (value, meta) {
-                  final date =
-                      DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      DateFormat('MM/dd').format(date),
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 10,
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  interval: 7200000, // 2-hour interval
+                  getTitlesWidget: (value, meta) {
+                    final date =
+                        DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('HH:mm').format(date),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                interval: 20,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    '${value.toInt()}%',
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 10,
-                    ),
-                  );
-                },
-                reservedSize: 40,
-              ),
-            ),
-          ),
-          borderData: FlBorderData(
-            show: false,
-          ),
-          minX: _spots!.first.x,
-          maxX: _spots!.last.x,
-          minY: 0,
-          maxY: 100,
-          lineBarsData: [
-            LineChartBarData(
-              spots: _spots!,
-              isCurved: true,
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFDF4D0F).withOpacity(0.5),
-                  const Color(0xFFDF4D0F),
-                ],
-              ),
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                show: true,
-                checkToShowDot: (spot, barData) {
-                  final index = barData.spots.indexOf(spot);
-                  return index == 0 || index == barData.spots.length - 1;
-                },
-                getDotPainter: (spot, percent, barData, index) {
-                  return FlDotCirclePainter(
-                    radius: 4,
-                    color: const Color(0xFFDF4D0F),
-                    strokeWidth: 2,
-                    strokeColor: Colors.white,
-                  );
-                },
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFFDF4D0F).withOpacity(0.3),
-                    const Color(0xFFDF4D0F).withOpacity(0.0),
-                  ],
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 35,
+                  interval: 25,
+                  getTitlesWidget: (value, meta) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        '${value.toInt()}%',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 10,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
-          ],
-          lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              tooltipBgColor: const Color(0xFF1A1A1A),
-              tooltipRoundedRadius: 8,
-              getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                return touchedBarSpots.map((barSpot) {
-                  final date =
-                      DateTime.fromMillisecondsSinceEpoch(barSpot.x.toInt());
-                  return LineTooltipItem(
-                    '${DateFormat('MMM d').format(date)}\n',
-                    const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: 'Progress: ${barSpot.y.toInt()}%',
-                        style: const TextStyle(
-                          color: Color(0xFFDF4D0F),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList();
-              },
+            borderData: FlBorderData(
+              show: true,
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+                width: 0.5,
+              ),
             ),
-            handleBuiltInTouches: true,
-            getTouchedSpotIndicator:
-                (LineChartBarData barData, List<int> spotIndexes) {
-              return spotIndexes.map((spotIndex) {
-                return TouchedSpotIndicatorData(
-                  FlLine(
+            minX: startOfDay.millisecondsSinceEpoch.toDouble(),
+            maxX: endOfDay.millisecondsSinceEpoch.toDouble(),
+            minY: 0,
+            maxY: 100,
+            lineBarsData: [
+              LineChartBarData(
+                spots: _spots!
+                    .map((spot) => FlSpot(
+                          spot.x,
+                          spot.y * _animation.value,
+                        ))
+                    .toList(),
+                isCurved: true,
+                color: const Color(0xFFDF4D0F),
+                barWidth: 2.5,
+                isStrokeCapRound: true,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) =>
+                      FlDotCirclePainter(
+                    radius: 3.5,
                     color: const Color(0xFFDF4D0F),
-                    strokeWidth: 2,
-                    dashArray: [5, 5],
+                    strokeWidth: 1.5,
+                    strokeColor: Colors.white,
                   ),
-                  FlDotData(
-                    getDotPainter: (spot, percent, barData, index) {
-                      return FlDotCirclePainter(
-                        radius: 6,
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: const Color(0xFFDF4D0F).withOpacity(0.08),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xFFDF4D0F).withOpacity(0.15),
+                      const Color(0xFFDF4D0F).withOpacity(0.02),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            extraLinesData: ExtraLinesData(
+              horizontalLines: [
+                HorizontalLine(
+                  y: 75,
+                  color: Colors.green.withOpacity(0.3),
+                  strokeWidth: 1,
+                  dashArray: [5, 5],
+                  label: HorizontalLineLabel(
+                    show: true,
+                    alignment: Alignment.topRight,
+                    padding: const EdgeInsets.only(right: 5, bottom: 5),
+                    style: TextStyle(
+                      color: Colors.green.withOpacity(0.7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    labelResolver: (line) => 'Goal',
+                  ),
+                ),
+              ],
+            ),
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                tooltipBgColor: const Color(0xFF2A2A2A).withOpacity(0.8),
+                tooltipRoundedRadius: 8,
+                tooltipPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                  return touchedSpots.map((LineBarSpot touchedSpot) {
+                    final date = DateTime.fromMillisecondsSinceEpoch(
+                        touchedSpot.x.toInt());
+                    return LineTooltipItem(
+                      '${DateFormat('HH:mm').format(date)}\n',
+                      const TextStyle(
                         color: Colors.white,
-                        strokeWidth: 2,
-                        strokeColor: const Color(0xFFDF4D0F),
-                      );
-                    },
-                  ),
-                );
-              }).toList();
-            },
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '${touchedSpot.y.toInt()}% progress',
+                          style: const TextStyle(
+                            color: Color(0xFFDF4D0F),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList();
+                },
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

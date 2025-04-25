@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'set_height.dart';
 import 'services/auth_service.dart';
 import 'services/user_service.dart';
-
+import 'set_goal.dart';
 
 class BirthYearPage extends StatefulWidget {
   const BirthYearPage({super.key});
@@ -16,117 +16,135 @@ class _BirthYearPageState extends State<BirthYearPage> {
   final UserService _userService = UserService();
   int? selectedYear;
   bool _isLoading = false;
-  final List<int> years =
-      List.generate(100, (index) => DateTime.now().year - index);
+  final List<int> years = List.generate(
+    100,
+    (index) => DateTime.now().year - index,
+  ).where((year) {
+    final age = DateTime.now().year - year;
+    return age >= 13;
+  }).toList();
+
+  void _handleBack(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const SetGoalPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        _handleBack(context);
+        return false;
+      },
+      child: Scaffold(
         backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: Color.fromRGBO(223, 77, 15, 1.0)),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+        appBar: AppBar(
+          backgroundColor: const Color.fromRGBO(51, 50, 50, 1.0),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back,
+                color: Color.fromRGBO(223, 77, 15, 1.0)),
+            onPressed: () => _handleBack(context),
+          ),
         ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Birth Year',
-                style: TextStyle(
-                  color: Color.fromRGBO(223, 77, 15, 1.0),
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Helps us tailor recommendations based on your age and stage of life',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 300,
-                child: ListView.builder(
-                  itemCount: years.length,
-                  itemBuilder: (context, index) {
-                    return _yearButton(years[index]);
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: 350,
-                child: ElevatedButton(
-                  onPressed: selectedYear != null
-                      ? () async {
-                          setState(() {
-                            _isLoading = true;
-                          });
-
-                          try {
-                            final userId = _authService.getCurrentUserId();
-                            if (userId == null) throw Exception('User not logged in');
-
-                            // Save birth year
-                            await _userService.updateMetrics(
-                              userId,
-                              birthYear: selectedYear,
-                            );
-
-                            // Navigate to next page
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>const SetHeightPage(),
-                              ),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: ${e.toString()}')),
-                            );
-                          } finally {
-                            setState(() {
-                              _isLoading = false;
-                            });
-                          }
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 5,
-                    shadowColor: Colors.black.withAlpha(128),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Birth Year',
+                  style: TextStyle(
+                    color: Color.fromRGBO(223, 77, 15, 1.0),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 20,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                const Text(
+                  'Helps us tailor recommendations based on your age and stage of life',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: years.length,
+                    itemBuilder: (context, index) {
+                      return _yearButton(years[index]);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: 350,
+                  child: ElevatedButton(
+                    onPressed: selectedYear != null
+                        ? () async {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            try {
+                              final userId = _authService.getCurrentUserId();
+                              if (userId == null)
+                                throw Exception('User not logged in');
+
+                              // Save birth year
+                              await _userService.updateMetrics(
+                                userId,
+                                birthYear: selectedYear,
+                              );
+
+                              // Navigate to next page
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SetHeightPage(),
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Error: ${e.toString()}')),
+                              );
+                            } finally {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 5,
+                      shadowColor: Colors.black.withAlpha(128),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Next',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 20,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

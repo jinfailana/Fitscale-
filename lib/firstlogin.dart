@@ -11,6 +11,9 @@ import 'SummaryPage/summary_page.dart';
 import 'screens/loading_screen.dart';
 import 'firstlogin.dart';  // Add this import
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'signup.dart';
+import 'services/steps_tracking_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -26,11 +29,22 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   final AuthService _authService = AuthService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final StepsTrackingService _stepsService = StepsTrackingService();
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
     FirebaseAuth.instance.setLanguageCode('en');
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   Future<bool> checkInternetConnection() async {
@@ -48,6 +62,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleLogin() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = '';
     });
 
     bool hasInternet = await checkInternetConnection();
@@ -85,9 +100,9 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${e.toString()}')),
-      );
+      setState(() {
+        _errorMessage = 'Login failed: ${e.toString()}';
+      });
     } finally {
       setState(() {
         _isLoading = false;

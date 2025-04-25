@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async'; // Add this import for StreamSubscription
 import '../models/workout_plan.dart';
 import '../models/workout_history.dart';
 import 'manage_acc.dart';
@@ -17,6 +18,7 @@ import '../models/diet_plan.dart';
 import 'package:intl/intl.dart';
 import '../navigation/custom_navbar.dart';
 import '../utils/custom_page_route.dart';
+import '../services/steps_tracking_service.dart';
 
 class SummaryPage extends StatefulWidget {
   const SummaryPage({super.key});
@@ -25,48 +27,160 @@ class SummaryPage extends StatefulWidget {
   State<SummaryPage> createState() => _SummaryPageState();
 }
 
-class _SummaryPageState extends State<SummaryPage> {
+class _SummaryPageState extends State<SummaryPage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   String username = '';
   String email = '';
   double userWeight = 0.0;
   List<WorkoutHistory> _recentWorkouts = [];
   bool _isLoading = true;
-  final WorkoutHistoryService _historyService = WorkoutHistoryService();
+  late final WorkoutHistoryService _historyService;
   final DietService _dietService = DietService();
+  final StepsTrackingService _stepsService = StepsTrackingService();
   String? _selectedDietPlanId;
   DietPlan? _selectedDietPlan;
   bool _loadingDiet = true;
-  final GlobalKey<CustomNavBarState> _navbarKey = GlobalKey<CustomNavBarState>();
+  int _currentSteps = 0;
+  int _stepGoal = 0;
+  double _stepPercentage = 0.0;
+  final GlobalKey<CustomNavBarState> _navbarKey =
+      GlobalKey<CustomNavBarState>();
+  bool _goalCompleted = false;
+  StreamSubscription<User?>? _authStateSubscription;
+  StreamSubscription<DocumentSnapshot>? _userDataSubscription;
 
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
-    _loadRecentWorkouts();
-    _loadSelectedDiet();
+    WidgetsBinding.instance.addObserver(this);
+    _historyService = WorkoutHistoryService(
+        userId: FirebaseAuth.instance.currentUser?.uid ??
+            ''); // Initialize with current user ID
+
+    // Listen to auth state changes
+    _authStateSubscription =
+        FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+      if (user != null) {
+        // User is signed in
+        debugPrint('User signed in: ${user.uid}');
+
+        // Cancel existing subscriptions first
+        _userDataSubscription?.cancel();
+
+        // Reset all state
+        if (mounted) {
+          setState(() {
+            username = '';
+            email = '';
+            userWeight = 0.0;
+            _currentSteps = 0;
+            _stepGoal = 0;
+            _stepPercentage = 0.0;
+            _goalCompleted = false;
+            _updateStepPercentage();
+          });
+        }
+
+        // First reset step tracking service for new user
+        await _stepsService.resetForNewUser();
+
+        // Then fetch user data
+        await _fetchUserData();
+
+        // Finally load other data
+        _loadRecentWorkouts();
+        _loadSelectedDiet();
+      } else {
+        // User is signed out
+        debugPrint('User signed out');
+
+        // Cancel subscriptions
+        _userDataSubscription?.cancel();
+
+        // Reset all state
+        if (mounted) {
+          setState(() {
+            username = '';
+            email = '';
+            userWeight = 0.0;
+            _currentSteps = 0;
+            _stepGoal = 0;
+            _stepPercentage = 0.0;
+            _goalCompleted = false;
+            _updateStepPercentage();
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint(
+          'App resumed - checking user and reinitializing step tracking');
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        _stepsService.resume();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _userDataSubscription?.cancel();
+    _authStateSubscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+
+    // Don't dispose the step service itself, just remove listeners
+    if (_stepsService.onStepsChanged != null) {
+      _stepsService.onStepsChanged = null;
+    }
+    if (_stepsService.onGoalChanged != null) {
+      _stepsService.onGoalChanged = null;
+    }
+    if (_stepsService.onGoalCompleted != null) {
+      _stepsService.onGoalCompleted = null;
+    }
+    super.dispose();
   }
 
   Future<void> _fetchUserData() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+      if (user == null) return;
 
-        if (userDoc.exists) {
+      debugPrint('Fetching user data for: ${user.uid}');
+
+      // Cancel existing subscription
+      _userDataSubscription?.cancel();
+
+      // Setup real-time listener for user data
+      _userDataSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((userDoc) {
+        if (userDoc.exists &&
+            mounted &&
+            FirebaseAuth.instance.currentUser?.uid == user.uid) {
           final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
             username = userData['username'] ?? '';
             email = userData['email'] ?? '';
             userWeight = (userData['weight'] ?? 0.0).toDouble();
+            _stepGoal = userData['step_goal'] ?? 0;
+            _currentSteps = userData['current_steps'] ?? _currentSteps;
+            _updateStepPercentage();
           });
+          debugPrint(
+              'Updated user data for ${user.uid} - Steps: $_currentSteps, Goal: $_stepGoal');
         }
-      }
+      }, onError: (e) {
+        debugPrint('Error in user data listener: $e');
+      });
     } catch (e) {
-      print('Error fetching user data: $e');
+      debugPrint('Error setting up user data listener: $e');
     }
   }
 
@@ -104,11 +218,11 @@ class _SummaryPageState extends State<SummaryPage> {
   Future<void> _loadSelectedDiet() async {
     try {
       setState(() => _loadingDiet = true);
-      
+
       // Get the selected diet plan ID
       final selectedDietPlanId = await _dietService.getSelectedDietPlan();
       _selectedDietPlanId = selectedDietPlanId;
-      
+
       // If user has a selected diet, get the diet plan details
       if (selectedDietPlanId != null) {
         final dietPlans = await _dietService.getDietRecommendations();
@@ -116,7 +230,7 @@ class _SummaryPageState extends State<SummaryPage> {
           (plan) => plan.id == selectedDietPlanId,
           orElse: () => dietPlans.first,
         );
-        
+
         setState(() {
           _selectedDietPlan = selectedPlan;
           _loadingDiet = false;
@@ -128,6 +242,80 @@ class _SummaryPageState extends State<SummaryPage> {
       print('Error loading selected diet: $e');
       setState(() => _loadingDiet = false);
     }
+  }
+
+  Future<void> _initializeStepTracking() async {
+    try {
+      debugPrint('Initializing step tracking');
+
+      // Initialize the step tracking service
+      await _stepsService.initialize();
+
+      // Set initial values
+      setState(() {
+        _currentSteps = _stepsService.currentSteps;
+        _stepGoal = _stepsService.goalSteps;
+        _updateStepPercentage();
+      });
+
+      // Subscribe to the step updates stream for real-time updates
+      _stepsService.stepsStream.listen((steps) {
+        if (mounted) {
+          setState(() {
+            _currentSteps = steps;
+            _updateStepPercentage();
+          });
+          debugPrint('Step update received: $_currentSteps');
+        }
+      });
+
+      // Setup goal-related callbacks
+      _stepsService.onGoalChanged = (goal) {
+        if (mounted) {
+          setState(() {
+            _stepGoal = goal;
+            _updateStepPercentage();
+          });
+          debugPrint('Goal updated: $_stepGoal');
+        }
+      };
+
+      _stepsService.onGoalCompleted = (completed, {int? steps, int? goal}) {
+        if (mounted) {
+          setState(() {
+            _goalCompleted = completed;
+          });
+
+          if (completed && steps != null && goal != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Amazing! You\'ve reached your goal of $goal steps with $steps steps today! 🎉'),
+                backgroundColor: const Color.fromRGBO(223, 77, 15, 1.0),
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Dismiss',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      };
+
+      debugPrint('Step tracking initialized successfully');
+    } catch (e) {
+      debugPrint('Error in _initializeStepTracking: $e');
+    }
+  }
+
+  void _updateStepPercentage() {
+    _stepPercentage = _stepGoal > 0
+        ? (_currentSteps / _stepGoal * 100).clamp(0.0, 100.0)
+        : 0.0;
   }
 
   void _onItemTapped(int index) {
@@ -353,7 +541,7 @@ class _SummaryPageState extends State<SummaryPage> {
             setState(() {
               _selectedIndex = 0;
             });
-            
+
             // This will update the navbar highlight
             if (_navbarKey.currentState != null) {
               _navbarKey.currentState!.handleLogoClick(context);
@@ -398,8 +586,7 @@ class _SummaryPageState extends State<SummaryPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              _buildAnimatedSummaryCard('Set Step Goal',
-                  'Daily goal: No goal yet', Icons.directions_walk),
+              _buildAnimatedStepGoalCard(),
               _buildAnimatedSummaryCard(
                   userWeight > 0 ? '${userWeight.toStringAsFixed(1)}kg' : '0kg',
                   'Current Weight',
@@ -454,13 +641,11 @@ class _SummaryPageState extends State<SummaryPage> {
                                       decoration: BoxDecoration(
                                         color: const Color.fromRGBO(
                                             223, 77, 15, 0.2),
-                                        borderRadius:
-                                            BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: const Icon(
                                         Icons.fitness_center,
-                                        color: Color.fromRGBO(
-                                            223, 77, 15, 1.0),
+                                        color: Color.fromRGBO(223, 77, 15, 1.0),
                                         size: 24,
                                       ),
                                     ),
@@ -517,21 +702,120 @@ class _SummaryPageState extends State<SummaryPage> {
     );
   }
 
+  Widget _buildAnimatedStepGoalCard() {
+    // Format the step numbers with commas
+    final formattedSteps = NumberFormat('#,###').format(_currentSteps);
+    final formattedGoal = NumberFormat('#,###').format(_stepGoal);
+
+    // Calculate calories based on weight
+    int calories = 0;
+    double distance = 0;
+
+    // Get calorie and distance data from service
+    calories = _stepsService.calculateCaloriesBurned(_currentSteps, userWeight);
+    distance = _stepsService.calculateDistance(_currentSteps);
+
+    // Format distance to 2 decimal places
+    final formattedDistance = distance.toStringAsFixed(2);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          CustomPageRoute(
+            child: const StepsPage(),
+            transitionType: TransitionType.fade,
+          ),
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Steps information with "You have walked:" text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            formattedSteps,
+                            style: const TextStyle(
+                              color: Color(0xFFDF4D0F),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(
+                            ' Steps',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Daily Goal: $formattedGoal steps',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Step image/icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: const Color(0xFFDF4D0F),
+                      width: 2,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.directions_walk,
+                      color: Color(0xFFDF4D0F),
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAnimatedSummaryCard(
       String title, String subtitle, IconData icon) {
     return GestureDetector(
       onTap: () {
-        // Handle navigation based on the card type
-        if (title == 'Set Step Goal') {
-          Navigator.push(
-            context,
-            CustomPageRoute(
-              child: const StepsPage(),
-              transitionType: TransitionType.fade,
-            ),
-          );
-        } else if (title.contains('kg')) {
-          // Navigate to MeasureWeightPage when weight card is tapped
+        if (title.contains('kg')) {
           Navigator.push(
             context,
             CustomPageRoute(
@@ -539,62 +823,62 @@ class _SummaryPageState extends State<SummaryPage> {
               transitionType: TransitionType.fade,
             ),
           ).then((_) {
-            // Refresh data when returning from MeasureWeightPage
             _fetchUserData();
           });
-        } else if (title == 'Set Diets!') {
-          // Navigate to DietRecommendationsPage when diet card is tapped
-          Navigator.push(
-            context,
-            CustomPageRoute(
-              child: const DietRecommendationsPage(),
-              transitionType: TransitionType.fade,
-            ),
-          );
         }
-        // Add more conditions for other cards if needed
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.transparent,
           border: Border.all(color: const Color.fromRGBO(223, 77, 15, 1.0)),
           borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(50),
-              blurRadius: 5,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color.fromRGBO(223, 77, 15, 1.0),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Current Weight:',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 14,
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFFDF4D0F),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            Icon(icon, color: const Color.fromRGBO(223, 77, 15, 1.0), size: 40),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: const Color(0xFFDF4D0F),
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  icon,
+                  color: const Color(0xFFDF4D0F),
+                  size: 30,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -685,7 +969,7 @@ class _SummaryPageState extends State<SummaryPage> {
                       ],
                     ),
                   ),
-                  
+
                   // Diet image
                   Container(
                     width: 60,

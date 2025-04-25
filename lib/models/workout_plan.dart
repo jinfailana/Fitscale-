@@ -6,32 +6,38 @@ class WorkoutPlan {
   final String description;
   final IconData icon;
   final List<Exercise> exercises;
+  DateTime? lastCompleted;
 
   WorkoutPlan({
     required this.name,
     required this.description,
     required this.icon,
     required this.exercises,
+    this.lastCompleted,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'description': description,
-      'iconCode': icon.codePoint,
+      'icon': icon.codePoint,
       'exercises': exercises.map((e) => e.toMap()).toList(),
+      'isCompleted': isCompleted,
+      'lastCompleted': lastCompleted?.toIso8601String(),
     };
   }
 
   factory WorkoutPlan.fromMap(Map<String, dynamic> map) {
     return WorkoutPlan(
-      name: map['name'] ?? '',
-      description: map['description'] ?? '',
-      icon: IconData(map['iconCode'] ?? 0xe1d8, fontFamily: 'MaterialIcons'),
-      exercises: (map['exercises'] as List<dynamic>?)
-              ?.map((e) => Exercise.fromMap(e))
-              .toList() ??
-          [],
+      name: map['name'] as String,
+      description: map['description'] as String,
+      icon: IconData(map['icon'] as int, fontFamily: 'MaterialIcons'),
+      exercises: (map['exercises'] as List<dynamic>)
+          .map((e) => Exercise.fromMap(e as Map<String, dynamic>))
+          .toList(),
+      lastCompleted: map['lastCompleted'] != null
+          ? DateTime.parse(map['lastCompleted'] as String)
+          : null,
     );
   }
 
@@ -58,7 +64,7 @@ class Exercise {
   final IconData icon;
   final List<String> musclesWorked;
   final List<String> instructions;
-  String gifUrl;
+  String imageHtml;
   int setsCompleted;
   bool isCompleted;
   DateTime? lastCompleted;
@@ -71,7 +77,8 @@ class Exercise {
     required this.icon,
     required this.musclesWorked,
     required this.instructions,
-    this.gifUrl = '',
+    this.imageHtml =
+        "<img src=\"\" width=\"300\" height=\"200\" style=\"object-fit: cover;\">",
     this.setsCompleted = 0,
     this.isCompleted = false,
     this.lastCompleted,
@@ -86,7 +93,7 @@ class Exercise {
       'iconCode': icon.codePoint,
       'musclesWorked': musclesWorked,
       'instructions': instructions,
-      'gifUrl': gifUrl,
+      'imageHtml': imageHtml,
       'setsCompleted': setsCompleted,
       'isCompleted': isCompleted,
       'lastCompleted': lastCompleted?.toIso8601String(),
@@ -102,7 +109,7 @@ class Exercise {
       icon: IconData(map['iconCode'] ?? 0xe1d8, fontFamily: 'MaterialIcons'),
       musclesWorked: List<String>.from(map['musclesWorked'] ?? []),
       instructions: List<String>.from(map['instructions'] ?? []),
-      gifUrl: map['gifUrl'] ?? '',
+      imageHtml: map['imageHtml'] ?? '',
       setsCompleted: map['setsCompleted'] ?? 0,
       isCompleted: map['isCompleted'] ?? false,
       lastCompleted: map['lastCompleted'] != null

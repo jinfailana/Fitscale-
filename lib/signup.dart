@@ -30,7 +30,7 @@ class _SignupPageState extends State<SignupPage> {
 
   String? verificationCode;
   final String brevoApiKey =
-      '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';
+      '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';
 
   Future<bool> checkInternetConnection() async {
     try {

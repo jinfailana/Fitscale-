@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 // 1. Workout History Item
 class HistoryItem extends StatelessWidget {
-  final String icon;      // Workout icon/image
-  final String title;     // Workout name (e.g., "Back Workout")
-  final String date;      // Date of workout
+  final String icon; // Workout icon/image
+  final String title; // Workout name (e.g., "Back Workout")
+  final String date; // Date of workout
 
   // Constructor
   const HistoryItem({
@@ -20,11 +20,11 @@ class HistoryItem extends StatelessWidget {
       // ... container styling ...
       child: Row(
         children: [
-          Image.asset(icon),           // Shows workout type image
+          Image.asset(icon), // Shows workout type image
           Column(
             children: [
-              Text(title),             // Shows workout name
-              Text(date),              // Shows workout date
+              Text(title), // Shows workout name
+              Text(date), // Shows workout date
             ],
           ),
         ],
@@ -35,8 +35,8 @@ class HistoryItem extends StatelessWidget {
 
 // 2. Steps History Item
 class StepsItem extends StatelessWidget {
-  final int steps;       // Number of steps taken
-  final String date;     // Date of step count
+  final int steps; // Number of steps taken
+  final String date; // Date of step count
 
   // Constructor
   const StepsItem({
@@ -51,12 +51,12 @@ class StepsItem extends StatelessWidget {
       // ... container styling ...
       child: Row(
         children: [
-          const Icon(Icons.directions_walk),  // Steps icon
+          const Icon(Icons.directions_walk), // Steps icon
           Column(
             children: [
               const Text('Steps Taken'),
-              Text('$steps Steps'),     // Shows step count
-              Text(date),               // Shows date
+              Text('$steps Steps'), // Shows step count
+              Text(date), // Shows date
             ],
           ),
         ],
@@ -67,8 +67,8 @@ class StepsItem extends StatelessWidget {
 
 // 3. Diet History Item
 class DietItem extends StatelessWidget {
-  final String title;    // Diet type (e.g., "Low-Fat")
-  final String date;     // Date of diet record
+  final String title; // Diet type (e.g., "Low-Fat")
+  final String date; // Date of diet record
 
   // Constructor
   const DietItem({
@@ -85,14 +85,14 @@ class DietItem extends StatelessWidget {
         children: [
           Column(
             children: [
-              Text(title),              // Shows diet type
+              Text(title), // Shows diet type
               const Row(
                 children: [
-                  Text('View Diet'),    // View diet button
+                  Text('View Diet'), // View diet button
                   Icon(Icons.restaurant_menu),
                 ],
               ),
-              Text(date),              // Shows date
+              Text(date), // Shows date
             ],
           ),
         ],

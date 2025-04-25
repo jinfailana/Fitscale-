@@ -10,9 +10,11 @@ class WorkoutPage extends StatefulWidget {
   _WorkoutPageState createState() => _WorkoutPageState();
 }
 
-class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStateMixin {
+class _WorkoutPageState extends State<WorkoutPage>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 1; // Set to 1 for Workouts tab
-  int _selectedTabIndex = 0; // 0: Recommended, 1: My Workouts, 2: Other Workouts
+  int _selectedTabIndex =
+      0; // 0: Recommended, 1: My Workouts, 2: Other Workouts
   late TabController _tabController;
 
   @override
@@ -32,7 +34,8 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
     super.dispose();
   }
 
-  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
+  BottomNavigationBarItem _buildNavItem(
+      IconData icon, String label, int index) {
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -61,11 +64,11 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
-    
+
     setState(() {
       _selectedIndex = index;
     });
-    
+
     // Handle navigation
     if (index == 0) {
       // Navigate to Summary page
@@ -280,4 +283,4 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
       ),
     );
   }
-} 
+}

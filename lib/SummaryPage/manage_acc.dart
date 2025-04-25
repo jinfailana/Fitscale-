@@ -23,7 +23,8 @@ class ManageAccPage extends StatefulWidget {
   State<ManageAccPage> createState() => _ManageAccPageState();
 }
 
-class _ManageAccPageState extends State<ManageAccPage> {
+class _ManageAccPageState extends State<ManageAccPage>
+    with SingleTickerProviderStateMixin {
   String username = '';
   String signInMethod = '';
   late final WorkoutHistoryService _historyService;
@@ -32,10 +33,25 @@ class _ManageAccPageState extends State<ManageAccPage> {
   DateTime? _lastFetchTime;
   bool _isLoading = true;
   bool _mounted = true;
+  List<FlSpot>? _workoutSpots;
+  List<FlSpot>? _setSpots;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+  double interval = 3600000; // 1 hour in milliseconds
+  double minX = 0;
+  double maxX = 0;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _historyService = WorkoutHistoryService(userId: user.uid);
@@ -45,6 +61,7 @@ class _ManageAccPageState extends State<ManageAccPage> {
 
   @override
   void dispose() {
+    _animationController.dispose();
     _mounted = false;
     super.dispose();
   }
@@ -136,40 +153,21 @@ class _ManageAccPageState extends State<ManageAccPage> {
   }
 
   Widget _buildProgressChart() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFDF4D0F)),
-      );
-    }
-
-    if (_cachedWorkoutHistory == null || _cachedWorkoutHistory!.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.fitness_center, color: Colors.white24, size: 48),
-            SizedBox(height: 16),
-            Text(
-              'No workout data available yet',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            Text(
-              'Complete workouts to track progress',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
-            ),
-          ],
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(44, 44, 46, 1.0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color.fromRGBO(223, 77, 15, 1.0),
+          width: 1,
         ),
-      );
-    }
-
-    final workouts = _cachedWorkoutHistory!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text(
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
             'Workout Progress',
             style: TextStyle(
               color: Colors.white,
@@ -177,49 +175,167 @@ class _ManageAccPageState extends State<ManageAccPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          height: 220,
-          child: OptimizedProgressChart(),
-        ),
-        const SizedBox(height: 24),
-        // Progress Stats
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total\nWorkouts',
-                  workouts.length.toString(),
-                  Icons.fitness_center,
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 200,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16, bottom: 16),
+              child: LineChart(
+                LineChartData(
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: true,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.white.withOpacity(0.1),
+                      strokeWidth: 0.5,
+                    ),
+                    getDrawingVerticalLine: (value) => FlLine(
+                      color: Colors.white.withOpacity(0.1),
+                      strokeWidth: 0.5,
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: interval,
+                        getTitlesWidget: (value, meta) {
+                          final hasNearbyPoint = _workoutSpots!.any(
+                              (spot) => (spot.x - value).abs() < interval / 2);
+
+                          if (!hasNearbyPoint) {
+                            return const SizedBox.shrink();
+                          }
+
+                          final date = DateTime.fromMillisecondsSinceEpoch(
+                              value.toInt());
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              DateFormat('HH:mm').format(date),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        interval: 20,
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            value.toInt().toString(),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 0.5,
+                    ),
+                  ),
+                  minX: minX,
+                  maxX: maxX,
+                  minY: 0,
+                  maxY: 100,
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: _workoutSpots!
+                          .map((spot) => FlSpot(
+                                spot.x,
+                                spot.y * _animation.value,
+                              ))
+                          .toList(),
+                      isCurved: true,
+                      curveSmoothness: 0.35,
+                      color: const Color(0xFFDF4D0F),
+                      barWidth: 3.0,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) =>
+                            FlDotCirclePainter(
+                          radius: 4.0,
+                          color: const Color(0xFFDF4D0F),
+                          strokeWidth: 1.5,
+                          strokeColor: Colors.white,
+                        ),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: const Color(0xFFDF4D0F).withOpacity(0.08),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            const Color(0xFFDF4D0F).withOpacity(0.15),
+                            const Color(0xFFDF4D0F).withOpacity(0.02),
+                          ],
+                        ),
+                      ),
+                    ),
+                    LineChartBarData(
+                      spots: _setSpots!
+                          .map((spot) => FlSpot(
+                                spot.x,
+                                spot.y * _animation.value,
+                              ))
+                          .toList(),
+                      isCurved: true,
+                      curveSmoothness: 0.35,
+                      color: Colors.green.withOpacity(0.8),
+                      barWidth: 2.0,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) =>
+                            FlDotCirclePainter(
+                          radius: 3.0,
+                          color: Colors.green.withOpacity(0.8),
+                          strokeWidth: 1.0,
+                          strokeColor: Colors.white,
+                        ),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: Colors.green.withOpacity(0.05),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.green.withOpacity(0.1),
+                            Colors.green.withOpacity(0.01),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Completed',
-                  '${workouts.where((w) => w.isCompleted).length}/${workouts.length}',
-                  Icons.check_circle,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Avg. Sets',
-                  (workouts.fold<int>(0, (sum, w) => sum + w.setsCompleted) /
-                          workouts.length)
-                      .round()
-                      .toString(),
-                  Icons.repeat,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1473,7 +1589,14 @@ class _OptimizedProgressChartState extends State<OptimizedProgressChart>
   @override
   void initState() {
     super.initState();
-    _setupAnimations();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
     _initializeData();
   }
 
@@ -1790,10 +1913,6 @@ class _OptimizedProgressChartState extends State<OptimizedProgressChart>
                       color: Colors.white.withOpacity(0.1),
                       strokeWidth: 0.5,
                     ),
-                    checkToShowVerticalLine: (value) {
-                      return _workoutSpots!
-                          .any((spot) => (spot.x - value).abs() < interval / 2);
-                    },
                   ),
                   titlesData: FlTitlesData(
                     show: true,
@@ -1822,9 +1941,9 @@ class _OptimizedProgressChartState extends State<OptimizedProgressChart>
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               DateFormat('HH:mm').format(date),
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 10,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
                               ),
                             ),
                           );
@@ -1834,17 +1953,14 @@ class _OptimizedProgressChartState extends State<OptimizedProgressChart>
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 35,
-                        interval: 25,
+                        reservedSize: 40,
+                        interval: 20,
                         getTitlesWidget: (value, meta) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Text(
-                              '${value.toInt()}%',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 10,
-                              ),
+                          return Text(
+                            value.toInt().toString(),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
                             ),
                           );
                         },
